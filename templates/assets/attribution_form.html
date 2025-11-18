@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Modifier Attribution - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">
+    <i class="bi bi-pencil me-2"></i>Modifier Attribution
+  </h2>
+
+  <!-- Détails de l'attribution -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Détails</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong>Matériel:</strong> {{ attribution.materiel.nom }} ({{ attribution.materiel.asset_id }})</p>
+          <p><strong>Client:</strong> {{ attribution.client.nom }}</p>
+        </div>
+        <div class="col-md-6">
+          <p><strong>Date attribution:</strong> {{ attribution.date_attribution|date:"d/m/Y H:i" }}</p>
+          <p><strong>Responsable:</strong> {{ attribution.employe_responsable.get_full_name|default:attribution.employe_responsable.username }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages d'erreur -->
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
+
+  <!-- Formulaire de modification -->
+  <div class="card">
+    <div class="card-header bg-light">
+      <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Modifier</h5>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+
+        <!-- Matériel (lecture seule) -->
+        <div class="mb-3">
+          <label for="{{ form.materiel.id_for_label }}" class="form-label">
+            <strong>Matériel *</strong>
+          </label>
+          {{ form.materiel }}
+          {% if form.materiel.errors %}
+            <div class="invalid-feedback d-block">{{ form.materiel.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Client (lecture seule) -->
+        <div class="mb-3">
+          <label for="{{ form.client.id_for_label }}" class="form-label">
+            <strong>Client *</strong>
+          </label>
+          {{ form.client }}
+          {% if form.client.errors %}
+            <div class="invalid-feedback d-block">{{ form.client.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Date retour prévue -->
+        <div class="mb-3">
+          <label for="{{ form.date_retour_prevue.id_for_label }}" class="form-label">
+            <strong>Date retour prévue *</strong>
+          </label>
+          {{ form.date_retour_prevue }}
+          {% if form.date_retour_prevue.errors %}
+            <div class="invalid-feedback d-block">{{ form.date_retour_prevue.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-3">
+          <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+          {{ form.notes }}
+          {% if form.notes.errors %}
+            <div class="invalid-feedback d-block">{{ form.notes.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Boutons -->
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle me-1"></i>Mettre à jour
+          </button>
+          <a href="{% url 'assets:attribution_list' %}" class="btn btn-secondary btn-lg">
+            <i class="bi bi-x-circle me-1"></i>Annuler
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card border" style="border-color: #e0e0e0;">
+        <div class="card-header" style="background-color: #fafafa; border-bottom: 1px solid #e0e0e0;">
+            <h4 class="mb-0" style="font-weight: 500; color: #222;">Check-in: {{ materiel.nom }}</h4>
+            <small style="color: #666;">{{ materiel.asset_id }}</small>
+        </div>
+        <div class="card-body">
+            <!-- Material & Client Info -->
+            <div class="row mb-4 pb-3" style="border-bottom: 1px solid #e0e0e0;">
+                <div class="col-md-6">
+                    <h6 style="font-weight: 500; color: #666; margin-bottom: 0.5rem;">Matériel</h6>
+                    <p class="mb-0" style="color: #222;"><strong>{{ materiel.nom }}</strong></p>
+                    <small style="color: #999;">{{ materiel.asset_id }}</small>
+                </div>
+                <div class="col-md-6">
+                    <h6 style="font-weight: 500; color: #666; margin-bottom: 0.5rem;">Client</h6>
+                    <p class="mb-0" style="color: #222;"><strong>{{ attribution.client.nom }}</strong></p>
+                    <small style="color: #999;">{{ attribution.client.email|default:"N/A" }}</small>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form method="post" class="needs-validation">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.date_retour_effective.id_for_label }}" class="form-label">
+                            {{ form.date_retour_effective.label }}
+                        </label>
+                        {{ form.date_retour_effective }}
+                        {% if form.date_retour_effective.errors %}
+                            <div class="invalid-feedback d-block">{{ form.date_retour_effective.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.raison_non_retour.id_for_label }}" class="form-label">
+                            {{ form.raison_non_retour.label }}
+                        </label>
+                        {{ form.raison_non_retour }}
+                        {% if form.raison_non_retour.errors %}
+                            <div class="invalid-feedback d-block">{{ form.raison_non_retour.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Conditional Description -->
+                <div id="description-damage-section" class="mb-3" style="display: none;">
+                    <label for="{{ form.description_damage.id_for_label }}" class="form-label">
+                        {{ form.description_damage.label }}
+                    </label>
+                    {{ form.description_damage }}
+                    {% if form.description_damage.errors %}
+                        <div class="invalid-feedback d-block">{{ form.description_damage.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-3">
+                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                        {{ form.notes.label }}
+                    </label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                        <div class="invalid-feedback d-block">{{ form.notes.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Maintenance -->
+                <div class="mb-4 form-check">
+                    {{ form.mettre_en_maintenance }}
+                    <label class="form-check-label" for="{{ form.mettre_en_maintenance.id_for_label }}" style="color: #333;">
+                        {{ form.mettre_en_maintenance.label }}
+                    </label>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex gap-2">
+                    <button class="btn btn-dark" type="submit">
+                        Enregistrer le retour
+                    </button>
+                    <a href="{% url 'assets:materiel_detail' materiel.pk %}" class="btn btn-outline-secondary">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const raisonSelect = document.getElementById('id_raison_non_retour');
+    const damageSection = document.getElementById('description-damage-section');
+    const descriptionDamageField = document.getElementById('id_description_damage');
+
+    function updateDamageFieldVisibility() {
+        const selectedValue = raisonSelect.value;
+        if (selectedValue === 'DAMAGE' || selectedValue === 'LOST' || selectedValue === 'OTHER') {
+            damageSection.style.display = 'block';
+            if (selectedValue === 'DAMAGE' || selectedValue === 'LOST') {
+                descriptionDamageField.required = true;
+            } else {
+                descriptionDamageField.required = false;
+            }
+        } else {
+            damageSection.style.display = 'none';
+            descriptionDamageField.required = false;
+        }
+    }
+
+    raisonSelect.addEventListener('change', updateDamageFieldVisibility);
+    updateDamageFieldVisibility();
+});
+</script>
+
+<style>
+    .shadow-sm {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    }
+    
+    .bg-light {
+        background-color: #f8f9fa !important;
+    }
+    
+    .form-control, .form-select {
+        border-color: #dee2e6;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #495057;
+        box-shadow: none;
+    }
+</style>
+{% endblock %}

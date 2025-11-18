@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    {% if raison != 'NORMAL' %}
+    <div style="border-left: 4px solid #333; padding: 1rem; background-color: #fafafa; border: 1px solid #e0e0e0; border-radius: 0;">
+        <h5 style="margin-bottom: 1rem; color: #333; font-weight: 500;">
+            {% if raison == 'LOST' %}
+                Matériel Perdu
+            {% elif raison == 'DAMAGE' %}
+                Matériel Endommagé
+            {% endif %}
+        </h5>
+        <p style="margin-bottom: 0.5rem; color: #555;">Une alerte a été créée dans le système pour suivi administratif.</p>
+        {% if alerte %}
+        <small style="color: #888; display: block; margin-bottom: 1rem;">
+            Alerte #{{ alerte.id }} • {{ alerte.date_creation|date:"d/m/Y H:i" }}
+        </small>
+        <a href="/admin/assets/alerte/{{ alerte.id }}/change/" target="_blank" style="display: inline-block; padding: 0.5rem 1rem; border: 1px solid #333; background-color: white; color: #333; text-decoration: none; border-radius: 0;">
+            Voir dans l'administration
+        </a>
+        {% endif %}
+    </div>
+    {% else %}
+    <div style="border-left: 4px solid #333; padding: 1rem; background-color: #fafafa; border: 1px solid #e0e0e0; border-radius: 0;">
+        <h5 style="margin-bottom: 0.5rem; color: #333; font-weight: 500;">Retour enregistré</h5>
+        <p style="margin-bottom: 0; color: #555;">Le matériel a été retourné dans son état normal.</p>
+    </div>
+    {% endif %}
+
+    <div class="card mt-4" style="border: 1px solid #e0e0e0; box-shadow: none;">
+        <div style="background-color: #fafafa; border-bottom: 1px solid #e0e0e0; padding: 1rem;">
+            <h5 style="margin-bottom: 0; font-weight: 500; color: #333;">Résumé du check-in</h5>
+        </div>
+        <div style="padding: 1.5rem;">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Asset ID:</dt>
+                        <dd class="col-sm-7" style="color: #333;">{{ materiel_asset_id }}</dd>
+                        <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Matériel:</dt>
+                        <dd class="col-sm-7" style="color: #333;">{{ materiel_nom }}</dd>
+                        <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Statut:</dt>
+                        <dd class="col-sm-7">
+                            <span style="display: inline-block; padding: 0.25rem 0.75rem; border: 1px solid #ccc; background-color: white; color: #333; font-size: 0.85rem;">
+                                {% if statut_color == 'warning' %}
+                                    En maintenance
+                                {% else %}
+                                    Disponible
+                                {% endif %}
+                            </span>
+                        </dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Client:</dt>
+                        <dd class="col-sm-7" style="color: #333;">{{ client_nom }}</dd>
+                        <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Check-out:</dt>
+                        <dd class="col-sm-7" style="color: #333;">{{ date_attribution|date:"d/m/Y" }}</dd>
+                        <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Check-in:</dt>
+                        <dd class="col-sm-7" style="color: #333;">{{ date_retour|date:"d/m/Y" }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            {% if raison != 'NORMAL' %}
+            <hr class="my-3">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="fw-semibold text-muted mb-2">Raison du retour</h6>
+                    <p>
+                        {% if raison == 'DAMAGE' %}
+                            Matériel endommagé
+                        {% elif raison == 'LOST' %}
+                            Matériel perdu
+                        {% else %}
+                            {{ raison }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="fw-semibold text-muted mb-2">Maintenance</h6>
+                    <p>
+                        {% if maintenance %}
+                            En attente de réparation
+                        {% else %}
+                            Non requise
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            {% if description_damage %}
+            <hr class="my-3">
+            <div>
+                <h6 class="fw-semibold text-muted mb-2">Description</h6>
+                <p class="small text-muted">{{ description_damage|linebreaks }}</p>
+            </div>
+            {% endif %}
+
+            {% if notes %}
+            <hr class="my-3">
+            <div>
+                <h6 class="fw-semibold text-muted mb-2">Notes</h6>
+                <p class="small text-muted">{{ notes|linebreaks }}</p>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <hr class="my-4">
+
+            <div>
+                <a href="{% url 'assets:materiel_detail' materiel_pk %}" class="btn btn-outline-secondary">
+                    Retour au matériel
+                </a>
+                <a href="{% url 'assets:materiel_list' %}" class="btn btn-outline-secondary">
+                    Liste des matériels
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-start {
+        border-left: 4px solid currentColor !important;
+    }
+    
+    .shadow-sm {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    }
+    
+    .bg-light {
+        background-color: #f8f9fa !important;
+    }
+    
+    dl.row dt {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    dl.row dd {
+        color: #333;
+    }
+</style>
+{% endblock %}

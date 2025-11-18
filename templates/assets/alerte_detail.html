@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Détails de l'alerte - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1 fw-semibold">
+            <i class="bi bi-bell-fill me-2 text-warning"></i>Détails de l'alerte
+        </h1>
+        <p class="text-body-secondary mb-0">Informations complètes sur l'alerte</p>
+    </div>
+    <div>
+        <a href="{% url 'assets:alerte_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0 fw-semibold">Informations de l'alerte</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-body-secondary">Type d'alerte</label>
+                        <div>
+                            <span class="badge bg-secondary fs-6">{{ alerte.get_type_alerte_display }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-body-secondary">Sévérité</label>
+                        <div>
+                            {% if alerte.severite == 'CRITICAL' %}
+                            <span class="badge bg-danger fs-6">Critique</span>
+                            {% elif alerte.severite == 'WARNING' %}
+                            <span class="badge bg-warning fs-6">Avertissement</span>
+                            {% else %}
+                            <span class="badge bg-info fs-6">Information</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-body-secondary">Département</label>
+                        <div class="fw-semibold">{{ alerte.departement.nom }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-body-secondary">Date de création</label>
+                        <div class="fw-semibold">{{ alerte.date_creation|date:"d/m/Y à H:i" }}</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold text-body-secondary">Description</label>
+                        <div class="p-3 bg-light rounded">{{ alerte.description|linebreaks }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if alerte.materiel %}
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0 fw-semibold">Matériel concerné</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="fw-semibold mb-1">
+                            <a href="{% url 'assets:materiel_detail' pk=alerte.materiel.pk %}" class="text-decoration-none">
+                                {{ alerte.materiel.nom }}
+                            </a>
+                        </h6>
+                        <p class="text-body-secondary small mb-1">
+                            <strong>Asset ID:</strong> {{ alerte.materiel.asset_id }}<br>
+                            <strong>Numéro d'inventaire:</strong> {{ alerte.materiel.numero_inventaire }}<br>
+                            <strong>État:</strong> 
+                            <span class="badge bg-{% if alerte.materiel.etat_technique == 'FONCTIONNEL' %}success{% elif alerte.materiel.etat_technique == 'DEFECTUEUX' %}danger{% else %}warning{% endif %}">
+                                {{ alerte.materiel.get_etat_technique_display }}
+                            </span><br>
+                            <strong>Statut:</strong> 
+                            <span class="badge bg-secondary">{{ alerte.materiel.get_statut_disponibilite_display }}</span>
+                        </p>
+                    </div>
+                    <a href="{% url 'assets:materiel_detail' pk=alerte.materiel.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-arrow-right me-1"></i>Voir le matériel
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if alerte.attribution %}
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0 fw-semibold">Attribution concernée</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="fw-semibold mb-1">{{ alerte.attribution.client.nom }}</h6>
+                        <p class="text-body-secondary small mb-1">
+                            <strong>Date d'attribution:</strong> {{ alerte.attribution.date_attribution|date:"d/m/Y" }}<br>
+                            <strong>Date retour prévue:</strong> {{ alerte.attribution.date_retour_prevue|date:"d/m/Y" }}<br>
+                            {% if alerte.attribution.date_retour_effective %}
+                            <strong>Date retour effective:</strong> {{ alerte.attribution.date_retour_effective|date:"d/m/Y" }}
+                            {% else %}
+                            <span class="badge bg-warning">En cours</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0 fw-semibold">Actions</h5>
+            </div>
+            <div class="card-body">
+                {% if not alerte.reglementee %}
+                <a href="{% url 'assets:alerte_marquer_reglementee' pk=alerte.pk %}" class="btn btn-success w-100 mb-2">
+                    <i class="bi bi-check-lg me-2"></i>Marquer comme réglée
+                </a>
+                {% else %}
+                <div class="alert alert-success mb-3">
+                    <i class="bi bi-check-circle-fill me-2"></i>Cette alerte a été réglée.
+                </div>
+                {% endif %}
+                
+                <a href="{% url 'assets:alerte_list' %}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+                </a>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0 fw-semibold">Statut</h5>
+            </div>
+            <div class="card-body">
+                {% if alerte.reglementee %}
+                <span class="badge bg-success fs-6">
+                    <i class="bi bi-check-circle-fill me-1"></i>Réglée
+                </span>
+                {% else %}
+                <span class="badge bg-warning fs-6">
+                    <i class="bi bi-clock-history me-1"></i>En attente
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

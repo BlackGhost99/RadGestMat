@@ -1,0 +1,215 @@
+<!-- templates/assets/materiel_list.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Inventaire - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="inventory-container w-100">
+<div class="w-100 py-3 py-md-4">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h2">
+                <i class="bi bi-box-seam me-2"></i>Inventaire
+            </h1>
+            <p class="text-muted">Matériel groupé par équipement</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'assets:materiel_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>Ajouter du matériel
+            </a>
+        </div>
+    </div>
+
+    <!-- Cartes de statistiques -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <h3 class="fw-bold text-primary">{{ stats.total }}</h3>
+                    <small class="text-muted">Total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="card stat-card disponible h-100">
+                <div class="card-body text-center">
+                    <h3 class="fw-bold text-success">{{ stats.disponible }}</h3>
+                    <small class="text-muted">Disponible</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="card stat-card attribue h-100">
+                <div class="card-body text-center">
+                    <h3 class="fw-bold text-warning">{{ stats.attribue }}</h3>
+                    <small class="text-muted">Attribué</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="card stat-card maintenance h-100">
+                <div class="card-body text-center">
+                    <h3 class="fw-bold text-info">{{ stats.maintenance }}</h3>
+                    <small class="text-muted">Maintenance</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres et recherche -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-5">
+                    <label for="q" class="form-label">Recherche</label>
+                    <input type="text" class="form-control" id="q" name="q" value="{{ query }}" 
+                           placeholder="Nom d'équipement, modèle...">
+                </div>
+                <div class="col-md-5">
+                    <label for="categorie" class="form-label">Catégorie</label>
+                    <select class="form-select" id="categorie" name="categorie">
+                        <option value="">Toutes les catégories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if categorie_filter == cat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cat.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Filtrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau des groupes de matériels -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Liste des équipements</h5>
+            <span class="badge bg-primary">{{ groupes_materiels|length }} type(s) d'équipement</span>
+        </div>
+        <div class="card-body p-0">
+            {% if groupes_materiels %}
+            <div class="table-responsive" style="max-height: calc(100vh - 450px); overflow-y: auto;">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nom de l'équipement</th>
+                            <th>Quantité</th>
+                            <th>Catégorie</th>
+                            <th>Disponible</th>
+                            <th>Attribué</th>
+                            <th>Maintenance</th>
+                            <th>Dernière modification</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for groupe in groupes_materiels %}
+                        <tr style="cursor: pointer;" onclick="window.location.href='{% url 'assets:materiel_group_detail' nom=groupe.nom %}'">
+                            <td>
+                                <strong>{{ groupe.nom }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ groupe.quantite }}</span>
+                            </td>
+                            <td>
+                                {% if groupe.categorie %}
+                                <span class="badge bg-secondary">{{ groupe.categorie.nom }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-success">{{ groupe.disponible }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-warning text-dark">{{ groupe.attribue }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ groupe.maintenance }}</span>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ groupe.date_modification|date:"d/m/Y H:i" }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" onclick="event.stopPropagation();">
+                                    <a href="{% url 'assets:materiel_group_detail' nom=groupe.nom %}" class="btn btn-outline-primary" title="Voir tous les matériels">
+                                        <i class="bi bi-eye"></i> Voir
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h4 class="text-muted mt-3">Aucun équipement trouvé</h4>
+                <p class="text-muted">Aucun équipement ne correspond à vos critères de recherche.</p>
+                <a href="{% url 'assets:materiel_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Ajouter du matériel
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div>
+
+<style>
+.inventory-container {
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+}
+
+.inventory-container .container-fluid {
+    min-height: 100%;
+    padding-bottom: 2rem;
+}
+
+/* Tableau avec scroll interne */
+.table-responsive {
+    position: relative;
+}
+
+.table-responsive table thead {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+}
+
+.table-responsive table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Améliorer la visibilité du scroll */
+.table-responsive::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+</style>
+{% endblock %}

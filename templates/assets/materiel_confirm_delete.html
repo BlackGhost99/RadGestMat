@@ -1,0 +1,76 @@
+<!-- templates/assets/materiel_confirm_delete.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Supprimer le matériel - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger">
+                    <h4 class="card-title mb-0 text-white">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Confirmation de suppression
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Êtes-vous sûr de vouloir supprimer ce matériel ?</p>
+                    
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Attention !</strong> Cette action est irréversible.
+                    </div>
+                    
+                    <div class="card mb-4 bg-light">
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">Nom :</dt>
+                                <dd class="col-sm-8"><strong>{{ materiel.nom }}</strong></dd>
+                                
+                                <dt class="col-sm-4">Asset ID :</dt>
+                                <dd class="col-sm-8"><code>{{ materiel.asset_id }}</code></dd>
+                                
+                                <dt class="col-sm-4">Numéro d'inventaire :</dt>
+                                <dd class="col-sm-8">{{ materiel.numero_inventaire }}</dd>
+                                
+                                <dt class="col-sm-4">Statut :</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge {% if materiel.statut_disponibilite == 'DISPONIBLE' %}bg-success{% elif materiel.statut_disponibilite == 'ATTRIBUE' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                        {{ materiel.get_statut_disponibilite_display }}
+                                    </span>
+                                </dd>
+                                
+                                <dt class="col-sm-4">État :</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge {% if materiel.etat_technique == 'FONCTIONNEL' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ materiel.get_etat_technique_display }}
+                                    </span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    {% if materiel.statut_disponibilite != 'DISPONIBLE' %}
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note :</strong> Ce matériel n'est pas disponible. Assurez-vous que toutes les attributions soient finalisées avant de le supprimer.
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between gap-2">
+                            <a href="{% url 'assets:materiel_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>Supprimer définitivement
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

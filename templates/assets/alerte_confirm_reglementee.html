@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marquer comme réglée - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-check-circle me-2 text-success"></i>Marquer comme réglée
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">Êtes-vous sûr de vouloir marquer cette alerte comme réglée ?</p>
+                
+                <div class="alert alert-info">
+                    <strong>Type:</strong> {{ alerte.get_type_alerte_display }}<br>
+                    <strong>Sévérité:</strong> {{ alerte.get_severite_display }}<br>
+                    <strong>Description:</strong> {{ alerte.description|truncatewords:20 }}
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-2"></i>Oui, marquer comme réglée
+                        </button>
+                        <a href="{% url 'assets:alerte_detail' pk=alerte.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-2"></i>Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

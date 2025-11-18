@@ -1,0 +1,251 @@
+<!-- templates/assets/materiel_detail.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ materiel.nom }} - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'assets:materiel_list' %}">Matériel</a></li>
+                    <li class="breadcrumb-item active">{{ materiel.nom }}</li>
+                </ol>
+            </nav>
+            <h1 class="h2">
+                <i class="bi bi-box-seam me-2"></i>{{ materiel.nom }}
+            </h1>
+            <p class="text-muted">Asset ID: <code>{{ materiel.asset_id }}</code></p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <a href="{% url 'assets:materiel_update' materiel.pk %}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil me-1"></i>Modifier
+                </a>
+
+                {% if attribution_active %}
+                <a href="{% url 'assets:materiel_checkin' materiel.asset_id %}" class="btn btn-success">
+                    <i class="bi bi-box-arrow-in-down me-1"></i>Check-in
+                </a>
+                {% elif materiel.statut_disponibilite == 'DISPONIBLE' %}
+                <a href="{% url 'assets:materiel_checkout' materiel.asset_id %}" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Check-out
+                </a>
+                {% else %}
+                <button class="btn btn-secondary" disabled>Non disponible</button>
+                {% endif %}
+
+                {% if user_profile.role == 'MANAGER_DEPT' %}
+                <a href="{% url 'assets:materiel_delete' materiel.pk %}" class="btn btn-outline-danger">
+                    <i class="bi bi-trash me-1"></i>Supprimer
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Informations principales -->
+        <div class="col-lg-8">
+            <div class="row g-4">
+                <!-- Carte d'information -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-info-circle me-2"></i>Informations
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <th>Asset ID:</th>
+                                    <td><code>{{ materiel.asset_id }}</code></td>
+                                </tr>
+                                <tr>
+                                    <th>Catégorie:</th>
+                                    <td>
+                                        {% if materiel.categorie %}
+                                        <span class="badge bg-secondary">{{ materiel.categorie.nom }}</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Marque/Modèle:</th>
+                                    <td>
+                                        {% if materiel.marque or materiel.modele %}
+                                        {{ materiel.marque }} {{ materiel.modele }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Numéro de série:</th>
+                                    <td>
+                                        {% if materiel.numero_serie %}
+                                        <code>{{ materiel.numero_serie }}</code>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statut et état -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-graph-up me-2"></i>Statut
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>État technique:</strong><br>
+                                <span class="badge {% if materiel.etat == 'FONCTIONNEL' %}bg-success{% elif materiel.etat == 'DEFECTUEUX' %}bg-danger{% else %}bg-info{% endif %} fs-6">
+                                    {{ materiel.get_etat_display }}
+                                </span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Statut:</strong><br>
+                                <span class="badge {% if materiel.statut == 'DISPONIBLE' %}bg-success{% elif materiel.statut == 'ATTRIBUE' %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6">
+                                    {{ materiel.get_statut_display }}
+                                </span>
+                            </div>
+                            {% if materiel.date_achat %}
+                            <div>
+                                <strong>Date d'achat:</strong><br>
+                                {{ materiel.date_achat|date:"d/m/Y" }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attribution active -->
+                {% if attribution_active %}
+                <div class="col-12">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-clock-history me-2"></i>Attribution en cours
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Client:</strong> {{ attribution_active.client.nom }}<br>
+                                    <strong>Type:</strong> {{ attribution_active.client.get_type_client_display }}<br>
+                                    {% if attribution_active.client.numero_chambre %}
+                                    <strong>Chambre:</strong> {{ attribution_active.client.numero_chambre }}<br>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Date attribution:</strong> {{ attribution_active.date_attribution|date:"d/m/Y H:i" }}<br>
+                                    {% if attribution_active.date_retour_prevue %}
+                                    <strong>Retour prévu:</strong> {{ attribution_active.date_retour_prevue|date:"d/m/Y" }}<br>
+                                    {% endif %}
+                                    {% if attribution_active.est_en_retard %}
+                                    <span class="badge bg-danger mt-2">EN RETARD</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if attribution_active.notes %}
+                            <div class="mt-2">
+                                <strong>Notes:</strong> {{ attribution_active.notes }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Notes -->
+                {% if materiel.notes %}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-journal-text me-2"></i>Notes
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {{ materiel.notes|linebreaks }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- QR Code -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-qr-code me-2"></i>QR Code
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    {% if materiel.qr_code %}
+                    <img src="{{ materiel.qr_code.url }}" alt="QR Code {{ materiel.asset_id }}" 
+                         class="img-fluid mb-3" style="max-width: 200px;">
+                    <br>
+                    <a href="{{ materiel.qr_code.url }}" download class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-download me-1"></i>Télécharger
+                    </a>
+                    {% else %}
+                    <p class="text-muted">QR Code non généré</p>
+                    <form method="post" action="{% url 'materiel_update' materiel.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-primary" name="generate_qr">
+                            <i class="bi bi-qr-code me-1"></i>Générer QR Code
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Historique récent -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Historique récent
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if historique %}
+                    <div class="list-group list-group-flush">
+                        {% for entry in historique %}
+                        <div class="list-group-item px-0">
+                            <div class="d-flex w-100 justify-content-between">
+                                <small class="text-muted">{{ entry.action }}</small>
+                            </div>
+                            <small class="text-muted">
+                                {{ entry.date_action|date:"d/m/Y H:i" }}
+                                {% if entry.utilisateur %}
+                                par {{ entry.utilisateur.username }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">Aucun historique</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

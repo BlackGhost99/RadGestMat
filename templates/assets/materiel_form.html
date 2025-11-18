@@ -1,0 +1,454 @@
+<!-- templates/assets/materiel_form.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="bi bi-box-seam me-2"></i>{{ title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" class="mt-4">
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row g-3">
+                            <!-- Informations de base -->
+                            <div class="col-md-6">
+                                <label for="{{ form.nom_materiel.id_for_label }}" class="form-label">
+                                    Nom du matériel *
+                                </label>
+                                <div class="input-group">
+                                    {{ form.nom_materiel }}
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCreerNom">
+                                        <i class="bi bi-plus-lg"></i> Nouveau
+                                    </button>
+                                </div>
+                                <datalist id="noms_materiels_list">
+                                    {% for nom in noms_existants %}
+                                    <option value="{{ nom }}">
+                                    {% endfor %}
+                                </datalist>
+                                {% if form.nom_materiel.errors %}
+                                <div class="text-danger small">{{ form.nom_materiel.errors }}</div>
+                                {% endif %}
+                                {% if form.nom_materiel.help_text %}
+                                <small class="form-text text-muted">{{ form.nom_materiel.help_text }}</small>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.asset_id.id_for_label }}" class="form-label">
+                                    Asset ID
+                                </label>
+                                {{ form.asset_id }}
+                                {% if form.asset_id.errors %}
+                                <div class="text-danger small">{{ form.asset_id.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Généré automatiquement (OKP-XXXXXX)</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.numero_inventaire.id_for_label }}" class="form-label">
+                                    Numéro d'inventaire
+                                </label>
+                                {{ form.numero_inventaire }}
+                                {% if form.numero_inventaire.errors %}
+                                <div class="text-danger small">{{ form.numero_inventaire.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Généré automatiquement (RAD-XXXXXX)</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.nom_categorie.id_for_label }}" class="form-label">
+                                    Catégorie
+                                </label>
+                                <div class="input-group">
+                                    {{ form.nom_categorie }}
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCreerCategorie">
+                                        <i class="bi bi-plus-lg"></i> Nouveau
+                                    </button>
+                                </div>
+                                <datalist id="categories_list">
+                                    {% for cat in categories %}
+                                    <option value="{{ cat.nom }}">
+                                    {% endfor %}
+                                </datalist>
+                                {% if form.nom_categorie.errors %}
+                                <div class="text-danger small">{{ form.nom_categorie.errors }}</div>
+                                {% endif %}
+                                {% if form.nom_categorie.help_text %}
+                                <small class="form-text text-muted">{{ form.nom_categorie.help_text }}</small>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.statut_disponibilite.id_for_label }}" class="form-label">Statut</label>
+                                {{ form.statut_disponibilite }}
+                                {% if form.statut_disponibilite.errors %}
+                                <div class="text-danger small">{{ form.statut_disponibilite.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Informations techniques -->
+                            <div class="col-md-6">
+                                <label for="{{ form.marque.id_for_label }}" class="form-label">Marque</label>
+                                {{ form.marque }}
+                                {% if form.marque.errors %}
+                                <div class="text-danger small">{{ form.marque.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.modele.id_for_label }}" class="form-label">Modèle</label>
+                                {{ form.modele }}
+                                {% if form.modele.errors %}
+                                <div class="text-danger small">{{ form.modele.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.numero_serie.id_for_label }}" class="form-label">Numéro de série</label>
+                                {{ form.numero_serie }}
+                                {% if form.numero_serie.errors %}
+                                <div class="text-danger small">{{ form.numero_serie.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.etat_technique.id_for_label }}" class="form-label">État technique</label>
+                                {{ form.etat_technique }}
+                                {% if form.etat_technique.errors %}
+                                <div class="text-danger small">{{ form.etat_technique.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Informations financières -->
+                            <div class="col-md-6">
+                                <label for="{{ form.date_achat.id_for_label }}" class="form-label">Date d'achat</label>
+                                {{ form.date_achat }}
+                                {% if form.date_achat.errors %}
+                                <div class="text-danger small">{{ form.date_achat.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.prix.id_for_label }}" class="form-label">Prix d'achat (€)</label>
+                                {{ form.prix }}
+                                {% if form.prix.errors %}
+                                <div class="text-danger small">{{ form.prix.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Notes -->
+                            <div class="col-12">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                <div class="text-danger small">{{ form.notes.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'assets:materiel_list' %}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-arrow-left me-1"></i>Retour à la liste
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        {% if materiel %}Modifier{% else %}Ajouter{% endif %} le matériel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour créer une nouvelle catégorie -->
+<div class="modal fade" id="modalCreerCategorie" tabindex="-1" aria-labelledby="modalCreerCategorieLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCreerCategorieLabel">
+                    <i class="bi bi-plus-circle me-2"></i>Créer une nouvelle catégorie
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <form id="formCreerCategorie">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nouvelle_categorie_nom" class="form-label">Nom de la catégorie *</label>
+                        <input type="text" class="form-control" id="nouvelle_categorie_nom" name="nom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nouvelle_categorie_description" class="form-label">Description</label>
+                        <textarea class="form-control" id="nouvelle_categorie_description" name="description" rows="3"></textarea>
+                    </div>
+                    <div id="messageCreerCategorie" class="alert d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Créer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour créer un nouveau nom de matériel -->
+<div class="modal fade" id="modalCreerNom" tabindex="-1" aria-labelledby="modalCreerNomLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCreerNomLabel">
+                    <i class="bi bi-plus-circle me-2"></i>Créer un nouveau nom de matériel
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <form id="formCreerNom">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nouveau_nom" class="form-label">Nom du matériel *</label>
+                        <input type="text" class="form-control" id="nouveau_nom" name="nom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nouvelle_categorie_popup" class="form-label">Catégorie *</label>
+                        <select class="form-select" id="nouvelle_categorie_popup" name="categorie_id" required>
+                            <option value="">Sélectionnez une catégorie</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="messageCreerNom" class="alert d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Créer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Script pour améliorer l'expérience utilisateur
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-format de l'asset_id en majuscules
+    const assetIdField = document.getElementById('{{ form.asset_id.id_for_label }}');
+    if (assetIdField) {
+        assetIdField.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+    }
+    
+    // Validation des dates
+    const dateAchatField = document.getElementById('{{ form.date_achat.id_for_label }}');
+    if (dateAchatField) {
+        dateAchatField.addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const today = new Date();
+            if (selectedDate > today) {
+                alert('La date d\'achat ne peut pas être dans le futur.');
+                this.value = '';
+            }
+        });
+    }
+    
+    // Préremplir les champs asset_id et numero_inventaire si création
+    {% if not materiel %}
+    const assetIdField = document.getElementById('{{ form.asset_id.id_for_label }}');
+    const numeroInvField = document.getElementById('{{ form.numero_inventaire.id_for_label }}');
+    if (assetIdField) {
+        // Laisser vide pour que la génération automatique se fasse côté serveur
+        // Ou afficher la valeur prévue si disponible
+        {% if asset_id_default %}
+        assetIdField.value = '{{ asset_id_default }}';
+        {% else %}
+        assetIdField.value = '';
+        {% endif %}
+        assetIdField.setAttribute('readonly', 'readonly');
+    }
+    if (numeroInvField) {
+        {% if numero_inv_default %}
+        numeroInvField.value = '{{ numero_inv_default }}';
+        {% else %}
+        numeroInvField.value = '';
+        {% endif %}
+        numeroInvField.setAttribute('readonly', 'readonly');
+    }
+    {% endif %}
+    
+    // Gestion du formulaire de création de nom
+    const formCreerNom = document.getElementById('formCreerNom');
+    const modalCreerNom = new bootstrap.Modal(document.getElementById('modalCreerNom'));
+    const messageDiv = document.getElementById('messageCreerNom');
+    const nomMaterielField = document.getElementById('id_nom_materiel');
+    const nomCategorieField = document.getElementById('id_nom_categorie');
+    
+    // Gestion du formulaire de création de catégorie
+    const formCreerCategorie = document.getElementById('formCreerCategorie');
+    const modalCreerCategorie = new bootstrap.Modal(document.getElementById('modalCreerCategorie'));
+    const messageCategorieDiv = document.getElementById('messageCreerCategorie');
+    
+    if (formCreerNom) {
+        formCreerNom.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const nouveauNom = formData.get('nom').trim();
+            const categorieId = formData.get('categorie_id');
+            
+            if (!nouveauNom) {
+                showMessage('Le nom est requis', 'danger');
+                return;
+            }
+            
+            if (!categorieId) {
+                showMessage('La catégorie est requise', 'danger');
+                return;
+            }
+            
+            // Envoyer la requête
+            fetch('{% url "assets:api_creer_nom_materiel" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Ajouter le nom au datalist
+                    const datalist = document.getElementById('noms_materiels_list');
+                    const option = document.createElement('option');
+                    option.value = data.nom;
+                    datalist.appendChild(option);
+                    
+                    // Remplir les champs du formulaire principal
+                    nomMaterielField.value = data.nom;
+                    if (data.categorie_id && nomCategorieField) {
+                        // Récupérer le nom de la catégorie depuis le select
+                        const categorieSelect = document.getElementById('nouvelle_categorie_popup');
+                        if (categorieSelect) {
+                            const selectedOption = categorieSelect.options[categorieSelect.selectedIndex];
+                            if (selectedOption) {
+                                nomCategorieField.value = selectedOption.text;
+                            }
+                        }
+                    }
+                    
+                    showMessage('Nom de matériel créé avec succès !', 'success');
+                    
+                    // Fermer le modal après 1 seconde
+                    setTimeout(() => {
+                        modalCreerNom.hide();
+                        formCreerNom.reset();
+                        messageDiv.classList.add('d-none');
+                    }, 1000);
+                } else {
+                    showMessage(data.error || 'Erreur lors de la création', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Erreur lors de la communication avec le serveur', 'danger');
+            });
+        });
+    }
+    
+    function showMessage(message, type) {
+        messageDiv.textContent = message;
+        messageDiv.className = `alert alert-${type}`;
+        messageDiv.classList.remove('d-none');
+    }
+    
+    // Gestion de la création de catégorie
+    if (formCreerCategorie) {
+        formCreerCategorie.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const nouveauNom = formData.get('nom').trim();
+            const description = formData.get('description').trim();
+            
+            if (!nouveauNom) {
+                showMessageCategorie('Le nom est requis', 'danger');
+                return;
+            }
+            
+            // Envoyer la requête
+            fetch('{% url "assets:api_creer_categorie" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Ajouter la catégorie au datalist
+                    const datalist = document.getElementById('categories_list');
+                    const option = document.createElement('option');
+                    option.value = data.nom;
+                    datalist.appendChild(option);
+                    
+                    // Remplir le champ du formulaire principal
+                    if (nomCategorieField) {
+                        nomCategorieField.value = data.nom;
+                    }
+                    
+                    showMessageCategorie('Catégorie créée avec succès !', 'success');
+                    
+                    // Fermer le modal après 1 seconde
+                    setTimeout(() => {
+                        modalCreerCategorie.hide();
+                        formCreerCategorie.reset();
+                        messageCategorieDiv.classList.add('d-none');
+                    }, 1000);
+                } else {
+                    showMessageCategorie(data.error || 'Erreur lors de la création', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessageCategorie('Erreur lors de la communication avec le serveur', 'danger');
+            });
+        });
+    }
+    
+    function showMessageCategorie(message, type) {
+        messageCategorieDiv.textContent = message;
+        messageCategorieDiv.className = `alert alert-${type}`;
+        messageCategorieDiv.classList.remove('d-none');
+    }
+});
+</script>
+{% endblock %}

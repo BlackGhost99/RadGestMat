@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Client — {{ client.nom }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row mb-3">
+    <div class="col-md-8">
+      <h1 class="h3">{{ client.nom }}</h1>
+      {% if client.email %}<p><strong>Email:</strong> {{ client.email }}</p>{% endif %}
+      {% if client.telephone %}<p><strong>Téléphone:</strong> {{ client.telephone }}</p>{% endif %}
+      {% if client.notes %}<p><strong>Notes:</strong> {{ client.notes }}</p>{% endif %}
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="{% url 'assets:client_update' client.pk %}" class="btn btn-sm btn-warning">✏ Modifier</a>
+      <a href="{% url 'assets:client_delete' client.pk %}" class="btn btn-sm btn-danger">🗑 Supprimer</a>
+      <a href="{% url 'assets:client_list' %}" class="btn btn-sm btn-secondary">← Retour</a>
+    </div>
+  </div>
+
+  <hr>
+
+  <h4>Attributions récentes</h4>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th>Matériel</th>
+          <th>Date attribution</th>
+          <th>Date retour prévue</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for attr in attributions %}
+        <tr>
+          <td>
+            <strong>{{ attr.materiel.nom }}</strong><br>
+            <small class="text-muted">{{ attr.materiel.asset_id }}</small>
+          </td>
+          <td>{{ attr.date_attribution|date:"d/m/Y" }}</td>
+          <td>{{ attr.date_retour_prevue|date:"d/m/Y" }}</td>
+          <td>
+            {% if attr.date_retour_effective %}
+              <span class="badge bg-info">Retourné</span>
+            {% else %}
+              <span class="badge bg-success">Actif</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'assets:attribution_update' attr.pk %}" class="btn btn-sm btn-outline-warning">✏</a>
+            <a href="{% url 'assets:scan_result' attr.materiel.asset_id %}" class="btn btn-sm btn-outline-success">📱</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted">Aucune attribution</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

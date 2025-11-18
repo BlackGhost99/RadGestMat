@@ -1,0 +1,226 @@
+<!-- templates/base.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}RadGestMat - Gestion de Matériel{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link href="{% static 'css/custom.css' %}" rel="stylesheet">
+    <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
+</head>
+<body class="app-body d-flex flex-column min-vh-100">
+    <!-- Navigation -->
+    <header class="app-header">
+        <nav class="navbar navbar-expand-lg navbar-elevated fixed-top py-2">
+            <div class="container-fluid px-4 px-lg-5">
+                <a class="navbar-brand d-flex align-items-center gap-2 fw-semibold" href="{% url 'assets:dashboard' %}">
+                    <span class="brand-icon d-inline-flex align-items-center justify-content-center rounded-3">
+                        <i class="bi bi-pc-display-horizontal"></i>
+                    </span>
+                    <span>
+                        RadGestMat
+                        <small class="d-block fw-normal text-body-secondary">Gestion des actifs</small>
+                    </span>
+                </a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#navbarOffcanvas">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse justify-content-end d-none d-lg-flex">
+                    <ul class="navbar-nav align-items-center me-4 gap-lg-2">
+                        {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'assets:dashboard' %}">
+                                <i class="bi bi-speedometer2 me-1"></i>Tableau de bord
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'assets:materiel_list' %}">
+                                <i class="bi bi-box-seam me-1"></i>Inventaire
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'assets:client_list' %}">
+                                <i class="bi bi-people me-1"></i>Clients
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'assets:attribution_list' %}">
+                                <i class="bi bi-arrow-left-right me-1"></i>Attributions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link position-relative" href="{% url 'assets:alerte_list' %}">
+                                <i class="bi bi-bell me-1"></i>Alertes
+                                {% if nombre_alertes > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill {% if nombre_alertes_critiques > 0 %}bg-danger{% else %}bg-warning{% endif %}">
+                                    {{ nombre_alertes }}
+                                    <span class="visually-hidden">alertes non réglées</span>
+                                </span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+
+                    <div class="d-flex align-items-center gap-3">
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'assets:materiel_create' %}" class="btn btn-gradient d-none d-xl-inline-flex">
+                            <i class="bi bi-plus-lg me-2"></i>Nouveau matériel
+                        </a>
+                        <div class="dropdown">
+                            <a class="d-flex align-items-center dropdown-toggle gap-2 text-decoration-none" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="avatar rounded-circle d-inline-flex align-items-center justify-content-center">
+                                    <i class="bi bi-person-fill"></i>
+                                </span>
+                                <span class="text-start">
+                                    <span class="d-block fw-semibold">{{ user.first_name|default:user.username }}</span>
+                                    <small class="text-body-secondary">{{ user.last_name }}</small>
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <li>
+                                    <button type="button" class="dropdown-item-text small text-body-secondary">
+                                        Connecté en tant que <strong>{{ user.username }}</strong>
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'logout' %}">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Déconnexion
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        {% else %}
+                        <a href="{% url 'login' %}" class="btn btn-gradient">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Connexion
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="navbarOffcanvas" aria-labelledby="navbarOffcanvasLabel">
+            <div class="offcanvas-header border-bottom">
+                <h5 class="offcanvas-title fw-semibold" id="navbarOffcanvasLabel">RadGestMat</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fermer"></button>
+            </div>
+            <div class="offcanvas-body d-flex flex-column gap-3">
+                {% if user.is_authenticated %}
+                <div class="d-flex align-items-center gap-3">
+                    <span class="avatar avatar-lg rounded-3 d-inline-flex align-items-center justify-content-center flex-shrink-0">
+                        <i class="bi bi-person-fill fs-4"></i>
+                    </span>
+                    <div>
+                        <p class="mb-0 fw-semibold">{{ user.first_name|default:user.username }} {{ user.last_name }}</p>
+                        <small class="text-body-secondary">Connecté</small>
+                    </div>
+                </div>
+                <hr class="text-body-secondary opacity-25">
+                <ul class="navbar-nav flex-column gap-1">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'assets:dashboard' %}">
+                            <i class="bi bi-speedometer2 me-2"></i>Tableau de bord
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'assets:materiel_list' %}">
+                            <i class="bi bi-box-seam me-2"></i>Inventaire
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'assets:client_list' %}">
+                            <i class="bi bi-people me-2"></i>Clients
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'assets:attribution_list' %}">
+                            <i class="bi bi-arrow-left-right me-2"></i>Attributions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{% url 'assets:alerte_list' %}">
+                            <i class="bi bi-bell me-2"></i>Alertes
+                            {% if nombre_alertes > 0 %}
+                            <span class="badge rounded-pill {% if nombre_alertes_critiques > 0 %}bg-danger{% else %}bg-warning{% endif %} ms-2">
+                                {{ nombre_alertes }}
+                            </span>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
+                <div class="mt-auto pt-3 border-top">
+                    <a href="{% url 'assets:materiel_create' %}" class="btn btn-gradient w-100">
+                        <i class="bi bi-plus-lg me-2"></i>Créer un matériel
+                    </a>
+                    <a class="btn btn-outline-secondary w-100 mt-2" href="{% url 'logout' %}">
+                        <i class="bi bi-box-arrow-right me-2"></i>Déconnexion
+                    </a>
+                </div>
+                {% else %}
+                <div class="mt-auto">
+                    <a href="{% url 'login' %}" class="btn btn-gradient w-100">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Connexion
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Messages -->
+    <div class="alert-container">
+        {% if messages %}
+            <div class="app-content py-2">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Contenu principal -->
+    <main class="app-main flex-grow-1">
+        <div class="app-content py-3 py-md-4">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer mt-auto">
+        <div class="app-content h-100">
+            <div class="d-flex justify-content-center align-items-center h-100 py-2">
+                <small class="text-body-secondary">
+                    &copy; {% now "Y" %} RadGestMat — Gestion de Matériel
+                </small>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <!-- Custom JS -->
+    <script src="{% static 'js/custom.js' %}"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

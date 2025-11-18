@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Déconnexion confirmée - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-lg text-center">
+                <!-- Header -->
+                <div class="card-header bg-success text-white py-4">
+                    <div class="text-center">
+                        <i class="bi bi-check-circle display-4 d-block mb-2"></i>
+                        <h4 class="card-title mb-0">Déconnecté</h4>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="card-body p-5">
+                    <p class="lead mb-4">
+                        Vous avez été déconnecté avec succès.
+                    </p>
+                    
+                    <p class="text-muted mb-4">
+                        À bientôt!
+                    </p>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'login' %}" class="btn btn-primary py-2">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Se reconnecter
+                        </a>
+                        <a href="{% url 'admin:index' %}" class="btn btn-outline-secondary py-2">
+                            <i class="bi bi-gear me-2"></i>Aller à l'admin
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="card-footer text-center bg-light">
+                    <small class="text-muted">
+                        &copy; {% now "Y" %} RadGestMat. Tous droits réservés.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+    
+    .card {
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}

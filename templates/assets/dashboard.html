@@ -1,0 +1,704 @@
+<!-- templates/assets/dashboard.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tableau de bord - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+<div class="row g-2">
+    <div class="col-12">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div>
+                <span class="badge-soft info mb-2">
+                    <i class="bi bi-activity"></i>
+                    Vue d'ensemble
+                </span>
+                <h1 class="display-6 fw-semibold mb-1">Tableau de bord</h1>
+                <p class="text-body-secondary mb-0">Supervisez la santé de votre parc matériel en un coup d'œil.</p>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <a href="{% url 'assets:materiel_create' %}" class="btn btn-gradient">
+                    <i class="bi bi-plus-lg me-2"></i>Ajouter du matériel
+                </a>
+                <a href="{% url 'assets:attribution_list' %}" class="btn btn-soft">
+                    <i class="bi bi-arrow-left-right me-2"></i>Nouvelle attribution
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="col-12">
+        <div class="row g-3">
+            <div class="col-sm-6 col-xl-3">
+                <div class="card card-kpi h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="kpi-icon info">
+                                <i class="bi bi-grid"></i>
+                            </div>
+                            <div class="text-end">
+                                <p class="stat-value mb-0">{{ total_materiel|default:"0" }}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="stat-label mb-1 fw-semibold">Total matériel</p>
+                            <small class="text-body-secondary d-block">Inventaire global enregistré</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card card-kpi h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="kpi-icon success">
+                                <i class="bi bi-bag-check"></i>
+                            </div>
+                            <div class="text-end">
+                                <p class="stat-value mb-0">{{ materiel_disponible|default:"0" }}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="stat-label mb-1 fw-semibold">Disponible</p>
+                            <small class="text-body-secondary d-block">Équipements prêts à l'emploi</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card card-kpi h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="kpi-icon warning">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <div class="text-end">
+                                <p class="stat-value mb-0">{{ materiel_attribue|default:"0" }}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="stat-label mb-1 fw-semibold">Attribué</p>
+                            <small class="text-body-secondary d-block">Matériel en circulation</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card card-kpi h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="kpi-icon danger">
+                                <i class="bi bi-tools"></i>
+                            </div>
+                            <div class="text-end">
+                                <p class="stat-value mb-0">{{ materiel_defectueux|default:"0" }}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="stat-label mb-1 fw-semibold">Défectueux</p>
+                            <small class="text-body-secondary d-block">Interventions planifiées</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                <div>
+                    <h2 class="h5 fw-semibold mb-1">Actions rapides</h2>
+                    <p class="text-body-secondary mb-0">Accédez rapidement aux modules clés de la plateforme.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'assets:materiel_list' %}" class="btn btn-soft">
+                        <i class="bi bi-box-seam me-2"></i>Inventaire
+                    </a>
+                    <a href="{% url 'assets:client_list' %}" class="btn btn-soft">
+                        <i class="bi bi-people me-2"></i>Clients
+                    </a>
+                    <a href="{% url 'assets:attribution_list' %}" class="btn btn-soft">
+                        <i class="bi bi-diagram-3 me-2"></i>Attributions
+                    </a>
+                    <a href="{% url 'assets:dashboard' %}" class="btn btn-soft">
+                        <i class="bi bi-clipboard-data me-2"></i>Rapports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two Column Section: Materials & Alerts -->
+    <div class="col-12">
+        <div class="sections-side-by-side">
+            <!-- Recent Materials -->
+            <div class="section-item">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="h5 fw-semibold mb-0">Matériels récents</h2>
+                                <small class="text-body-secondary">3 derniers équipements ajoutés ou mis à jour</small>
+                            </div>
+                            <a href="{% url 'assets:materiel_list' %}" class="btn btn-link text-decoration-none text-primary p-0">
+                                Voir tout
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if materiel_recent %}
+                        <div class="table-responsive">
+                            <table class="table-modern">
+                                <thead>
+                                    <tr>
+                                        <th>Asset ID</th>
+                                        <th>Nom</th>
+                                        <th>Marque/Modèle</th>
+                                        <th>État</th>
+                                        <th>Statut</th>
+                                        <th>Catégorie</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for m in materiel_recent %}
+                                    <tr>
+                                        <td class="text-nowrap"><small class="text-muted">{{ m.asset_id|default:"-" }}</small></td>
+                                        <td class="fw-semibold">{{ m.nom }}</td>
+                                        <td>
+                                            {% if m.marque or m.modele %}
+                                                <small>{{ m.marque|default:"" }} {{ m.modele|default:"" }}</small>
+                                            {% else %}
+                                                <small class="text-muted">-</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if m.etat_technique == 'FONCTIONNEL' %}
+                                                <span class="badge-soft success"><i class="bi bi-check-circle"></i>Fonctionnel</span>
+                                            {% elif m.etat_technique == 'DEFECTUEUX' %}
+                                                <span class="badge-soft danger"><i class="bi bi-exclamation-triangle"></i>Défectueux</span>
+                                            {% else %}
+                                                <span class="badge-soft info"><i class="bi bi-tools"></i>Maintenance</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if m.statut_disponibilite == 'DISPONIBLE' %}
+                                                <span class="badge-soft success"><i class="bi bi-lightning-charge"></i>Disponible</span>
+                                            {% elif m.statut_disponibilite == 'ATTRIBUE' %}
+                                                <span class="badge-soft warning"><i class="bi bi-arrow-left-right"></i>Attribué</span>
+                                            {% else %}
+                                                <span class="badge-soft"><i class="bi bi-clock-history"></i>{{ m.statut_disponibilite }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if m.categorie %}
+                                                <small class="text-muted">{{ m.categorie.nom }}</small>
+                                            {% else %}
+                                                <small class="text-muted">-</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="d-inline-flex gap-1">
+                                                <a href="{% url 'assets:materiel_detail' m.pk %}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Consulter la fiche">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="{% url 'assets:materiel_update' m.pk %}" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Modifier le matériel">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="placeholder-card">
+                            <i class="bi bi-box"></i>
+                            <p class="mb-0">Ajoutez votre premier matériel pour suivre son historique ici.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Alerts -->
+            <div class="section-item">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="h5 fw-semibold mb-0">
+                                    <i class="bi bi-bell-fill me-2 text-warning"></i>Alertes récentes
+                                </h2>
+                                <small class="text-body-secondary">Dernières alertes nécessitant attention</small>
+                            </div>
+                            <a href="{% url 'assets:alerte_list' %}" class="btn btn-link text-decoration-none text-primary p-0">
+                                Voir tout
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if alertes_recentes %}
+                        <div class="list-group list-group-flush">
+                            {% for alerte in alertes_recentes %}
+                            <a href="{% url 'assets:alerte_detail' pk=alerte.pk %}" class="list-group-item list-group-item-action border-0 px-0">
+                                <div class="d-flex align-items-start gap-2">
+                                    <div class="flex-shrink-0">
+                                        {% if alerte.severite == 'CRITICAL' %}
+                                        <span class="badge bg-danger rounded-pill d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                            <i class="bi bi-exclamation-triangle-fill"></i>
+                                        </span>
+                                        {% elif alerte.severite == 'WARNING' %}
+                                        <span class="badge bg-warning rounded-pill d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                            <i class="bi bi-exclamation-circle-fill"></i>
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-info rounded-pill d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                            <i class="bi bi-info-circle-fill"></i>
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                            <h6 class="mb-0 fw-semibold">{{ alerte.get_type_alerte_display }}</h6>
+                                            <small class="text-body-secondary text-nowrap ms-2">{{ alerte.date_creation|date:"d/m/Y H:i" }}</small>
+                                        </div>
+                                        <p class="text-body-secondary mb-1">{{ alerte.description|truncatewords:20 }}</p>
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            {% if alerte.materiel %}
+                                            <small class="text-muted">
+                                                <i class="bi bi-box-seam me-1"></i>{{ alerte.materiel.asset_id }} - {{ alerte.materiel.nom }}
+                                            </small>
+                                            {% endif %}
+                                            {% if alerte.departement %}
+                                            <small class="text-muted">
+                                                <i class="bi bi-building me-1"></i>{{ alerte.departement.nom }}
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="placeholder-card">
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                            <p class="mb-0">Aucune alerte en attente. Tout est à jour !</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+/* Dashboard page styling - optimized for screen real estate */
+body.dashboard-page {
+    overflow-y: auto;
+    min-height: 100vh;
+}
+
+body.dashboard-page .app-main {
+    min-height: 100vh;
+}
+
+body.dashboard-page .app-content {
+    width: 100%;
+    max-width: 100%;
+    min-height: auto;
+    padding: 0.75rem 1rem;
+}
+
+/* Container principal du dashboard - flex layout with responsive columns */
+.dashboard-wrapper {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.dashboard-wrapper .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.dashboard-wrapper .col-12,
+.dashboard-wrapper .col-sm-6,
+.dashboard-wrapper .col-xl-3,
+.dashboard-wrapper .col-xl-6 {
+    padding: 0;
+}
+
+.dashboard-wrapper .col-12 {
+    width: 100%;
+}
+
+.dashboard-wrapper .col-sm-6 {
+    flex: 1 1 calc(50% - 0.375rem);
+    min-width: 200px;
+}
+
+.dashboard-wrapper .col-xl-3 {
+    flex: 1 1 calc(25% - 0.5625rem);
+    min-width: 180px;
+}
+
+.dashboard-wrapper .col-xl-6 {
+    flex: 1 1 calc(50% - 0.375rem);
+    min-width: 250px;
+}
+
+/* KPI cards responsive alignment */
+.dashboard-wrapper .col-12:nth-child(2) .row {
+    gap: 0.75rem;
+}
+
+.dashboard-wrapper .card {
+    margin-bottom: 0;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
+}
+
+.dashboard-wrapper .card-body {
+    padding: 0.875rem;
+    flex: 1;
+    overflow-y: auto;
+    max-height: none;
+}
+
+.dashboard-wrapper .card-header {
+    padding: 0.875rem 0.875rem 0.75rem;
+    flex-shrink: 0;
+}
+
+/* KPI Cards styling - compact */
+.dashboard-wrapper .card-kpi {
+    min-height: auto;
+    height: auto;
+}
+
+.dashboard-wrapper .card-kpi .card-body {
+    padding: 0.875rem;
+    max-height: none;
+}
+
+.dashboard-wrapper .kpi-icon {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.5rem;
+}
+
+.dashboard-wrapper .stat-value {
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.dashboard-wrapper .stat-label {
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dashboard-wrapper .card-kpi small {
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+/* Titles sizing - compact */
+.dashboard-wrapper h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.dashboard-wrapper h2 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.dashboard-wrapper .display-6 {
+    font-size: 1.75rem;
+}
+
+.dashboard-wrapper .col-12:first-child p {
+    font-size: 0.9rem;
+    margin-bottom: 0;
+    line-height: 1.3;
+}
+
+/* Tables and lists - optimized */
+.dashboard-wrapper .table-modern {
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+.dashboard-wrapper .table-modern th,
+.dashboard-wrapper .table-modern td {
+    padding: 0.6rem;
+    line-height: 1.2;
+}
+
+.dashboard-wrapper .list-group-item {
+    padding: 0.75rem 0.5rem;
+}
+
+.dashboard-wrapper .list-group-item h6 {
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+}
+
+.dashboard-wrapper .list-group-item p {
+    font-size: 0.8rem;
+    margin-bottom: 0.15rem;
+    line-height: 1.3;
+}
+
+.dashboard-wrapper .list-group-item small {
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+/* Badges and buttons - compact */
+.dashboard-wrapper .badge-soft {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+}
+
+.dashboard-wrapper .btn {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.75rem;
+}
+
+/* Section compacte header */
+.dashboard-wrapper .col-12:first-child {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+}
+
+.dashboard-wrapper .col-12:first-child .d-flex {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.dashboard-wrapper .col-12:first-child .badge-soft {
+    font-size: 0.8rem;
+    margin-bottom: 0;
+}
+
+/* KPI row - compact */
+.dashboard-wrapper .col-12:nth-child(2) {
+    flex: 0 0 auto;
+}
+
+.dashboard-wrapper .col-12:nth-child(2) .row {
+    gap: 0.75rem;
+}
+
+/* Actions rapides - compact */
+.dashboard-wrapper .col-12:nth-child(3) {
+    flex: 0 0 auto;
+}
+
+.dashboard-wrapper .col-12:nth-child(3) .card-body {
+    padding: 0.875rem;
+    max-height: none;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.dashboard-wrapper .col-12:nth-child(3) .d-flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Matériels et Alertes - aligned side by side - Simple flexbox */
+.sections-side-by-side {
+    display: flex;
+    flex-direction: row;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.sections-side-by-side .section-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.sections-side-by-side .section-item .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.sections-side-by-side .section-item .card-body {
+    flex: 1;
+}
+
+@media (max-width: 991px) {
+    .sections-side-by-side {
+        flex-direction: column;
+    }
+}
+
+/* Tables compacts */
+.dashboard-wrapper .table-responsive {
+    overflow: hidden;
+}
+
+.dashboard-wrapper .table-modern {
+    min-width: 100%;
+    width: 100%;
+}
+
+/* Lists compacts */
+.dashboard-wrapper .list-group {
+    width: 100%;
+}
+
+/* Small text sizing */
+.dashboard-wrapper small {
+    font-size: 0.75rem;
+}
+
+.dashboard-wrapper .card-header small {
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+/* Remove unnecessary margins */
+.dashboard-wrapper .card-body > *:first-child {
+    margin-top: 0;
+}
+
+.dashboard-wrapper .card-body > *:last-child {
+    margin-bottom: 0;
+}
+
+/* Placeholder cards */
+.placeholder-card {
+    padding: 1.5rem 1rem;
+    text-align: center;
+}
+
+.placeholder-card i {
+    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
+}
+
+/* Responsive adjustments for tablets */
+@media (max-width: 1199px) {
+    .dashboard-wrapper .stat-value {
+        font-size: 1.75rem;
+    }
+    
+    .dashboard-wrapper .col-sm-6,
+    .dashboard-wrapper .col-xl-3,
+    .dashboard-wrapper .col-xl-6 {
+        flex: 1 1 100%;
+    }
+}
+
+@media (max-width: 767px) {
+    body.dashboard-page .app-content {
+        padding: 0.75rem;
+    }
+    
+    .dashboard-wrapper {
+        gap: 0.5rem;
+    }
+    
+    .dashboard-wrapper .row {
+        gap: 0.5rem;
+    }
+    
+    .dashboard-wrapper .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-wrapper .kpi-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1.25rem;
+    }
+    
+    .dashboard-wrapper .card-body {
+        padding: 0.75rem;
+    }
+    
+    .dashboard-wrapper .table-modern {
+        font-size: 0.85rem;
+    }
+    
+    .dashboard-wrapper .table-modern th,
+    .dashboard-wrapper .table-modern td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    body.dashboard-page .app-content {
+        padding: 0.5rem;
+    }
+    
+    .dashboard-wrapper h1 {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-wrapper h2 {
+        font-size: 0.9rem;
+    }
+    
+    .dashboard-wrapper .stat-value {
+        font-size: 1.25rem;
+    }
+    
+    .dashboard-wrapper .card-body {
+        padding: 0.6rem;
+    }
+}
+
+/* Prevent horizontal scroll */
+.dashboard-wrapper {
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.dashboard-wrapper * {
+    box-sizing: border-box;
+}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ajouter une classe au body pour le dashboard
+    const path = window.location.pathname;
+    if (path === '/' || path === '/dashboard/' || path.match(/^\/dashboard\/?$/)) {
+        document.body.classList.add('dashboard-page');
+    }
+});
+</script>
+{% endblock %}
