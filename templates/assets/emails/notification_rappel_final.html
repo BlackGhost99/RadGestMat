@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rappel final - Jour du retour</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.95) 0%, rgba(211, 47, 47, 0.98) 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 18px;
+            color: #d32f2f;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background-color: #ffebee;
+            border-left: 4px solid #d32f2f;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .error-box {
+            background-color: #ffcdd2;
+            border-left: 4px solid #d32f2f;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #b71c1c;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: 600;
+            width: 150px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .info-value {
+            color: #333;
+            flex-grow: 1;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #eee;
+        }
+        .footer a {
+            color: #d32f2f;
+            text-decoration: none;
+        }
+        .materiel-badge {
+            display: inline-block;
+            background-color: #ffcdd2;
+            color: #b71c1c;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .countdown {
+            font-size: 22px;
+            font-weight: 600;
+            color: #d32f2f;
+            text-align: center;
+            padding: 15px;
+            background-color: #ffcdd2;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 AUJOURD'HUI!</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">C'est le jour du retour du matériel</p>
+        </div>
+
+        <div class="content">
+            <div class="countdown">
+                ⏱️ À retourner AUJOURD'HUI avant 17h00
+            </div>
+
+            <div class="error-box">
+                <strong>🚨 URGENT - C'est aujourd'hui!</strong><br>
+                Vous DEVEZ retourner le matériel <strong>MAINTENANT</strong> avant la fin de la journée.
+            </div>
+
+            <div class="section">
+                <h2>📦 Matériel à retourner</h2>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Matériel:</span>
+                        <span class="info-value">
+                            <strong>{{ materiel.nom }}</strong>
+                            <span class="materiel-badge">{{ materiel.asset_id }}</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🎯 Instructions finales</h2>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Heure limite:</span>
+                        <span class="info-value" style="color: #d32f2f; font-weight: 600;">17h00 (fin de journée)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Lieu de retour:</span>
+                        <span class="info-value">{{ attribution.departement.nom }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">État requis:</span>
+                        <span class="info-value">Identique à la réception</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section" style="background-color: #ffcdd2; border: 2px solid #d32f2f; padding: 15px; border-radius: 4px;">
+                <strong style="color: #b71c1c;">⚠️ ATTENTION:</strong><br>
+                <ul style="margin: 10px 0; padding-left: 20px; color: #b71c1c;">
+                    <li><strong>Retard = frais supplémentaires</strong></li>
+                    <li><strong>Non-retour = procédure légale</strong></li>
+                    <li><strong>Dommages = responsabilité</strong></li>
+                    <li><strong>Interdiction d'emprunt future</strong></li>
+                </ul>
+                <p style="margin: 10px 0 0 0;"><strong>⏰ NE TARDEZ PAS!</strong></p>
+            </div>
+
+            <div class="section" style="text-align: center; padding: 15px; background-color: #f9f9f9; border-radius: 4px;">
+                <p style="margin: 0; font-size: 14px;">Besoin d'aide? <a href="{{ site_url }}/contact" style="color: #d32f2f; font-weight: 600;">Contactez-nous immédiatement</a></p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>RadGestMat - Système de Gestion de Matériel</p>
+            <p><a href="{{ site_url }}">Accéder à RadGestMat</a></p>
+            <p style="margin-top: 15px; color: #ccc; font-size: 11px;">Vous recevez cet email car vous avez emprunté du matériel.</p>
+        </div>
+    </div>
+</body>
+</html>

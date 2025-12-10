@@ -14,6 +14,8 @@ urlpatterns = [
     
     # Application routes
     path('', include('assets.urls')),
+    # Admin-like application UI (parity with Django admin)
+    path('admin-ui/', include('assets.urls_admin_ui')),
     path('users/', include('users.urls')),
     
     # Authentification

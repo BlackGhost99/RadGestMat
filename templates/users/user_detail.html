@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Utilisateur — {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row mb-3">
+    <div class="col-md-8">
+      <h1 class="h3">{{ user.get_full_name|default:user.username }}</h1>
+      <p class="text-muted">@{{ user.username }}</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="{% url 'users:user_update' user.pk %}" class="btn btn-sm btn-warning">
+        <i class="bi bi-pencil me-1"></i>Modifier
+      </a>
+      <a href="{% url 'users:user_delete' user.pk %}" class="btn btn-sm btn-danger">
+        <i class="bi bi-trash me-1"></i>Supprimer
+      </a>
+      <a href="{% url 'users:user_list' %}" class="btn btn-sm btn-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Retour
+      </a>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Informations Utilisateur -->
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i>Informations Utilisateur</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row">
+            <dt class="col-sm-5"><strong>Nom d'utilisateur:</strong></dt>
+            <dd class="col-sm-7">{{ user.username }}</dd>
+
+            <dt class="col-sm-5"><strong>Email:</strong></dt>
+            <dd class="col-sm-7">{{ user.email|default:"—" }}</dd>
+
+            <dt class="col-sm-5"><strong>Prénom:</strong></dt>
+            <dd class="col-sm-7">{{ user.first_name|default:"—" }}</dd>
+
+            <dt class="col-sm-5"><strong>Nom:</strong></dt>
+            <dd class="col-sm-7">{{ user.last_name|default:"—" }}</dd>
+
+            <dt class="col-sm-5"><strong>Date création:</strong></dt>
+            <dd class="col-sm-7">{{ user.date_joined|date:"d/m/Y H:i" }}</dd>
+
+            <dt class="col-sm-5"><strong>Statut:</strong></dt>
+            <dd class="col-sm-7">
+              {% if user.is_active %}
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Actif</span>
+              {% else %}
+                <span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Inactif</span>
+              {% endif %}
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Informations Profil -->
+    <div class="col-md-6">
+      {% if profil %}
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-briefcase me-2"></i>Informations Profil</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row">
+            <dt class="col-sm-5"><strong>Rôle:</strong></dt>
+            <dd class="col-sm-7">
+              {% with role=profil.role %}
+                {% if role == 'SUPER_ADMIN' %}
+                  <span class="badge bg-danger">👑 Super Admin</span>
+                {% elif role == 'DEPT_MANAGER' %}
+                  <span class="badge bg-warning text-dark">📊 Manager Département</span>
+                {% else %}
+                  <span class="badge bg-info">👤 Utilisateur Département</span>
+                {% endif %}
+              {% endwith %}
+            </dd>
+
+            <dt class="col-sm-5"><strong>Département:</strong></dt>
+            <dd class="col-sm-7">{{ profil.departement.nom }}</dd>
+
+            <dt class="col-sm-5"><strong>Téléphone:</strong></dt>
+            <dd class="col-sm-7">{{ profil.telephone|default:"—" }}</dd>
+
+            <dt class="col-sm-5"><strong>Date embauche:</strong></dt>
+            <dd class="col-sm-7">{{ profil.date_embauche|date:"d/m/Y"|default:"—" }}</dd>
+
+            <dt class="col-sm-5"><strong>Actif:</strong></dt>
+            <dd class="col-sm-7">
+              {% if profil.actif %}
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Oui</span>
+              {% else %}
+                <span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Non</span>
+              {% endif %}
+            </dd>
+          </dl>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Aucun profil associé à cet utilisateur.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Permissions Django -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Permissions Django</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" {% if user.is_staff %}checked disabled{% else %}disabled{% endif %}>
+                <label class="form-check-label">
+                  Staff (Accès admin)
+                </label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" {% if user.is_superuser %}checked disabled{% else %}disabled{% endif %}>
+                <label class="form-check-label">
+                  Superuser (Django admin)
+                </label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" {% if user.is_active %}checked disabled{% else %}disabled{% endif %}>
+                <label class="form-check-label">
+                  Actif
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

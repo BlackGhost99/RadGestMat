@@ -7,3 +7,9 @@ class AssetsConfig(AppConfig):
     
     def ready(self):
         import assets.signals  # Enregistrer les signaux
+        # Signaux d'audit séparés
+        try:
+            import assets.signals_audit  # noqa: F401
+        except Exception:
+            # Avoid breaking startup if audit signals fail
+            pass

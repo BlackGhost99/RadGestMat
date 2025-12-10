@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestion des Utilisateurs - RadGestMat{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3"><i class="bi bi-people-fill me-2"></i>Gestion des Utilisateurs</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'users:user_create' %}" class="btn btn-success btn-lg">
+                <i class="bi bi-person-plus me-1"></i>Ajouter un utilisateur
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages de succès/erreur -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Search & Filter -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" name="search" class="form-control" placeholder="Rechercher un utilisateur (nom, email, prénom)..." 
+                           value="{{ search }}">
+                </div>
+                <div class="col-md-2">
+                    <select name="role" class="form-select">
+                        <option value="">Tous les rôles</option>
+                        <option value="SUPER_ADMIN" {% if role_filter == 'SUPER_ADMIN' %}selected{% endif %}>Super Administrateur</option>
+                        <option value="DEPT_MANAGER" {% if role_filter == 'DEPT_MANAGER' %}selected{% endif %}>Manager Département</option>
+                        <option value="DEPT_USER" {% if role_filter == 'DEPT_USER' %}selected{% endif %}>Utilisateur Département</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="departement" class="form-select">
+                        <option value="">Tous les départements</option>
+                        {% for dept in departements %}
+                        <option value="{{ dept.id }}" {% if dept_filter|stringformat:"s" == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.nom }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i>Filtrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick category buttons by department -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="btn-group flex-wrap" role="group" aria-label="Filtre rapide par département">
+                {% with q=request.GET.search|default:'' r=request.GET.role|default:'' %}
+                <a href="?search={{ q|urlencode }}&role={{ r|urlencode }}" class="btn {% if not dept_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    <i class="bi bi-funnel me-1"></i>Tous les départements
+                </a>
+                {% for dept in departements %}
+                <a href="?departement={{ dept.id }}&search={{ q|urlencode }}&role={{ r|urlencode }}" class="btn {% if dept_filter|stringformat:"s" == dept.id|stringformat:"s" %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    {{ dept.nom }}
+                </a>
+                {% endfor %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="table-light" style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <tr>
+                            <th style="color: #1f2933; font-weight: 600;">Nom d'utilisateur</th>
+                            <th style="color: #1f2933; font-weight: 600;">Nom Complet</th>
+                            <th style="color: #1f2933; font-weight: 600;">Email</th>
+                            <th style="color: #1f2933; font-weight: 600;">Rôle</th>
+                            <th style="color: #1f2933; font-weight: 600;">Département</th>
+                            <th style="color: #1f2933; font-weight: 600;">Statut</th>
+                            <th style="color: #1f2933; font-weight: 600;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td><strong>{{ user.username }}</strong></td>
+                            <td>{{ user.get_full_name|default:"—" }}</td>
+                            <td>{{ user.email|default:"—" }}</td>
+                            <td>
+                                {% if user.profilutilisateur %}
+                                    {% with role=user.profilutilisateur.role %}
+                                        {% if role == 'SUPER_ADMIN' %}
+                                            <span class="badge bg-danger">👑 Super Admin</span>
+                                        {% elif role == 'DEPT_MANAGER' %}
+                                            <span class="badge bg-warning text-dark">📊 Manager</span>
+                                        {% else %}
+                                            <span class="badge bg-info">👤 Utilisateur</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="badge bg-secondary">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.profilutilisateur %}
+                                    {{ user.profilutilisateur.departement.nom|default:"—" }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_active %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>Actif
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>Inactif
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'users:user_detail' user.pk %}" class="btn btn-info" title="Voir">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'users:user_update' user.pk %}" class="btn btn-warning" title="Modifier">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'users:user_delete' user.pk %}" class="btn btn-danger" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox"></i> Aucun utilisateur trouvé
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+---
+# Playbook Ansible : Restauration PostgreSQL + médias (S3/MinIO)
+# Usage (exemple):
+# ansible-playbook -i inventory playbooks/restore.yml -e "dump_file=/backups/mydb_20251125.dump s3_backup_path=s3://backup-bucket/radgestmat-media/ media_path=/var/www/app/media service_manager=docker_compose"
+
+- hosts: db
+  become: true
+  vars:
+    db_name: radgestmat_db
+    db_user: postgres
+    dump_file: ''            # chemin vers le dump pg_dump ou archive tar de base backup
+    s3_backup_path: ''       # chemin S3/MinIO source (ex: s3://backup-bucket/path/)
+    media_path: /var/www/app/media
+    service_manager: docker_compose  # 'systemd' or 'docker_compose'
+    docker_compose_file: /opt/radgestmat/docker-compose.prod.yml
+    web_service_name: web
+    gunicorn_service: radgestmat-gunicorn
+    celery_service: radgestmat-celery
+
+  tasks:
+    - name: Fail early if dump_file not provided
+      fail:
+        msg: "Vous devez fournir -e dump_file=/path/to/dump.dump"
+      when: dump_file == ''
+
+    - name: Stop app services (systemd)
+      when: service_manager == 'systemd'
+      block:
+        - name: Stop Gunicorn
+          ansible.builtin.service:
+            name: "{{ gunicorn_service }}"
+            state: stopped
+
+        - name: Stop Celery
+          ansible.builtin.service:
+            name: "{{ celery_service }}"
+            state: stopped
+
+    - name: Stop services (docker-compose)
+      when: service_manager == 'docker_compose'
+      block:
+        - name: Bring down docker-compose stack
+          ansible.builtin.shell: |
+            docker-compose -f {{ docker_compose_file }} down
+          args:
+            chdir: "{{ docker_compose_file | dirname }}"
+
+    - name: (Optional) Backup current DB state before restore
+      ansible.builtin.shell: |
+        pg_dump -Fc -f /backups/pre_restore_$(date +%Y%m%d_%H%M).dump {{ db_name }}
+      become_user: postgres
+
+    - name: Drop and recreate database
+      ansible.builtin.shell: |
+        psql -c "DROP DATABASE IF EXISTS {{ db_name }}; CREATE DATABASE {{ db_name }};"
+      become_user: postgres
+
+    - name: Restore database from dump
+      ansible.builtin.shell: |
+        pg_restore -d {{ db_name }} {{ dump_file }}
+      become_user: postgres
+
+    - name: Sync media from S3/MinIO (if provided)
+      when: s3_backup_path != ''
+      block:
+        - name: Ensure aws cli installed (quick check)
+          ansible.builtin.command: aws --version
+          register: aws_cli_check
+          ignore_errors: true
+
+        - name: Sync media from S3 to local media path
+          ansible.builtin.shell: |
+            aws s3 sync {{ s3_backup_path }} {{ media_path }} --delete
+          when: aws_cli_check.rc == 0
+
+    - name: Apply Django migrations (systemd-managed environment)
+      when: service_manager == 'systemd'
+      ansible.builtin.shell: |
+        source /opt/radgestmat/venv/bin/activate && cd /opt/radgestmat && python manage.py migrate --settings=radgestmat.settings.production
+
+    - name: Apply Django migrations (docker-compose)
+      when: service_manager == 'docker_compose'
+      ansible.builtin.shell: |
+        docker-compose -f {{ docker_compose_file }} run --rm {{ web_service_name }} python manage.py migrate --settings=radgestmat.settings.production
+      args:
+        chdir: "{{ docker_compose_file | dirname }}"
+
+    - name: Start services (systemd)
+      when: service_manager == 'systemd'
+      block:
+        - name: Start Gunicorn
+          ansible.builtin.service:
+            name: "{{ gunicorn_service }}"
+            state: started
+
+        - name: Start Celery
+          ansible.builtin.service:
+            name: "{{ celery_service }}"
+            state: started
+
+    - name: Start services (docker-compose)
+      when: service_manager == 'docker_compose'
+      ansible.builtin.shell: |
+        docker-compose -f {{ docker_compose_file }} up -d
+      args:
+        chdir: "{{ docker_compose_file | dirname }}"
+
+    - name: Run smoke tests (simple HTTP check)
+      ansible.builtin.uri:
+        url: "http://localhost/health/"
+        method: GET
+        status_code: 200
+      register: smoke
+      retries: 5
+      delay: 5
+      until: smoke.status == 200
+
+    - name: Notify completion
+      ansible.builtin.debug:
+        msg: "Restauration terminée — vérifier logs et exécuter validations post-restore"

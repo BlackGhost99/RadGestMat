@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Supprimer l'utilisateur — {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Confirmer la suppression</h5>
+        </div>
+        <div class="card-body">
+          <p>Vous êtes sur le point de supprimer l'utilisateur <strong>{{ user.username }}</strong>.</p>
+          
+          {% if user.get_full_name %}
+            <p><strong>Nom complet:</strong> {{ user.get_full_name }}</p>
+          {% endif %}
+          
+          {% if user.email %}
+            <p><strong>Email:</strong> {{ user.email }}</p>
+          {% endif %}
+
+          <div class="alert alert-danger mt-3">
+            <i class="bi bi-exclamation-circle me-2"></i>
+            <strong>Attention!</strong> Cette action est irréversible. Toutes les données associées à cet utilisateur seront supprimées.
+          </div>
+
+          <form method="post" class="d-flex justify-content-end gap-2">
+            {% csrf_token %}
+            <a href="{% url 'users:user_detail' user.pk %}" class="btn btn-secondary">Annuler</a>
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash me-1"></i>Supprimer définitivement
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

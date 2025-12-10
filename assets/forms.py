@@ -1,8 +1,15 @@
 # assets/forms.py
 from django import forms
-from .models import Materiel, Attribution, Client
+from .models import Materiel, Attribution, Client, Departement
+from .models import Salle
 
 class MaterielForm(forms.ModelForm):
+    departement = forms.ModelChoiceField(
+        queryset=Departement.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Département'
+    )
     nom_materiel = forms.CharField(
         label='Nom du matériel',
         required=True,
@@ -34,7 +41,7 @@ class MaterielForm(forms.ModelForm):
         fields = [
             'asset_id', 'numero_inventaire', 'description',
             'marque', 'modele', 'numero_serie', 'etat_technique', 'statut_disponibilite',
-            'date_achat', 'prix', 'notes'
+            'date_achat', 'prix', 'salle', 'notes'
         ]
         widgets = {
             'asset_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Généré automatiquement'}),
@@ -50,8 +57,17 @@ class MaterielForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
+    # Exposer le choix de salle (optionnel)
+    salle = forms.ModelChoiceField(
+        queryset=Salle.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Salle (optionnel)'
+    )
+
     def __init__(self, *args, **kwargs):
         self.departement = kwargs.pop('departement', None)
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
         # Si c'est une modification, préremplir le nom et la catégorie
@@ -62,6 +78,9 @@ class MaterielForm(forms.ModelForm):
             # Utiliser le département du matériel existant
             if not self.departement and self.instance.departement:
                 self.departement = self.instance.departement
+            # Préremplir le champ departement si présent
+            if 'departement' in self.fields:
+                self.fields['departement'].initial = self.instance.departement
         
         # Rendre asset_id et numero_inventaire non requis pour la création (générés automatiquement)
         if not (self.instance and self.instance.pk):
@@ -79,8 +98,10 @@ class MaterielForm(forms.ModelForm):
         
         materiel = super().save(commit=False)
         
-        # Assigner le département si fourni et non déjà assigné
-        if self.departement and not materiel.departement_id:
+        # Assigner le département si fourni via le formulaire (super-admin) ou via le middleware
+        if 'departement' in self.cleaned_data and self.cleaned_data.get('departement'):
+            materiel.departement = self.cleaned_data.get('departement')
+        elif self.departement and not materiel.departement_id:
             materiel.departement = self.departement
         
         # Utiliser le nom du champ personnalisé
@@ -107,9 +128,18 @@ class ClientForm(forms.ModelForm):
     date_creation = forms.DateTimeField(label='Date création', required=False, disabled=True, widget=forms.DateTimeInput(attrs={'class': 'form-control'}))
     date_modification = forms.DateTimeField(label='Date modification', required=False, disabled=True, widget=forms.DateTimeInput(attrs={'class': 'form-control'}))
     
+    # Exposer la sélection de salle. Par défaut optionnelle; validation ci-dessous la rendra
+    # obligatoire pour les clients externes.
+    salle = forms.ModelChoiceField(
+        queryset=Salle.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Salle (pour client externe)'
+    )
+
     class Meta:
         model = Client
-        fields = ['nom', 'type_client', 'email', 'telephone', 'numero_chambre', 'date_arrivee', 'date_depart', 'nom_evenement', 'departement', 'notes']
+        fields = ['nom', 'type_client', 'email', 'telephone', 'numero_chambre', 'date_arrivee', 'date_depart', 'nom_evenement', 'departement', 'salle', 'notes']
         widgets = {
             'nom': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
             'type_client': forms.Select(attrs={'class': 'form-select', 'required': True, 'id': 'type_client'}),
@@ -140,6 +170,18 @@ class ClientForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields['date_creation'].initial = self.instance.date_creation
             self.fields['date_modification'].initial = self.instance.date_modification
+            # Préremplir le champ salle si existant
+            if hasattr(self.instance, 'salle') and self.instance.salle:
+                self.fields['salle'].initial = self.instance.salle
+
+    def clean(self):
+        cleaned = super().clean()
+        type_client = cleaned.get('type_client')
+        salle = cleaned.get('salle')
+        # Pour un client externe (CONFERENCE), la salle est obligatoire
+        if type_client == Client.TYPE_CONFERENCE and not salle:
+            raise forms.ValidationError({'salle': 'La salle est requise pour un client externe.'})
+        return cleaned
 
 class QuickClientForm(forms.ModelForm):
     """Formulaire pour créer rapidement un client lors du check-out"""
@@ -161,15 +203,55 @@ class QuickClientForm(forms.ModelForm):
 
 
 class AttributionForm(forms.ModelForm):
+    DEST_CHOICES = [
+        ('client', 'Client'),
+        ('salle', 'Salle de conférence'),
+    ]
+
+    # Permettre de choisir la destination (client ou salle)
+    destination_type = forms.ChoiceField(choices=DEST_CHOICES, widget=forms.RadioSelect, initial='client')
+    salle = forms.ModelChoiceField(queryset=Salle.objects.all(), required=False, widget=forms.Select(attrs={'class': 'form-select'}))
+
     class Meta:
         model = Attribution
-        fields = ['materiel', 'client', 'date_retour_prevue', 'notes']
+        fields = ['materiel', 'client', 'salle', 'date_retour_prevue', 'notes']
         widgets = {
             'materiel': forms.HiddenInput(),
             'client': forms.Select(attrs={'class': 'form-select', 'id': 'client_select'}),
             'date_retour_prevue': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        dest = cleaned.get('destination_type')
+        client = cleaned.get('client')
+        salle = cleaned.get('salle')
+
+        if dest == 'client' and not client:
+            raise forms.ValidationError({'client': 'Veuillez sélectionner un client ou en créer un.'})
+        if dest == 'salle' and not salle:
+            raise forms.ValidationError({'salle': 'Veuillez sélectionner une salle de conférence.'})
+
+        # Validate that the planned return date is not before the attribution date
+        date_retour_prevue = cleaned.get('date_retour_prevue')
+        if date_retour_prevue:
+            from django.utils import timezone
+            # If editing an existing attribution, use its date_attribution; otherwise use today
+            if self.instance and self.instance.pk and getattr(self.instance, 'date_attribution', None):
+                base_date = self.instance.date_attribution
+                try:
+                    if hasattr(base_date, 'date'):
+                        base_date = base_date.date()
+                except Exception:
+                    pass
+            else:
+                base_date = timezone.now().date()
+
+            if date_retour_prevue < base_date:
+                raise forms.ValidationError({'date_retour_prevue': "La date de retour prévue ne peut pas être antérieure à la date d'attribution."})
+
+        return cleaned
 
 
 class CheckInForm(forms.Form):
@@ -212,3 +294,31 @@ class CheckInForm(forms.Form):
         initial=False, 
         label='Mettre en maintenance après le retour'
     )
+
+    def __init__(self, *args, **kwargs):
+        # Accept optional 'attribution' kwarg to validate return date consistency
+        self.attribution = kwargs.pop('attribution', None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        date_retour_effective = cleaned.get('date_retour_effective')
+        from django.utils import timezone
+
+        # Default to today if not provided
+        if not date_retour_effective:
+            date_retour_effective = timezone.now().date()
+            cleaned['date_retour_effective'] = date_retour_effective
+
+        # If an attribution was provided, ensure return date is not before attribution date
+        if self.attribution and getattr(self.attribution, 'date_attribution', None):
+            base_date = self.attribution.date_attribution
+            try:
+                if hasattr(base_date, 'date'):
+                    base_date = base_date.date()
+            except Exception:
+                pass
+            if date_retour_effective < base_date:
+                raise forms.ValidationError({'date_retour_effective': "La date de retour ne peut pas être antérieure à la date d'attribution."})
+
+        return cleaned

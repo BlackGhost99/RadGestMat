@@ -25,15 +25,15 @@
                            value="{{ request.GET.search }}">
                 </div>
                 <div class="col-md-4">
-                    <select name="type" class="form-select">
+                    <select name="type_client" class="form-select">
                         <option value="">Tous les types</option>
-                        <option value="HEBERGEMENT" {% if request.GET.type == 'HEBERGEMENT' %}selected{% endif %}>
+                        <option value="HEBERGEMENT" {% if request.GET.type == 'HEBERGEMENT' or request.GET.type_client == 'HEBERGEMENT' %}selected{% endif %}>
                             Hébergement
                         </option>
-                        <option value="CONFERENCE" {% if request.GET.type == 'CONFERENCE' %}selected{% endif %}>
-                            Conférence
+                        <option value="CONFERENCE" {% if request.GET.type == 'CONFERENCE' or request.GET.type_client == 'CONFERENCE' %}selected{% endif %}>
+                            Client externe
                         </option>
-                        <option value="INTERNE" {% if request.GET.type == 'INTERNE' %}selected{% endif %}>
+                        <option value="INTERNE" {% if request.GET.type == 'INTERNE' or request.GET.type_client == 'INTERNE' %}selected{% endif %}>
                             Interne
                         </option>
                     </select>
@@ -45,18 +45,32 @@
         </div>
     </div>
 
+    <!-- Quick category buttons -->
+    <div class="row mb-3">
+        <div class="col-12">
+                <div class="btn-group" role="group" aria-label="Catégories clients">
+                {% with q=request.GET.search|default:'' %}
+                <a href="?type_client=&search={{ q|urlencode }}" class="btn {% if not request.GET.type and not request.GET.type_client %}btn-primary{% else %}btn-outline-primary{% endif %}">Tous</a>
+                <a href="?type_client=INTERNE&search={{ q|urlencode }}" class="btn {% if request.GET.type == 'INTERNE' or request.GET.type_client == 'INTERNE' %}btn-primary{% else %}btn-outline-primary{% endif %}">Internes</a>
+                <a href="?type_client=HEBERGEMENT&search={{ q|urlencode }}" class="btn {% if request.GET.type == 'HEBERGEMENT' or request.GET.type_client == 'HEBERGEMENT' %}btn-primary{% else %}btn-outline-primary{% endif %}">Clients en hébergement</a>
+                <a href="?type_client=CONFERENCE&search={{ q|urlencode }}" class="btn {% if request.GET.type == 'CONFERENCE' or request.GET.type_client == 'CONFERENCE' %}btn-primary{% else %}btn-outline-primary{% endif %}">Clients externes</a>
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+
     <!-- Clients Table -->
     <div class="row">
         <div class="col-12">
             <div class="table-responsive">
                 <table class="table table-hover table-striped">
-                    <thead class="table-dark">
+                    <thead class="table-light" style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
                         <tr>
-                            <th>Nom/Raison Sociale</th>
-                            <th>Type</th>
-                            <th>Email</th>
-                            <th>Téléphone</th>
-                            <th>Actions</th>
+                            <th style="color: #1f2933; font-weight: 600;">Nom/Raison Sociale</th>
+                            <th style="color: #1f2933; font-weight: 600;">Type</th>
+                            <th style="color: #1f2933; font-weight: 600;">Email</th>
+                            <th style="color: #1f2933; font-weight: 600;">Téléphone</th>
+                            <th style="color: #1f2933; font-weight: 600;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -64,10 +78,13 @@
                         <tr>
                             <td><strong>{{ client.nom }}</strong></td>
                             <td>
-                                {% if client.type == 'HEBERGEMENT' %}
-                                    <span class="badge bg-info">🏨 Hébergement</span>
-                                {% elif client.type == 'CONFERENCE' %}
-                                    <span class="badge bg-primary">🎤 Conférence</span>
+                                {% if client.type_client == 'HEBERGEMENT' %}
+                                    <span class="badge bg-info">🏨 Client en hébergement</span>
+                                {% elif client.type_client == 'CONFERENCE' %}
+                                    <span class="badge bg-primary">🌐 Client externe</span>
+                                    {% if client.salle %}
+                                        <div><small class="text-muted">{{ client.salle.nom }}</small></div>
+                                    {% endif %}
                                 {% else %}
                                     <span class="badge bg-secondary">🏢 Interne</span>
                                 {% endif %}

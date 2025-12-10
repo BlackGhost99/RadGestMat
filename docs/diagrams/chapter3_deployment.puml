@@ -1,0 +1,78 @@
+@startuml
+title Schéma de déploiement — RadGestMat (Production recommandé)
+
+node "Load Balancer / Reverse Proxy" as LB {
+  component "Nginx (TLS)") as Nginx
+}
+
+node "Application Servers" as AppStack {
+  node "Web (Gunicorn)" as Gunicorn
+  node "Django App" as Django
+  node "Static files" as Static
+}
+
+node "Asynchronous Workers" as WorkerStack {
+  node "Celery Worker(s)" as Celery
+  node "Celery Beat" as Beat
+}
+
+database "PostgreSQL" as Postgres
+database "Redis (cache + broker)" as Redis
+cloud "Object Storage (S3 / MinIO)" as S3
+cloud "SMTP / Mail Provider" as SMTP
+
+node "Monitoring" as Monitoring {
+  component "Prometheus" as Prom
+  component "Grafana" as Graf
+}
+
+node "Logging" as Logging {
+  component "Filebeat / Logstash" as Logstash
+  component "Elasticsearch" as ES
+  component "Kibana" as Kibana
+}
+
+' Connections
+LB --> Nginx : TLS termination
+Nginx --> Gunicorn : proxypass (HTTP)
+Gunicorn --> Django : WSGI
+Django --> Postgres : SQL (psycopg2)
+Django --> Redis : cache/session
+Django --> Redis : Celery broker (via Kombu)
+Celery --> Redis : broker
+Celery --> Postgres : read/write (tasks persisting results)
+Beat --> Celery : schedule messages
+Django --> S3 : upload/download static & media
+Django --> SMTP : send emails
+
+Django --> Prom : expose /metrics
+Celery --> Prom : expose task metrics
+Prom --> Graf : metrics
+Gunicorn --> Logstash : structured logs (JSON)
+Logstash --> ES : ship logs
+Kibana --> ES : query logs
+
+' HA & Scaling notes
+Nginx --> Gunicorn : multiple Gunicorn pods/instances
+Gunicorn --> Postgres : use connection pool
+Celery --> Redis : multiple worker instances (scale horizontally)
+
+note left of Postgres
+  - Réplication PostgreSQL (primary + replicas)
+  - Sauvegardes régulières (pg_dump / WAL archiving)
+end note
+
+note right of S3
+  - Utiliser un fournisseur S3 ou MinIO en cluster
+  - Gérer cycle de vie des objets (archivage)
+end note
+
+note bottom
+  Recommandations rapides :
+  - Déployer derrière un LB (Cloud LB ou HAProxy)
+  - Utiliser Docker + docker-compose / Kubernetes pour orchestration
+  - Tâches planifiées et lourdes -> Celery + Redis
+  - Monitoring (Prometheus) + logging structuré (ELK)
+end note
+
+@enduml

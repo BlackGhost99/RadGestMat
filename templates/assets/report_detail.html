@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Détail rapport - {{ report.pk }}{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:980px;margin-left:auto;margin-right:auto;">
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h2 class="mb-1">Détail du rapport</h2>
+      <div class="text-muted small">Date : {{ report.timestamp|date:"d/m/Y H:i:s" }}</div>
+    </div>
+    <div class="text-end">
+      {% if human_sentence %}
+        <div class="alert alert-info mb-0">{{ human_sentence }}</div>
+      {% else %}
+        <div class="badge bg-secondary">{{ report.get_action_display }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Contexte</h5>
+              <div class="mb-2">
+                <div class="p-2" style="background:#f8f9fa;border-left:4px solid #0d6efd;">
+                  <strong>Contexte : </strong>
+                  <div class="small text-muted">{{ context_sentence }}</div>
+                </div>
+              </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Détails</h5>
+          {% if formatted_changes %}
+            <div class="table-responsive">
+              <table class="table table-sm" style="margin-left:auto;margin-right:auto;max-width:880px;">
+                <thead>
+                  <tr><th>Champ</th><th>Avant</th><th>Après</th></tr>
+                </thead>
+                <tbody>
+                {% for c in formatted_changes %}
+                  <tr>
+                    <td>{{ c.field }}</td>
+                    <td class="text-muted">{% if c.old is not None %}{{ c.old }}{% else %}&mdash;{% endif %}</td>
+                    <td>{{ c.new|default:'&mdash;' }}</td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="mb-0"><em>Aucun détail disponible.</em></p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Résumé</h5>
+          <p class="mb-0">{{ summary }}</p>
+        </div>
+      </div>
+
+      {# Metadata removed by request: do not display report.metadata in UI #}
+
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Remarques</h5>
+          <p class="mb-0 small text-muted">Vous pouvez télécharger ce rapport en PDF ou l'imprimer depuis le navigateur.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <a href="{% url 'assets:report_list' %}" class="btn btn-secondary">← Retour</a>
+    <a href="{% url 'assets:report_pdf' report.pk %}" class="btn btn-primary ms-2">Télécharger PDF</a>
+  </div>
+  {% if pdf_unavailable %}
+    <div class="alert alert-warning mt-2">La génération de PDF n'est pas disponible (bibliothèque manquante). Vous pouvez imprimer la page depuis votre navigateur.</div>
+  {% endif %}
+  <footer style="position:fixed;bottom:10px;left:0;right:0;text-align:center;font-size:12px;color:#666;">
+    © {% now "Y" %} RadGestMat — Gestion de Matériel
+  </footer>
+</div>
+{% endblock %}

@@ -76,6 +76,16 @@
                                     </td>
                                 </tr>
                                 <tr>
+                                    <th>Salle:</th>
+                                    <td>
+                                        {% if materiel.salle %}
+                                            <span class="badge bg-info">{{ materiel.salle.nom }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
                                     <th>Marque/Modèle:</th>
                                     <td>
                                         {% if materiel.marque or materiel.modele %}

@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Mes Préférences de Notification - RadGestMat{% endblock %}
+
+{% block extra_css %}
+<style>
+    .preferences-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        padding: 30px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .preference-section {
+        margin-bottom: 30px;
+        padding-bottom: 30px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .preference-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .preference-section h3 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 18px;
+    }
+    .form-check {
+        margin-bottom: 10px;
+        padding-left: 1.8rem;
+    }
+    .form-check-input {
+        width: 1.2rem;
+        height: 1.2rem;
+        margin-top: 0.1rem;
+    }
+    .form-check-label {
+        font-size: 14px;
+        color: #495057;
+        margin-left: 8px;
+    }
+    .help-text {
+        font-size: 13px;
+        color: #6c757d;
+        margin-top: 5px;
+        display: block;
+    }
+    .save-button {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .save-button:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .alert {
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4 text-center">⚙️ Mes Préférences de Notification</h1>
+    
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="preferences-container">
+        <form method="post">
+            {% csrf_token %}
+            
+            <!-- Canaux de communication -->
+            <div class="preference-section">
+                <h3>📱 Canaux de Communication</h3>
+                
+                <div class="form-check">
+                    {{ form.notifications_email }}
+                    <label class="form-check-label" for="{{ form.notifications_email.id_for_label }}">
+                        📧 Recevoir les notifications par Email
+                    </label>
+                    <small class="help-text">{{ form.notifications_email.help_text }}</small>
+                </div>
+                
+                <div class="form-check">
+                    {{ form.notifications_whatsapp }}
+                    <label class="form-check-label" for="{{ form.notifications_whatsapp.id_for_label }}">
+                        💬 Recevoir les notifications par WhatsApp
+                    </label>
+                    <small class="help-text">{{ form.notifications_whatsapp.help_text }}</small>
+                </div>
+                
+                <div class="form-group mt-3">
+                    <label for="{{ form.phone_number.id_for_label }}">Numéro WhatsApp</label>
+                    {{ form.phone_number }}
+                    <small class="help-text">{{ form.phone_number.help_text }}</small>
+                    {% if form.phone_number.errors %}
+                        <div class="text-danger">{{ form.phone_number.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Rappels Long Terme -->
+            <div class="preference-section">
+                <h3>📅 Rappels (Emprunts Long Terme > 24h)</h3>
+                
+                <div class="form-check">
+                    {{ form.rappel_j_moins_2 }}
+                    <label class="form-check-label" for="{{ form.rappel_j_moins_2.id_for_label }}">
+                        Rappel J-2 (2 jours avant le retour)
+                    </label>
+                    <small class="help-text">{{ form.rappel_j_moins_2.help_text }}</small>
+                </div>
+                
+                <div class="form-check">
+                    {{ form.rappel_j_moins_1 }}
+                    <label class="form-check-label" for="{{ form.rappel_j_moins_1.id_for_label }}">
+                        Rappel J-1 (1 jour avant le retour)
+                    </label>
+                    <small class="help-text">{{ form.rappel_j_moins_1.help_text }}</small>
+                </div>
+                
+                <div class="form-check">
+                    {{ form.rappel_final }}
+                    <label class="form-check-label" for="{{ form.rappel_final.id_for_label }}">
+                        Rappel Final (Jour du retour)
+                    </label>
+                    <small class="help-text">{{ form.rappel_final.help_text }}</small>
+                </div>
+            </div>
+            
+            <!-- Rappels Moyen Terme -->
+            <div class="preference-section">
+                <h3>⏰ Rappels (Emprunts Moyen Terme 4h-24h)</h3>
+                
+                <div class="form-check">
+                    {{ form.rappel_2h_avant }}
+                    <label class="form-check-label" for="{{ form.rappel_2h_avant.id_for_label }}">
+                        Rappel 2h avant le retour
+                    </label>
+                    <small class="help-text">{{ form.rappel_2h_avant.help_text }}</small>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <button type="submit" class="save-button">
+                    💾 Enregistrer mes préférences
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

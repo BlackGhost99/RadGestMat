@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation d'Emprunt</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, rgba(27, 114, 255, 0.95) 0%, rgba(13, 71, 161, 0.98) 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 18px;
+            color: #1b72ff;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background-color: #f9f9f9;
+            border-left: 4px solid #1b72ff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: 600;
+            width: 150px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .info-value {
+            color: #333;
+            flex-grow: 1;
+        }
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #155724;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #eee;
+        }
+        .footer a {
+            color: #1b72ff;
+            text-decoration: none;
+        }
+        .materiel-badge {
+            display: inline-block;
+            background-color: #e7f3ff;
+            color: #1b72ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .duration-badge {
+            display: inline-block;
+            background-color: #f0f0f0;
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✓ Emprunt Confirmé</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Votre matériel a été réservé avec succès</p>
+        </div>
+
+        <div class="content">
+            <div class="success-box">
+                <strong>✓ Emprunt enregistré avec succès!</strong><br>
+                Vous pouvez récupérer le matériel à tout moment avant la date limite de retour.
+            </div>
+
+            <div class="section">
+                <h2>📦 Matériel emprunté</h2>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Matériel:</span>
+                        <span class="info-value">
+                            <strong>{{ materiel.nom }}</strong>
+                            <span class="materiel-badge">{{ materiel.asset_id }}</span>
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modèle:</span>
+                        <span class="info-value">{{ materiel.marque }} {{ materiel.modele }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">N° série:</span>
+                        <span class="info-value">{{ materiel.numero_serie|default:"Non spécifié" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📅 Dates importantes</h2>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Date d'emprunt:</span>
+                        <span class="info-value">{{ attribution.date_attribution|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Retour prévu:</span>
+                        <span class="info-value">
+                            {{ attribution.date_retour_prevue|date:"d/m/Y" }}
+                            {% if attribution.heure_retour_prevue %}
+                            à {{ attribution.heure_retour_prevue }}
+                            {% endif %}
+                            <span class="duration-badge">{{ duree_emprunt }}</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📋 Détails</h2>
+                <div class="info-box">
+                    {% if attribution.client %}
+                    <div class="info-row">
+                        <span class="info-label">Client:</span>
+                        <span class="info-value">{{ attribution.client.nom }}</span>
+                    </div>
+                    {% endif %}
+                    {% if attribution.motif %}
+                    <div class="info-row">
+                        <span class="info-label">Motif:</span>
+                        <span class="info-value">{{ attribution.motif }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="info-row">
+                        <span class="info-label">Département:</span>
+                        <span class="info-value">{{ attribution.departement.nom }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section" style="background-color: #fffbf0; border: 1px solid #ffe0b2; padding: 15px; border-radius: 4px;">
+                <strong style="color: #f57c00;">ℹ️ Important:</strong><br>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Vérifiez l'état du matériel avant le départ</li>
+                    <li>Retournez le matériel à la date et heure indiquées</li>
+                    <li>En cas de dommage, signalez-le immédiatement</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>RadGestMat - Système de Gestion de Matériel</p>
+            <p><a href="{{ site_url }}">Accéder à RadGestMat</a></p>
+            <p style="margin-top: 15px; color: #ccc; font-size: 11px;">Vous recevez cet email car vous êtes impliqué dans une attribution de matériel.</p>
+        </div>
+    </div>
+</body>
+</html>

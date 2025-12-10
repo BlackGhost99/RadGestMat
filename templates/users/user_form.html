@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  {% if user %}Modifier Utilisateur{% else %}Ajouter Utilisateur{% endif %} - RadGestMat
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">
+    {% if user %}
+      <i class="bi bi-pencil me-2"></i>Modifier Utilisateur
+    {% else %}
+      <i class="bi bi-person-plus me-2"></i>Ajouter Utilisateur
+    {% endif %}
+  </h2>
+
+  <!-- Messages d'erreur globaux -->
+  {% if user_form.non_field_errors or profil_form.non_field_errors %}
+  <div class="alert alert-danger">
+    {% for error in user_form.non_field_errors %}
+      <div>{{ error }}</div>
+    {% endfor %}
+    {% for error in profil_form.non_field_errors %}
+      <div>{{ error }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" class="needs-validation" novalidate>
+    {% csrf_token %}
+
+    <!-- Informations utilisateur -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i>Informations Utilisateur</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="{{ user_form.username.id_for_label }}" class="form-label">
+              {{ user_form.username.label }} *
+            </label>
+            {{ user_form.username }}
+            {% if user_form.username.errors %}
+              <div class="invalid-feedback d-block">{{ user_form.username.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="{{ user_form.email.id_for_label }}" class="form-label">
+              {{ user_form.email.label }}
+            </label>
+            {{ user_form.email }}
+            {% if user_form.email.errors %}
+              <div class="invalid-feedback d-block">{{ user_form.email.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="{{ user_form.first_name.id_for_label }}" class="form-label">
+              {{ user_form.first_name.label }}
+            </label>
+            {{ user_form.first_name }}
+            {% if user_form.first_name.errors %}
+              <div class="invalid-feedback d-block">{{ user_form.first_name.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="{{ user_form.last_name.id_for_label }}" class="form-label">
+              {{ user_form.last_name.label }}
+            </label>
+            {{ user_form.last_name }}
+            {% if user_form.last_name.errors %}
+              <div class="invalid-feedback d-block">{{ user_form.last_name.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if not user %}
+        <div class="mb-3">
+          <label for="{{ user_form.password.id_for_label }}" class="form-label">
+            {{ user_form.password.label }}
+          </label>
+          {{ user_form.password }}
+          {% if user_form.password.errors %}
+            <div class="invalid-feedback d-block">{{ user_form.password.errors.0 }}</div>
+          {% endif %}
+          <small class="form-text text-muted">{{ user_form.password.help_text }}</small>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Informations Profil -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-briefcase me-2"></i>Informations Profil</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="{{ profil_form.departement.id_for_label }}" class="form-label">
+              {{ profil_form.departement.label }} *
+            </label>
+            {{ profil_form.departement }}
+            {% if profil_form.departement.errors %}
+              <div class="invalid-feedback d-block">{{ profil_form.departement.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="{{ profil_form.role.id_for_label }}" class="form-label">
+              {{ profil_form.role.label }} *
+            </label>
+            {{ profil_form.role }}
+            {% if profil_form.role.errors %}
+              <div class="invalid-feedback d-block">{{ profil_form.role.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="{{ profil_form.telephone.id_for_label }}" class="form-label">
+              {{ profil_form.telephone.label }}
+            </label>
+            {{ profil_form.telephone }}
+            {% if profil_form.telephone.errors %}
+              <div class="invalid-feedback d-block">{{ profil_form.telephone.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="{{ profil_form.date_embauche.id_for_label }}" class="form-label">
+              {{ profil_form.date_embauche.label }}
+            </label>
+            {{ profil_form.date_embauche }}
+            {% if profil_form.date_embauche.errors %}
+              <div class="invalid-feedback d-block">{{ profil_form.date_embauche.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Permissions -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Permissions</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ user_form.is_active }}
+              <label class="form-check-label" for="{{ user_form.is_active.id_for_label }}">
+                {{ user_form.is_active.label }}
+              </label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ user_form.is_staff }}
+              <label class="form-check-label" for="{{ user_form.is_staff.id_for_label }}">
+                {{ user_form.is_staff.label }}
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ user_form.is_superuser }}
+              <label class="form-check-label" for="{{ user_form.is_superuser.id_for_label }}">
+                {{ user_form.is_superuser.label }}
+              </label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              {{ profil_form.actif }}
+              <label class="form-check-label" for="{{ profil_form.actif.id_for_label }}">
+                {{ profil_form.actif.label }}
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boutons -->
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-circle me-1"></i>
+        {% if user %}Modifier{% else %}Créer{% endif %}
+      </button>
+      <a href="{% url 'users:user_list' %}" class="btn btn-secondary">
+        <i class="bi bi-x-circle me-1"></i>Annuler
+      </a>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Validation du formulaire Bootstrap
+  (function() {
+    'use strict';
+    window.addEventListener('load', function() {
+      var forms = document.querySelectorAll('.needs-validation');
+      Array.prototype.slice.call(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+          if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          form.classList.add('was-validated');
+        }, false);
+      });
+    }, false);
+  })();
+</script>
+{% endblock %}

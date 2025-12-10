@@ -1,0 +1,23 @@
+@startuml
+left to right direction
+actor "Agent (Service IT)" as Agent
+actor "Direction" as Direction
+rectangle "RadGestMat System" {
+  (Authentification) as Auth
+  (Enregistrer matériel) as EnregMat
+  (Attribuer matériel) as Attrib
+  (Check-out) as Checkout
+  (Check-in) as Checkin
+  (Détection d'alertes) as Detect
+  (Consulter alertes) as ConsAlert
+}
+Agent --> Auth
+Agent --> EnregMat
+Agent --> Attrib
+Agent --> Checkout
+Agent --> Checkin
+Detect --> ConsAlert
+Direction --> ConsAlert
+Attrib --> (Workflows approbation)
+Checkin --> (Générer alerte)
+@enduml

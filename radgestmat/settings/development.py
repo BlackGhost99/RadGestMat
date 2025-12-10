@@ -1,6 +1,7 @@
 """
 Development settings for RadGestMat
 """
+import os
 from .base import *
 
 DEBUG = True
@@ -40,4 +41,11 @@ CSRF_COOKIE_SECURE = False
 # Logging - More verbose in development
 LOGGING['root']['level'] = 'DEBUG'
 LOGGING['loggers']['django']['level'] = 'DEBUG'
+
+# ========================================
+# Twilio WhatsApp Configuration
+# ========================================
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+TWILIO_WHATSAPP_FROM = 'whatsapp:+14155238886'  # Numéro sandbox Twilio
 

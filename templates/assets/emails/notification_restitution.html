@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation de restitution</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.95) 0%, rgba(56, 142, 60, 0.98) 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 18px;
+            color: #4caf50;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background-color: #f1f8e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .success-box {
+            background-color: #c8e6c9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #1b5e20;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: 600;
+            width: 150px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .info-value {
+            color: #333;
+            flex-grow: 1;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #eee;
+        }
+        .footer a {
+            color: #4caf50;
+            text-decoration: none;
+        }
+        .badge {
+            display: inline-block;
+            background-color: #c8e6c9;
+            color: #1b5e20;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .status-badge {
+            font-size: 20px;
+            font-weight: 600;
+            color: #4caf50;
+            text-align: center;
+            padding: 15px;
+            background-color: #f1f8e9;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✓ Restitution confirmée</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Merci pour votre retour du matériel</p>
+        </div>
+
+        <div class="content">
+            <div class="success-box">
+                <strong>✓ Restitution enregistrée avec succès!</strong><br>
+                Merci de votre participation. Votre emprunt est maintenant clôturé.
+            </div>
+
+            <div class="status-badge">
+                ✅ Matériel restitué
+            </div>
+
+            <div class="section">
+                <h2>📦 Matériel restitué</h2>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Matériel:</span>
+                        <span class="info-value">
+                            <strong>{{ materiel.nom }}</strong>
+                            <span class="badge">{{ materiel.asset_id }}</span>
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modèle:</span>
+                        <span class="info-value">{{ materiel.marque }} {{ materiel.modele }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📋 Récapitulatif de l'emprunt</h2>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Date d'emprunt:</span>
+                        <span class="info-value">{{ attribution.date_attribution|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Date de restitution:</span>
+                        <span class="info-value">{{ attribution.date_retour_effective|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Durée totale:</span>
+                        <span class="info-value">{{ duree_emprunt }}</span>
+                    </div>
+                    {% if attribution.date_retour_prevue <= attribution.date_retour_effective %}
+                    <div class="info-row">
+                        <span class="info-label">Statut:</span>
+                        <span class="info-value" style="color: #1b5e20; font-weight: 600;">✓ Retour à l'heure</span>
+                    </div>
+                    {% else %}
+                    <div class="info-row">
+                        <span class="info-label">Statut:</span>
+                        <span class="info-value" style="color: #ff9800;">⚠ Retour avec légère avance</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🎉 Avantages futur</h2>
+                <div class="info-box">
+                    <ul style="margin: 0; padding-left: 20px; color: #333;">
+                        <li><strong>✓</strong> Vous pouvez emprunter à nouveau</li>
+                        <li><strong>✓</strong> Pas de retard enregistré</li>
+                        <li><strong>✓</strong> Bon score de fiabilité</li>
+                        <li><strong>✓</strong> Accès à d'autres matériels</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section" style="background-color: #f1f8e9; border: 1px solid #a5d6a7; padding: 15px; border-radius: 4px;">
+                <strong style="color: #1b5e20;">💡 Conseil:</strong><br>
+                Gardez cet email comme preuve de restitution. Votre historique de fiabilité vous sera bénéfique pour les emprunts futurs.
+            </div>
+
+            <div style="text-align: center; margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 4px;">
+                <p style="margin: 0;">Prêt pour un nouvel emprunt?</p>
+                <a href="{{ site_url }}/materiels/" style="display: inline-block; padding: 10px 20px; background-color: #4caf50; color: white; text-decoration: none; border-radius: 4px; margin-top: 10px; font-weight: 600;">Voir les matériels disponibles</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>RadGestMat - Système de Gestion de Matériel</p>
+            <p><a href="{{ site_url }}">Accéder à RadGestMat</a></p>
+            <p style="margin-top: 15px; color: #ccc; font-size: 11px;">Vous recevez cet email comme confirmation de votre restitution de matériel.</p>
+        </div>
+    </div>
+</body>
+</html>

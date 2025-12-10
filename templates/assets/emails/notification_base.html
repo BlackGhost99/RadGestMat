@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification RadGestMat</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, rgba(27, 114, 255, 0.95) 0%, rgba(13, 71, 161, 0.98) 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 18px;
+            color: #1b72ff;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background-color: #f9f9f9;
+            border-left: 4px solid #1b72ff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: 600;
+            width: 150px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .info-value {
+            color: #333;
+            flex-grow: 1;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #1b72ff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .button:hover {
+            background-color: #0d47a1;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #856404;
+        }
+        .error-box {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #721c24;
+        }
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #155724;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #eee;
+        }
+        .footer a {
+            color: #1b72ff;
+            text-decoration: none;
+        }
+        .materiel-badge {
+            display: inline-block;
+            background-color: #e7f3ff;
+            color: #1b72ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .duration-badge {
+            display: inline-block;
+            background-color: #f0f0f0;
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        table th {
+            background-color: #f5f5f5;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .text-muted {
+            color: #999;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 RadGestMat</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Gestion de Matériel - Notification</p>
+        </div>
+
+        <div class="content">
+            {% block content %}
+                <!-- Contenu spécifique du template -->
+            {% endblock %}
+        </div>
+
+        <div class="footer">
+            <p>RadGestMat - Système de Gestion de Matériel</p>
+            <p><a href="{{ site_url }}">Accéder à RadGestMat</a> | Ne plus recevoir ces emails</p>
+            <p class="text-muted">Vous recevez cet email car vous êtes impliqué dans une attribution de matériel.</p>
+        </div>
+    </div>
+</body>
+</html>

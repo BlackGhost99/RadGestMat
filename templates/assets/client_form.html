@@ -120,6 +120,14 @@
             <div class="invalid-feedback d-block">{{ form.nom_evenement.errors.0 }}</div>
           {% endif %}
         </div>
+        <div class="mb-3">
+          <label for="{{ form.salle.id_for_label }}" class="form-label">{{ form.salle.label }}</label>
+          {{ form.salle }}
+          {% if form.salle.errors %}
+            <div class="invalid-feedback d-block">{{ form.salle.errors.0 }}</div>
+          {% endif %}
+          <div class="form-text">La salle est requise pour un client externe.</div>
+        </div>
       </div>
     </div>
 

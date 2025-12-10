@@ -13,6 +13,7 @@ class AlerteService:
     
     # Configuration des seuils
     JOURS_AVANT_ALERTE_RETARD = 0  # Alerte dès le jour de la date de retour prévue
+    JOURS_AVANT_RAPPEL = 2  # Nombre de jours avant la date de retour pour envoyer un rappel (info)
     JOURS_AVANT_ALERTE_PERDU = 30  # Matériel considéré perdu après 30 jours
     SEUIL_STOCK_CRITIQUE = 2  # Moins de 2 unités disponibles = stock critique (par nom d'équipement)
     
@@ -23,7 +24,7 @@ class AlerteService:
         attributions_en_retard = Attribution.objects.filter(
             date_retour_prevue__lt=aujourdhui,
             date_retour_effective__isnull=True
-        ).select_related('materiel', 'client', 'departement')
+        ).select_related('materiel', 'client', 'departement', 'salle')
         
         alertes_creees = []
         for attribution in attributions_en_retard:
@@ -38,6 +39,8 @@ class AlerteService:
                 jours_retard = (aujourdhui - attribution.date_retour_prevue).days
                 severite = Alerte.SEVERITE_CRITICAL if jours_retard > 7 else Alerte.SEVERITE_WARNING
                 
+                dest_label = attribution.client.nom if attribution.client else (f"Salle: {attribution.salle}" if attribution.salle else 'Inconnu')
+
                 alerte = Alerte.objects.create(
                     type_alerte=Alerte.TYPE_RETARD,
                     severite=severite,
@@ -46,7 +49,7 @@ class AlerteService:
                     departement=attribution.departement,
                     description=f"Retard de retour: {jours_retard} jour(s) de retard. "
                                f"Date retour prévue: {attribution.date_retour_prevue}. "
-                               f"Client: {attribution.client.nom}"
+                               f"Destinataire: {dest_label}"
                 )
                 alertes_creees.append(alerte)
         
@@ -70,12 +73,14 @@ class AlerteService:
             ).first()
             
             if not alerte_existante:
+                # Pour coller à la règle métier: matériel défectueux doit être traité
+                # comme critique (ex: panne/défaut nécessitant action immédiate).
                 alerte = Alerte.objects.create(
                     type_alerte=Alerte.TYPE_DEFECTUEUX,
-                    severite=Alerte.SEVERITE_WARNING,
+                    severite=Alerte.SEVERITE_CRITICAL,
                     materiel=materiel,
                     departement=materiel.departement,
-                    description=f"Matériel défectueux nécessitant attention: {materiel.nom} "
+                    description=f"Matériel défectueux nécessitant intervention: {materiel.nom} "
                                f"({materiel.asset_id}). Statut: {materiel.get_statut_disponibilite_display()}"
                 )
                 alertes_creees.append(alerte)
@@ -146,7 +151,7 @@ class AlerteService:
         attributions_perdues = Attribution.objects.filter(
             date_retour_prevue__lt=date_limite,
             date_retour_effective__isnull=True
-        ).select_related('materiel', 'client', 'departement')
+        ).select_related('materiel', 'client', 'departement', 'salle')
         
         alertes_creees = []
         for attribution in attributions_perdues:
@@ -159,6 +164,8 @@ class AlerteService:
             
             if not alerte_existante:
                 jours_ecoules = (aujourdhui - attribution.date_retour_prevue).days
+                dest_label = attribution.client.nom if attribution.client else (f"Salle: {attribution.salle}" if attribution.salle else 'Inconnu')
+
                 alerte = Alerte.objects.create(
                     type_alerte=Alerte.TYPE_PERDU,
                     severite=Alerte.SEVERITE_CRITICAL,
@@ -168,11 +175,53 @@ class AlerteService:
                     description=f"Matériel considéré comme perdu: {attribution.materiel.nom} "
                                f"({attribution.materiel.asset_id}). "
                                f"Non retourné depuis {jours_ecoules} jour(s). "
-                               f"Client: {attribution.client.nom}. "
+                               f"Destinataire: {dest_label}. "
                                f"Date retour prévue: {attribution.date_retour_prevue}"
                 )
                 alertes_creees.append(alerte)
         
+        return alertes_creees
+
+    @staticmethod
+    def detecter_rappels_retour():
+        """Détecte les attributions dont la date de retour prévue approche et crée des rappels (INFO).
+
+        Créera une alerte de type RETARD mais de sévérité INFO pour indiquer un rappel avant la date de retour.
+        """
+        aujourdhui = timezone.now().date()
+        date_limite = aujourdhui + timedelta(days=AlerteService.JOURS_AVANT_RAPPEL)
+
+        attributions_a_reminder = Attribution.objects.filter(
+            date_retour_prevue__gte=aujourdhui,
+            date_retour_prevue__lte=date_limite,
+            date_retour_effective__isnull=True
+        ).select_related('materiel', 'client', 'departement', 'salle')
+
+        alertes_creees = []
+        for attribution in attributions_a_reminder:
+            # Ne pas dupliquer un rappel déjà créé
+            alerte_existante = Alerte.objects.filter(
+                type_alerte=Alerte.TYPE_RETARD,
+                attribution=attribution,
+                severite=Alerte.SEVERITE_INFO,
+                reglementee=False
+            ).first()
+
+            if not alerte_existante:
+                jours_restants = (attribution.date_retour_prevue - aujourdhui).days
+                dest_label = attribution.client.nom if attribution.client else (f"Salle: {attribution.salle}" if attribution.salle else 'Inconnu')
+
+                alerte = Alerte.objects.create(
+                    type_alerte=Alerte.TYPE_RETARD,
+                    severite=Alerte.SEVERITE_INFO,
+                    materiel=attribution.materiel,
+                    attribution=attribution,
+                    departement=attribution.departement,
+                    description=f"Rappel: date de retour prévue dans {jours_restants} jour(s) ({attribution.date_retour_prevue}). "
+                                f"Destinataire: {dest_label}"
+                )
+                alertes_creees.append(alerte)
+
         return alertes_creees
     
     @classmethod
@@ -185,6 +234,7 @@ class AlerteService:
             'defectueux': cls.detecter_materiel_defectueux(),
             'stock_critique': cls.detecter_stock_critique(),
             'perdus': cls.detecter_materiel_perdu(),
+            'rappels': cls.detecter_rappels_retour(),
         }
         
         total = sum(len(v) for v in resultats.values())

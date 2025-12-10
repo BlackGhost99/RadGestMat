@@ -94,6 +94,15 @@
                                 <small class="form-text text-muted">{{ form.nom_categorie.help_text }}</small>
                                 {% endif %}
                             </div>
+                            {% if form.departement %}
+                            <div class="col-md-6">
+                                <label for="{{ form.departement.id_for_label }}" class="form-label">Département</label>
+                                {{ form.departement }}
+                                {% if form.departement.errors %}
+                                <div class="text-danger small">{{ form.departement.errors }}</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
                             
                             <div class="col-md-6">
                                 <label for="{{ form.statut_disponibilite.id_for_label }}" class="form-label">Statut</label>
@@ -194,6 +203,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <form id="formCreerCategorie">
+                {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="nouvelle_categorie_nom" class="form-label">Nom de la catégorie *</label>
@@ -227,6 +237,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <form id="formCreerNom">
+                {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="nouveau_nom" class="form-label">Nom du matériel *</label>
@@ -334,12 +345,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Récupérer le token CSRF depuis le DOM
+            const csrftoken = (document.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value;
+
             // Envoyer la requête
             fetch('{% url "assets:api_creer_nom_materiel" %}', {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': csrftoken
                 }
             })
             .then(response => response.json())
@@ -403,12 +417,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Récupérer le token CSRF depuis le DOM
+            const csrftoken = (document.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value;
+
             // Envoyer la requête
             fetch('{% url "assets:api_creer_categorie" %}', {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': csrftoken
                 }
             })
             .then(response => response.json())

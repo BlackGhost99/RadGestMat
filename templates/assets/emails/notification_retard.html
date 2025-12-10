@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerte - Matériel en retard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, rgba(229, 57, 53, 0.98) 0%, rgba(183, 28, 28, 0.98) 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            opacity: 0.95;
+            font-size: 16px;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 18px;
+            color: #d32f2f;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #ffcdd2;
+            padding-bottom: 10px;
+        }
+        .alert-box {
+            background-color: #ffebee;
+            border-left: 4px solid #d32f2f;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .critical-box {
+            background-color: #ffcdd2;
+            border: 2px solid #d32f2f;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #b71c1c;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: 600;
+            width: 150px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .info-value {
+            color: #333;
+            flex-grow: 1;
+        }
+        .action-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #d32f2f;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .action-button:hover {
+            background-color: #b71c1c;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #eee;
+        }
+        .footer a {
+            color: #d32f2f;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .materiel-badge {
+            display: inline-block;
+            background-color: #ffcdd2;
+            color: #b71c1c;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .status-critical {
+            font-size: 18px;
+            font-weight: 700;
+            color: #d32f2f;
+            text-align: center;
+            padding: 15px;
+            background-color: #ffebee;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ MATÉRIEL EN RETARD</h1>
+            <p>Action urgente requise - Veuillez retourner immédiatement</p>
+        </div>
+
+        <div class="content">
+            <div class="critical-box">
+                <strong style="font-size: 16px;">🚨 ALERTE CRITIQUE</strong><br>
+                Le matériel emprunté est <strong>TROP EN RETARD</strong> et doit être retourné <strong>IMMÉDIATEMENT</strong>.
+            </div>
+
+            <div class="status-critical">
+                ⏰ Retard détecté - Action immédiate requise
+            </div>
+
+            <div class="section">
+                <h2>📦 Matériel non retourné</h2>
+                <div class="alert-box">
+                    <div class="info-row">
+                        <span class="info-label">Matériel:</span>
+                        <span class="info-value">
+                            <strong>{{ materiel.nom }}</strong>
+                            <span class="materiel-badge">{{ materiel.asset_id }}</span>
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Emprunteur:</span>
+                        <span class="info-value">{{ attribution.client.nom }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📋 Situation actuelle</h2>
+                <div class="alert-box">
+                    <div class="info-row">
+                        <span class="info-label">Date retour prévue:</span>
+                        <span class="info-value">{{ attribution.date_retour_prevue|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Statut:</span>
+                        <span class="info-value" style="color: #d32f2f; font-weight: 600;">❌ RETARD DÉTECTÉ</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Retourné le:</span>
+                        <span class="info-value">Non retourné</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>⚠️ Conséquences du retard</h2>
+                <div class="critical-box">
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li><strong>Frais de pénalité appliqués</strong></li>
+                        <li><strong>Implications légales possibles</strong></li>
+                        <li><strong>Restriction d'emprunts futurs</strong></li>
+                        <li><strong>Escalade et notification des autorités</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🎯 Actions à prendre maintenant</h2>
+                <div class="alert-box">
+                    <ol style="margin: 0; padding-left: 20px;">
+                        <li><strong>Localiser le matériel immédiatement</strong></li>
+                        <li><strong>Vérifier son état (dommages?)</strong></li>
+                        <li><strong>Le retourner dès aujourd'hui au département {{ attribution.departement.nom }}</strong></li>
+                        <li><strong>Contacter le responsable pour renseigner de la situation</strong></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div style="text-align: center; padding: 20px; background-color: #ffebee; border-radius: 4px; margin: 20px 0;">
+                <p style="margin: 0 0 15px 0; font-weight: 600; color: #d32f2f;">Agissez maintenant pour éviter les frais supplémentaires</p>
+                <a href="{{ site_url }}/materiels/" class="action-button">Accéder à mon compte RadGestMat</a>
+            </div>
+
+            <div class="section" style="background-color: #fff3e0; border: 1px solid #ffb74d; padding: 15px; border-radius: 4px;">
+                <strong style="color: #e65100;">💬 Avez-vous un problème?</strong><br>
+                Si vous ne pouvez pas retourner le matériel pour une raison valide, contactez-nous immédiatement. Les frais supplémentaires continueront à s'accumuler chaque jour.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>RadGestMat - Système de Gestion de Matériel</strong></p>
+            <p><a href="{{ site_url }}">Accéder à RadGestMat</a></p>
+            <p style="margin-top: 15px; color: #ccc; font-size: 11px;">Ceci est une notification importante concernant un retard de matériel.</p>
+        </div>
+    </div>
+</body>
+</html>

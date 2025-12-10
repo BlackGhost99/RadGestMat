@@ -10,6 +10,9 @@
       <h1 class="h3">{{ client.nom }}</h1>
       {% if client.email %}<p><strong>Email:</strong> {{ client.email }}</p>{% endif %}
       {% if client.telephone %}<p><strong>Téléphone:</strong> {{ client.telephone }}</p>{% endif %}
+      {% if client.type_client == 'CONFERENCE' and client.salle %}
+        <p><strong>Salle:</strong> {{ client.salle.nom }}</p>
+      {% endif %}
       {% if client.notes %}<p><strong>Notes:</strong> {{ client.notes }}</p>{% endif %}
     </div>
     <div class="col-md-4 text-end">

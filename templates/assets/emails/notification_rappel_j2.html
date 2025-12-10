@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rappel J-2</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.95) 0%, rgba(13, 71, 161, 0.98) 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 18px;
+            color: #2196f3;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: 600;
+            width: 150px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .info-value {
+            color: #333;
+            flex-grow: 1;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #eee;
+        }
+        .footer a {
+            color: #2196f3;
+            text-decoration: none;
+        }
+        .materiel-badge {
+            display: inline-block;
+            background-color: #bbdefb;
+            color: #0d47a1;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .countdown {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2196f3;
+            text-align: center;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Rappel: 2 Jours</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Plus que 2 jours avant de retourner le matériel</p>
+        </div>
+
+        <div class="content">
+            <div class="countdown">
+                📌 Retour prévu le {{ attribution.date_retour_prevue|date:"d/m/Y" }} à 10h00
+            </div>
+
+            <div class="section">
+                <h2>📦 Matériel en votre possession</h2>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Matériel:</span>
+                        <span class="info-value">
+                            <strong>{{ materiel.nom }}</strong>
+                            <span class="materiel-badge">{{ materiel.asset_id }}</span>
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Modèle:</span>
+                        <span class="info-value">{{ materiel.marque }} {{ materiel.modele }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📋 Information de retour</h2>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Date retour:</span>
+                        <span class="info-value">{{ attribution.date_retour_prevue|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Heure:</span>
+                        <span class="info-value">10h00</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Département:</span>
+                        <span class="info-value">{{ attribution.departement.nom }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section" style="background-color: #f0f8ff; border: 1px solid #b3d9ff; padding: 15px; border-radius: 4px;">
+                <strong style="color: #0066cc;">✓ Checklist de retour:</strong><br>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>☐ Vérifier l'état du matériel</li>
+                    <li>☐ Retrouver tous les accessoires</li>
+                    <li>☐ Prévoir le transport</li>
+                    <li>☐ Bloquer du temps pour le retour</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>RadGestMat - Système de Gestion de Matériel</p>
+            <p><a href="{{ site_url }}">Accéder à RadGestMat</a></p>
+            <p style="margin-top: 15px; color: #ccc; font-size: 11px;">Vous recevez cet email car vous avez emprunté du matériel.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -25,6 +25,8 @@ venv/
 env/
 ENV/
 .venv
+env_new/
+env_prod/
 
 # Django
 *.log
@@ -35,6 +37,8 @@ db.sqlite3-journal
 /media
 /staticfiles
 /logs
+backups/
+tmp/
 
 # Environment variables
 .env
@@ -63,4 +67,12 @@ htmlcov/
 # OS
 Thumbs.db
 .DS_Store
+
+# Additional exclusions
+bin/
+here/
+out/
+.vs/
+*.slnx
+*.vsidx
 

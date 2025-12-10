@@ -44,4 +44,13 @@ urlpatterns = [
     path('alertes/<int:pk>/', views.alerte_detail, name='alerte_detail'),
     path('alertes/<int:pk>/regler/', views.alerte_marquer_reglementee, name='alerte_marquer_reglementee'),
     path('alertes/detecter/', views.alerte_detecter, name='alerte_detecter'),
+    
+    # Notifications (Phase 6)
+    path('notifications/dashboard/', views.notifications_dashboard, name='notifications_dashboard'),
+    path('notifications/preferences/', views.notification_preferences, name='notification_preferences'),
+    
+    # Rapports / Audit
+    path('rapports/', views.report_list, name='report_list'),
+    path('rapports/<int:pk>/', views.report_detail, name='report_detail'),
+    path('rapports/<int:pk>/pdf/', views.report_pdf, name='report_pdf'),
 ]

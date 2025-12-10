@@ -46,11 +46,19 @@
         <input type="hidden" name="action" value="attribution">
         {{ form.materiel }}
 
-        <!-- Client Selection -->
+        <!-- Destination: client ou salle -->
         <div class="mb-4">
+          <label class="form-label"><strong>Destination *</strong></label>
+          <div>
+            {{ form.destination_type }}
+          </div>
+        </div>
+
+        <!-- Client Selection -->
+        <div class="mb-4" id="client_block">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <label for="{{ form.client.id_for_label }}" class="form-label mb-0">
-              <strong>Client *</strong>
+              <strong>Client</strong>
             </label>
             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addClientModal">
               <i class="bi bi-plus-circle me-1"></i>Ajouter client
@@ -59,6 +67,15 @@
           {{ form.client }}
           {% if form.client.errors %}
             <div class="invalid-feedback d-block">{{ form.client.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Salle Selection (hidden unless salle chosen) -->
+        <div class="mb-4" id="salle_block" style="display:none;">
+          <label for="{{ form.salle.id_for_label }}" class="form-label"><strong>Salle de conférence</strong></label>
+          {{ form.salle }}
+          {% if form.salle.errors %}
+            <div class="invalid-feedback d-block">{{ form.salle.errors.0 }}</div>
           {% endif %}
         </div>
 
@@ -193,5 +210,25 @@
     })
     .catch(error => console.error('Erreur:', error));
   });
+
+  // Toggle client / salle fields based on destination_type radio
+  function updateDestinationBlocks(){
+    const radios = document.querySelectorAll('input[name="destination_type"]');
+    let selected = 'client';
+    radios.forEach(r => { if (r.checked) selected = r.value; });
+    const clientBlock = document.getElementById('client_block');
+    const salleBlock = document.getElementById('salle_block');
+    if (selected === 'salle'){
+      clientBlock.style.display = 'none';
+      salleBlock.style.display = 'block';
+    } else {
+      clientBlock.style.display = 'block';
+      salleBlock.style.display = 'none';
+    }
+  }
+
+  document.querySelectorAll('input[name="destination_type"]').forEach(el => el.addEventListener('change', updateDestinationBlocks));
+  // initialize on load
+  updateDestinationBlocks();
 </script>
 {% endblock %}

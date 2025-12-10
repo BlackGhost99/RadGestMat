@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <div class="container">
+    <h1>{% trans "Confirmer la suppression forcée" %}</h1>
+    <p>{% trans "Vous êtes sur le point de supprimer définitivement les matériels sélectionnés ainsi que tous les objets liés (ex: alertes, historique). Cette action est irréversible." %}</p>
+
+    <form method="post">{% csrf_token %}
+      {# Preserve the action name so admin will route back to this action on submit #}
+      <input type="hidden" name="action" value="force_delete_selected">
+      {% for obj in objects %}
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}">
+      {% endfor %}
+      <input type="hidden" name="confirm" value="1">
+
+      <div class="card">
+        <div class="card-body">
+          <ul>
+            {% for obj in objects %}
+              <li>{{ obj }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;">
+        <button type="submit" class="default">{% trans "Oui, supprimer définitivement" %}</button>
+        <a href="{{ request.META.HTTP_REFERER|default:'/' }}" class="button">{% trans "Annuler" %}</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

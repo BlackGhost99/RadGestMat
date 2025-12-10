@@ -1,0 +1,44 @@
+@startuml
+package models {
+class Materiel {
+  +id
+  +reference
+  +valeur
+  +etat
+}
+class Client {
+  +id
+  +nom
+}
+class Salle {
+  +id
+  +nom
+}
+class Attribution {
+  +id
+  +date_attribution
+  +date_retour_prevue
+  +date_retour_effective
+  +dest_type
+  +raison_non_retour
+}
+class Alerte {
+  +id
+  +categorie
+  +severite
+  +description
+  +date_creee
+}
+class AuditLog {
+  +id
+  +action
+  +user_id
+  +timestamp
+}
+Materiel "1" -- "*" Attribution
+Client "1" -- "*" Attribution
+Salle "1" -- "*" Attribution
+Attribution "*" -- "*" Alerte
+Alerte "*" -- "1" AuditLog
+}
+@enduml

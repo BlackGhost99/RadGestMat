@@ -112,6 +112,13 @@
                                     <a href="{% url 'assets:materiel_update' materiel.pk %}" class="btn btn-outline-secondary" title="Modifier">
                                         <i class="bi bi-pencil"></i>
                                     </a>
+                                    {% if request.profil_utilisateur %}
+                                        {% if request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'SUPER_ADMIN' %}
+                                            <a href="{% url 'assets:materiel_delete' materiel.pk %}" class="btn btn-outline-danger" title="Supprimer">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>

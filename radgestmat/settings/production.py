@@ -1,52 +1,89 @@
 """
 Production settings for RadGestMat
+Déploiement sur serveur local d'entreprise (LAN)
 """
 import os
+from pathlib import Path
 from .base import *
 
+# ====================
+# SÉCURITÉ
+# ====================
 DEBUG = False
 
-# Security settings for production
-try:
-    from decouple import config
-    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
-except ImportError:
-    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True').lower() == 'true'
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# IMPORTANT : Générer avec : python -c "import secrets; print(secrets.token_urlsafe(50))"
+SECRET_KEY = os.environ.get('SECRET_KEY', BASE_DIR.parent / '.secret_key')
+if isinstance(SECRET_KEY, Path):
+    if SECRET_KEY.exists():
+        SECRET_KEY = SECRET_KEY.read_text().strip()
+    else:
+        import secrets
+        key = secrets.token_urlsafe(50)
+        SECRET_KEY.write_text(key)
+        SECRET_KEY = key
 
-# Database - PostgreSQL recommended for production
-DATABASES = {
-    'default': {
-        'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
-        'CONN_MAX_AGE': 600,
-        'OPTIONS': {
-            'connect_timeout': 10,
-        },
+# Ajouter l'IP de votre serveur (ex: 192.168.1.100)
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# ====================
+# BASE DE DONNÉES
+# ====================
+
+# Option 1 : PostgreSQL (Recommandé)
+if os.environ.get('USE_POSTGRESQL', 'false').lower() == 'true':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'radgestmat'),
+            'USER': os.environ.get('DB_USER', 'radgestmat_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'changeme'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'CONN_MAX_AGE': 600,
+        }
     }
-}
+else:
+    # Option 2 : SQLite (OK pour < 50 utilisateurs)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
-# Static files - Use WhiteNoise or CDN in production
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+# ====================
+# SÉCURITÉ HTTPS (Désactivé pour réseau interne HTTP)
+# ====================
+SECURE_SSL_REDIRECT = False  # Mettre True si HTTPS configuré
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+SESSION_COOKIE_SECURE = False  # Mettre True si HTTPS
+CSRF_COOKIE_SECURE = False  # Mettre True si HTTPS
 
-# Email - SMTP in production
+# Headers de sécurité
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'same-origin'
+
+# CSRF (Ajouter l'IP du serveur)
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost',
+    'http://127.0.0.1',
+    # Ajouter : 'http://192.168.1.100'
+]
+
+# ====================
+# EMAIL CONFIGURATION
+# ====================
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-
-# Sentry error tracking (if configured)
-try:
-    from decouple import config
-    SENTRY_DSN = config('SENTRY_DSN', default='')
-except ImportError:
-    SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = 'RadGestMat <noreply@radgestmat.local>'
 
 if SENTRY_DSN:
     try:
