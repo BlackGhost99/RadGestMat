@@ -2,37 +2,221 @@
 {% block title %}Rapports - RadGestMat{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <h2>Rapports d'activité (Audit)</h2>
-  <p class="text-muted">Seuls les administrateurs peuvent modifier ou supprimer les rapports via l'admin.</p>
-  <table class="table table-sm table-striped mt-3">
-    <thead class="table-dark">
-      <tr>
-        <th>Date</th>
-        <th>Utilisateur</th>
-        <th>Action</th>
-        <th>Objet</th>
-        <th>Détails</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in reports %}
-      <tr>
-        <td>{{ r.timestamp|date:"d/m/Y H:i:s" }}</td>
-        <td>
-          {% if r.user %}
-            {{ r.user.username }}
-          {% else %}
-            System
-          {% endif %}
-        </td>
-        <td>{{ r.get_action_display }}</td>
-        <td>{{ r.content_type.app_label }}.{{ r.content_type.model }}{% if r.object_repr %} — {{ r.object_repr }}{% endif %}</td>
-        <td><a href="{% url 'assets:report_detail' r.pk %}" class="btn btn-sm btn-outline-primary">Voir</a></td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5">Aucun rapport</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <h2>Rapports d'activite (Audit)</h2>
+  <p class="text-muted">Filtrez les journaux et les attributions de materiel par date, utilisateur et type.</p>
+
+  <form method="get" class="card card-body mb-4">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-2">
+        <label for="id_date_from" class="form-label">Date debut</label>
+        <input id="id_date_from" type="date" name="date_from" class="form-control" value="{{ filter_values.date_from }}">
+      </div>
+      <div class="col-md-2">
+        <label for="id_date_to" class="form-label">Date fin</label>
+        <input id="id_date_to" type="date" name="date_to" class="form-control" value="{{ filter_values.date_to }}">
+      </div>
+      <div class="col-md-2">
+        <label for="id_action" class="form-label">Action</label>
+        <select id="id_action" name="action" class="form-select">
+          <option value="">Toutes</option>
+          {% for value, label in action_choices %}
+            <option value="{{ value }}" {% if filter_values.action == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="id_content_type" class="form-label">Objet</label>
+        <select id="id_content_type" name="content_type" class="form-select">
+          <option value="">Tous</option>
+          {% for model_name in available_content_types %}
+            <option value="{{ model_name }}" {% if filter_values.content_type == model_name %}selected{% endif %}>{{ model_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="id_user" class="form-label">Utilisateur</label>
+        <input id="id_user" type="text" name="user" class="form-control" placeholder="username" value="{{ filter_values.user }}">
+      </div>
+      <div class="col-md-2">
+        <div class="form-check mb-2">
+          <input id="id_attribution_only" class="form-check-input" type="checkbox" name="attribution_only" value="1" {% if filter_values.attribution_only %}checked{% endif %}>
+          <label class="form-check-label" for="id_attribution_only">Attributions seulement</label>
+        </div>
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-primary btn-sm">Filtrer</button>
+          <a href="{% url 'assets:report_list' %}" class="btn btn-outline-secondary btn-sm">Reinitialiser</a>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card h-100 border-primary">
+        <div class="card-body">
+          <div class="small text-muted">Total attributions (periode)</div>
+          <div class="fs-3 fw-bold">{{ attribution_total_count }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 border-success">
+        <div class="card-body">
+          <div class="small text-muted">Attributions actives</div>
+          <div class="fs-3 fw-bold text-success">{{ attribution_active_count }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 border-info">
+        <div class="card-body">
+          <div class="small text-muted">Attributions retournees</div>
+          <div class="fs-3 fw-bold text-info">{{ attribution_returned_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <strong>Journaux d'audit (max 200)</strong>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-striped mb-0">
+            <thead class="table-dark">
+              <tr>
+                <th>Date</th>
+                <th>Utilisateur</th>
+                <th>Action</th>
+                <th>Objet</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in reports %}
+              <tr>
+                <td>{{ r.timestamp|date:"d/m/Y H:i:s" }}</td>
+                <td>{% if r.user %}{{ r.user.username }}{% else %}System{% endif %}</td>
+                <td>{{ r.get_action_display }}</td>
+                <td>{{ r.content_type.app_label }}.{{ r.content_type.model }}{% if r.object_repr %} - {{ r.object_repr }}{% endif %}</td>
+                <td><a href="{% url 'assets:report_detail' r.pk %}" class="btn btn-sm btn-outline-primary">Voir</a></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5">Aucun rapport</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card mb-4">
+        <div class="card-header"><strong>Nombre d'attributions par type</strong></div>
+        <ul class="list-group list-group-flush">
+          {% for item in attribution_counts_by_type %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span>{{ item.label }}</span>
+              <span class="badge text-bg-primary rounded-pill">{{ item.total }}</span>
+            </li>
+          {% empty %}
+            <li class="list-group-item text-muted">Aucune attribution sur cette periode.</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><strong>Attributions par jour (31 derniers jours affiches)</strong></div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Nombre</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in attribution_counts_by_day %}
+              <tr>
+                <td>{{ row.day|date:"d/m/Y" }}</td>
+                <td>{{ row.total }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="2" class="text-muted">Aucune donnee.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-header">
+      <strong>Attributions de materiel sur la periode (max 100)</strong>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Date attribution</th>
+            <th>Materiel</th>
+            <th>Beneficiaire</th>
+            <th>Type</th>
+            <th>Responsable</th>
+            <th>Etat</th>
+            <th>Rapport</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for attr in attributions_period %}
+          <tr>
+            <td>{{ attr.date_attribution|date:"d/m/Y H:i" }}</td>
+            <td>
+              {% if attr.materiel %}
+                {{ attr.materiel.asset_id }} - {{ attr.materiel.nom }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if attr.client %}
+                {{ attr.client.nom }}
+              {% elif attr.salle %}
+                Salle: {{ attr.salle.nom }}
+              {% else %}
+                Inconnu
+              {% endif %}
+            </td>
+            <td>{{ attr.get_type_attribution_display }}</td>
+            <td>{% if attr.employe_responsable %}{{ attr.employe_responsable.username }}{% else %}-{% endif %}</td>
+            <td>
+              {% if attr.date_retour_effective %}
+                Retourne le {{ attr.date_retour_effective|date:"d/m/Y" }}
+              {% else %}
+                Actif
+              {% endif %}
+            </td>
+            <td>
+              {% if attr.latest_report_id %}
+                <a href="{% url 'assets:report_detail' attr.latest_report_id %}" class="btn btn-sm btn-outline-primary">
+                  Ouvrir rapport
+                </a>
+              {% else %}
+                <a href="{% url 'assets:report_attribution_detail' attr.pk %}" class="btn btn-sm btn-outline-primary">
+                  Ouvrir rapport
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-muted">Aucune attribution trouvee pour cette selection.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 {% endblock %}

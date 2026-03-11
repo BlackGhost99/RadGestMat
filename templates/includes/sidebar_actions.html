@@ -22,6 +22,10 @@
             <i class="bi bi-people"></i>
             <span>Clients</span>
         </a>
+        <a href="{% url 'assets:categorie_list' %}">
+            <i class="bi bi-tags"></i>
+            <span>Catégories</span>
+        </a>
         <a href="{% url 'assets:attribution_list' %}">
             <i class="bi bi-diagram-3"></i>
             <span>Attributions</span>
@@ -36,6 +40,13 @@
             {% if nombre_alertes > 0 %}
             <span class="badge bg-danger">{{ nombre_alertes }}</span>
             {% endif %}
+        </a>
+        
+        <div class="divider"></div>
+        <h3>Paramètres</h3>
+        <a href="{% url 'users:user_settings' %}">
+            <i class="bi bi-gear"></i>
+            <span>Paramètres</span>
         </a>
         
         {% if user.is_staff or user.profilutilisateur.est_super_admin %}

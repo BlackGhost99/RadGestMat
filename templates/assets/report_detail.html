@@ -1,10 +1,21 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Détail rapport - {{ report.pk }}{% endblock %}
 {% block content %}
 <div class="container py-4" style="max-width:980px;margin-left:auto;margin-right:auto;">
+  <!-- Logo en-tête -->
+  <div class="mb-4 text-center">
+    {% if logo_url %}
+      <img src="{{ logo_url }}" alt="Radisson BLU" style="max-height: 60px; margin-bottom: 10px;" onerror="this.style.display='none';">
+    {% endif %}
+    {% if not logo_url %}
+      <img src="{% static 'images/logo/rad.png' %}" alt="Radisson BLU" style="max-height: 60px; margin-bottom: 10px;" onerror="this.style.display='none';">
+    {% endif %}
+  </div>
+  
   <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
-      <h2 class="mb-1">Détail du rapport</h2>
+      <h2 class="mb-1">Rapport d'activité — {{ report.pk }}</h2>
       <div class="text-muted small">Date : {{ report.timestamp|date:"d/m/Y H:i:s" }}</div>
     </div>
     <div class="text-end">
@@ -20,10 +31,11 @@
     <div class="col-md-6">
       <div class="card mb-3">
         <div class="card-body">
-          <h5 class="card-title">Contexte</h5>
+          <h5 class="card-title">
+            <i class="bi bi-info-circle me-2"></i>Contexte
+          </h5>
               <div class="mb-2">
-                <div class="p-2" style="background:#f8f9fa;border-left:4px solid #0d6efd;">
-                  <strong>Contexte : </strong>
+                <div class="p-3" style="background:#f8f9fa;border-left:4px solid #0d6efd;border-radius:4px;">
                   <div class="small text-muted">{{ context_sentence }}</div>
                 </div>
               </div>
@@ -32,26 +44,43 @@
 
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Détails</h5>
+          <h5 class="card-title">
+            <i class="bi bi-list-ul me-2"></i>Détails des modifications
+            {% if is_admin %}
+              <span class="badge bg-info ms-2" title="Vous êtes administrateur - toutes les données techniques sont visibles">
+                <i class="bi bi-shield-check me-1"></i>Vue Admin
+              </span>
+            {% endif %}
+          </h5>
           {% if formatted_changes %}
             <div class="table-responsive">
-              <table class="table table-sm" style="margin-left:auto;margin-right:auto;max-width:880px;">
-                <thead>
-                  <tr><th>Champ</th><th>Avant</th><th>Après</th></tr>
+              <table class="table table-sm table-hover" style="margin-left:auto;margin-right:auto;max-width:880px;">
+                <thead class="table-light">
+                  <tr>
+                    <th style="font-weight:600;">Champ</th>
+                    <th style="font-weight:600;">Avant</th>
+                    <th style="font-weight:600;">Après</th>
+                  </tr>
                 </thead>
                 <tbody>
                 {% for c in formatted_changes %}
                   <tr>
-                    <td>{{ c.field }}</td>
-                    <td class="text-muted">{% if c.old is not None %}{{ c.old }}{% else %}&mdash;{% endif %}</td>
-                    <td>{{ c.new|default:'&mdash;' }}</td>
+                    <td style="font-weight:500;">{{ c.field }}</td>
+                    <td class="text-muted">{% if c.old is not None %}{{ c.old }}{% else %}<span class="text-muted fst-italic">—</span>{% endif %}</td>
+                    <td><strong>{{ c.new|default:'—' }}</strong></td>
                   </tr>
                 {% endfor %}
                 </tbody>
               </table>
+              {% if not is_admin %}
+                <div class="alert alert-info mt-3 mb-0" style="font-size:0.875rem;">
+                  <i class="bi bi-info-circle me-2"></i>
+                  <strong>Note :</strong> Certains champs techniques (données cryptées, clés de session) ont été masqués pour des raisons de sécurité. Les administrateurs peuvent voir toutes les données.
+                </div>
+              {% endif %}
             </div>
           {% else %}
-            <p class="mb-0"><em>Aucun détail disponible.</em></p>
+            <p class="mb-0 text-muted"><em>Aucun détail disponible.</em></p>
           {% endif %}
         </div>
       </div>
@@ -60,7 +89,9 @@
     <div class="col-md-6">
       <div class="card mb-3">
         <div class="card-body">
-          <h5 class="card-title">Résumé</h5>
+          <h5 class="card-title">
+            <i class="bi bi-file-text me-2"></i>Résumé
+          </h5>
           <p class="mb-0">{{ summary }}</p>
         </div>
       </div>
@@ -69,8 +100,12 @@
 
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Remarques</h5>
-          <p class="mb-0 small text-muted">Vous pouvez télécharger ce rapport en PDF ou l'imprimer depuis le navigateur.</p>
+          <h5 class="card-title">
+            <i class="bi bi-lightbulb me-2"></i>Informations
+          </h5>
+          <p class="mb-0 small text-muted">
+            <i class="bi bi-download me-1"></i>Vous pouvez télécharger ce rapport en PDF ou l'imprimer depuis le navigateur.
+          </p>
         </div>
       </div>
     </div>

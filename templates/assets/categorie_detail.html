@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Catégorie — {{ categorie.nom }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <h1 class="h3 d-flex align-items-center gap-2">
+                <i class="bi bi-tag me-2"></i>{{ categorie.nom }}
+                <span class="badge bg-secondary fs-6">{{ categorie.departement.nom }}</span>
+            </h1>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title text-muted mb-3"><i class="bi bi-info-circle me-2"></i>Informations</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Nom:</strong> {{ categorie.nom }}</p>
+                            <p class="mb-1"><strong>Département:</strong> {{ categorie.departement.nom }} ({{ categorie.departement.code }})</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Date de création:</strong> {{ categorie.date_creation|date:"d/m/Y H:i" }}</p>
+                            <p class="mb-1"><strong>Nombre de matériels:</strong> <span class="badge bg-primary">{{ materiels.count }}</span></p>
+                        </div>
+                    </div>
+                    {% if categorie.description %}
+                    <div class="mt-3">
+                        <strong>Description:</strong>
+                        <p class="mb-0 mt-1">{{ categorie.description|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+            <a href="{% url 'assets:categorie_update' categorie.pk %}" class="btn btn-sm btn-warning">
+                <i class="bi bi-pencil me-1"></i>Modifier
+            </a>
+            <a href="{% url 'assets:categorie_delete' categorie.pk %}" class="btn btn-sm btn-danger">
+                <i class="bi bi-trash me-1"></i>Supprimer
+            </a>
+            {% endif %}
+            <a href="{% url 'assets:categorie_list' %}" class="btn btn-sm btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Retour
+            </a>
+        </div>
+    </div>
+
+    <hr>
+
+    <h4><i class="bi bi-box-seam me-2"></i>Matériels associés ({{ materiels.count }})</h4>
+    {% if materiels %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Asset ID</th>
+                    <th>Nom</th>
+                    <th>Marque/Modèle</th>
+                    <th>État</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for materiel in materiels %}
+                <tr>
+                    <td><small class="text-muted">{{ materiel.asset_id|default:"—" }}</small></td>
+                    <td><strong>{{ materiel.nom }}</strong></td>
+                    <td>
+                        {% if materiel.marque or materiel.modele %}
+                        <small>{{ materiel.marque|default:"" }} {{ materiel.modele|default:"" }}</small>
+                        {% else %}
+                        <small class="text-muted">—</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if materiel.etat_technique == 'FONCTIONNEL' %}
+                        <span class="badge bg-success">Fonctionnel</span>
+                        {% elif materiel.etat_technique == 'DEFECTUEUX' %}
+                        <span class="badge bg-danger">Défectueux</span>
+                        {% else %}
+                        <span class="badge bg-info">Maintenance</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if materiel.statut_disponibilite == 'DISPONIBLE' %}
+                        <span class="badge bg-success">Disponible</span>
+                        {% elif materiel.statut_disponibilite == 'ATTRIBUE' %}
+                        <span class="badge bg-warning">Attribué</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ materiel.statut_disponibilite }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'assets:materiel_detail' materiel.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>Aucun matériel n'utilise actuellement cette catégorie.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

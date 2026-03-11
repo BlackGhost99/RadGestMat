@@ -22,6 +22,7 @@ class AlerteService:
         """Détecte les attributions avec retard de retour"""
         aujourdhui = timezone.now().date()
         attributions_en_retard = Attribution.objects.filter(
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
             date_retour_prevue__lt=aujourdhui,
             date_retour_effective__isnull=True
         ).select_related('materiel', 'client', 'departement', 'salle')
@@ -149,6 +150,7 @@ class AlerteService:
         date_limite = aujourdhui - timedelta(days=AlerteService.JOURS_AVANT_ALERTE_PERDU)
         
         attributions_perdues = Attribution.objects.filter(
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
             date_retour_prevue__lt=date_limite,
             date_retour_effective__isnull=True
         ).select_related('materiel', 'client', 'departement', 'salle')
@@ -192,6 +194,7 @@ class AlerteService:
         date_limite = aujourdhui + timedelta(days=AlerteService.JOURS_AVANT_RAPPEL)
 
         attributions_a_reminder = Attribution.objects.filter(
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
             date_retour_prevue__gte=aujourdhui,
             date_retour_prevue__lte=date_limite,
             date_retour_effective__isnull=True

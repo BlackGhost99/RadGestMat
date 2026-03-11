@@ -1,9 +1,11 @@
 from django.test import TestCase, Client as DjangoTestClient
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from .models import Departement, Categorie, Materiel
-from .models import Client, Attribution
+from .models import Client, Attribution, AuditLog
 from django.urls import reverse
 from datetime import date, timedelta
+from django.utils import timezone
 
 class MaterielViewsTest(TestCase):
     """Tests des vues de gestion du matériel"""
@@ -85,6 +87,8 @@ class MaterielViewsTest(TestCase):
         resp = self.client.post(url_checkout, data={
             'materiel': self.materiel.pk,
             'client': client.pk,
+            'destination_type': 'client',
+            'type_attribution': 'TEMPORAIRE',
             'date_retour_prevue': retour_prevu,
             'notes': 'Prêt test'
         })
@@ -116,4 +120,111 @@ class MaterielViewsTest(TestCase):
         # Materiel redevenu disponible
         self.materiel.refresh_from_db()
         self.assertEqual(self.materiel.statut_disponibilite, 'DISPONIBLE')
+
+    def test_bulk_delete_materiels(self):
+        """Supprime plusieurs matériels en une seule requête (AJAX)."""
+        # Promouvoir en superuser pour autoriser la suppression
+        self.user.is_superuser = True
+        self.user.is_staff = True
+        self.user.save()
+
+        autre_materiel = Materiel.objects.create(
+            asset_id='OKP-999998',
+            numero_inventaire='RAD-999998',
+            nom='Autre matériel',
+            categorie=self.category,
+            departement=self.dept,
+            etat_technique='FONCTIONNEL',
+            statut_disponibilite='DISPONIBLE'
+        )
+
+        self.client.login(username='test', password='testpass123')
+        url = reverse('assets:materiel_bulk_delete')
+        response = self.client.post(
+            url,
+            data={'materiel_ids': [self.materiel.pk, autre_materiel.pk]},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(Materiel.objects.filter(pk__in=[self.materiel.pk, autre_materiel.pk]).count(), 0)
+
+    def test_report_list_filters_attributions_by_date(self):
+        """Le rapport d'audit filtre les attributions sur une periode."""
+        self.client.login(username='test', password='testpass123')
+
+        now = timezone.now()
+        old_ts = now - timedelta(days=40)
+        recent_ts = now - timedelta(days=2)
+
+        beneficiary = Client.objects.create(
+            nom='Beneficiaire Test',
+            departement=self.dept
+        )
+
+        old_attr = Attribution.objects.create(
+            materiel=self.materiel,
+            client=beneficiary,
+            employe_responsable=self.user,
+            departement=self.dept,
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
+        )
+        recent_attr = Attribution.objects.create(
+            materiel=self.materiel,
+            client=beneficiary,
+            employe_responsable=self.user,
+            departement=self.dept,
+            type_attribution=Attribution.TYPE_INDEFINIE,
+        )
+        Attribution.objects.filter(pk=old_attr.pk).update(date_attribution=old_ts)
+        Attribution.objects.filter(pk=recent_attr.pk).update(date_attribution=recent_ts)
+
+        ct_attr = ContentType.objects.get_for_model(Attribution)
+        ct_materiel = ContentType.objects.get_for_model(Materiel)
+
+        old_log = AuditLog.objects.create(
+            user=self.user,
+            action=AuditLog.ACTION_CREATE,
+            content_type=ct_attr,
+            object_id='old',
+            object_repr='Ancienne attribution',
+        )
+        recent_log = AuditLog.objects.create(
+            user=self.user,
+            action=AuditLog.ACTION_CREATE,
+            content_type=ct_attr,
+            object_id='recent',
+            object_repr='Attribution recente',
+        )
+        non_attr_log = AuditLog.objects.create(
+            user=self.user,
+            action=AuditLog.ACTION_CREATE,
+            content_type=ct_materiel,
+            object_id='mat-1',
+            object_repr='Creation materiel',
+        )
+
+        AuditLog.objects.filter(pk=old_log.pk).update(timestamp=old_ts)
+        AuditLog.objects.filter(pk=recent_log.pk).update(timestamp=recent_ts)
+        AuditLog.objects.filter(pk=non_attr_log.pk).update(timestamp=recent_ts)
+
+        response = self.client.get(reverse('assets:report_list'), data={
+            'date_from': (now - timedelta(days=7)).date().isoformat(),
+            'date_to': now.date().isoformat(),
+            'attribution_only': '1',
+        })
+
+        self.assertEqual(response.status_code, 200)
+
+        report_ids = [item.pk for item in response.context['reports']]
+        self.assertIn(recent_log.pk, report_ids)
+        self.assertNotIn(old_log.pk, report_ids)
+        self.assertNotIn(non_attr_log.pk, report_ids)
+
+        self.assertEqual(response.context['attribution_total_count'], 1)
+        self.assertEqual(response.context['attribution_active_count'], 1)
+        self.assertEqual(response.context['attribution_returned_count'], 0)
+        self.assertEqual(len(response.context['attributions_period']), 1)
 

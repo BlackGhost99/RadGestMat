@@ -17,14 +17,19 @@
             </nav>
             <h1 class="h2">
                 <i class="bi bi-box-seam me-2"></i>{{ materiel.nom }}
+                {% if materiel.location %}
+                <span class="badge ms-2" style="background-color: #000000; color: #ffffff; font-size: 0.75rem; vertical-align: middle; font-weight: 600;">Loc: {{ materiel.location }}</span>
+                {% endif %}
             </h1>
             <p class="text-muted">Asset ID: <code>{{ materiel.asset_id }}</code></p>
         </div>
         <div class="col-auto">
             <div class="btn-group">
+                {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
                 <a href="{% url 'assets:materiel_update' materiel.pk %}" class="btn btn-outline-primary">
                     <i class="bi bi-pencil me-1"></i>Modifier
                 </a>
+                {% endif %}
 
                 {% if attribution_active %}
                 <a href="{% url 'assets:materiel_checkin' materiel.asset_id %}" class="btn btn-success">
@@ -38,7 +43,7 @@
                 <button class="btn btn-secondary" disabled>Non disponible</button>
                 {% endif %}
 
-                {% if user_profile.role == 'MANAGER_DEPT' %}
+                {% if request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'SUPER_ADMIN' %}
                 <a href="{% url 'assets:materiel_delete' materiel.pk %}" class="btn btn-outline-danger">
                     <i class="bi bi-trash me-1"></i>Supprimer
                 </a>
@@ -62,12 +67,12 @@
                         <div class="card-body">
                             <table class="table table-sm">
                                 <tr>
-                                    <th>Asset ID:</th>
-                                    <td><code>{{ materiel.asset_id }}</code></td>
+                                    <th style="color: var(--text-primary);">Asset ID:</th>
+                                    <td style="color: var(--text-primary);"><code>{{ materiel.asset_id }}</code></td>
                                 </tr>
                                 <tr>
-                                    <th>Catégorie:</th>
-                                    <td>
+                                    <th style="color: var(--text-primary);">Catégorie:</th>
+                                    <td style="color: var(--text-primary);">
                                         {% if materiel.categorie %}
                                         <span class="badge bg-secondary">{{ materiel.categorie.nom }}</span>
                                         {% else %}
@@ -76,18 +81,28 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <th>Salle:</th>
-                                    <td>
-                                        {% if materiel.salle %}
-                                            <span class="badge bg-info">{{ materiel.salle.nom }}</span>
+                                    <th style="color: var(--text-primary); font-weight: 600;">Localisation:</th>
+                                    <td style="color: var(--text-primary);">
+                                        {% if materiel.location %}
+                                        <span class="badge fw-bold px-3 py-2" style="background-color: #000000; color: #ffffff; font-size: 1rem; letter-spacing: 0.5px;">{{ materiel.location }}</span>
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                        <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                 </tr>
                                 <tr>
-                                    <th>Marque/Modèle:</th>
-                                    <td>
+                                    <th style="color: var(--text-primary);">Salle:</th>
+                                    <td style="color: var(--text-primary);">
+                                        {% if materiel.salle %}
+                                        <span class="badge bg-info text-dark">{{ materiel.salle.nom }}</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th style="color: var(--text-primary);">Marque/Modèle:</th>
+                                    <td style="color: var(--text-primary);">
                                         {% if materiel.marque or materiel.modele %}
                                         {{ materiel.marque }} {{ materiel.modele }}
                                         {% else %}
@@ -96,8 +111,8 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <th>Numéro de série:</th>
-                                    <td>
+                                    <th style="color: var(--text-primary);">Numéro de série:</th>
+                                    <td style="color: var(--text-primary);">
                                         {% if materiel.numero_serie %}
                                         <code>{{ materiel.numero_serie }}</code>
                                         {% else %}
@@ -121,13 +136,15 @@
                         <div class="card-body">
                             <div class="mb-3">
                                 <strong>État technique:</strong><br>
-                                <span class="badge {% if materiel.etat == 'FONCTIONNEL' %}bg-success{% elif materiel.etat == 'DEFECTUEUX' %}bg-danger{% else %}bg-info{% endif %} fs-6">
+                                <span
+                                    class="badge {% if materiel.etat == 'FONCTIONNEL' %}bg-success{% elif materiel.etat == 'DEFECTUEUX' %}bg-danger{% else %}bg-info{% endif %} fs-6">
                                     {{ materiel.get_etat_display }}
                                 </span>
                             </div>
                             <div class="mb-3">
                                 <strong>Statut:</strong><br>
-                                <span class="badge {% if materiel.statut == 'DISPONIBLE' %}bg-success{% elif materiel.statut == 'ATTRIBUE' %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6">
+                                <span
+                                    class="badge {% if materiel.statut == 'DISPONIBLE' %}bg-success{% elif materiel.statut == 'ATTRIBUE' %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6">
                                     {{ materiel.get_statut_display }}
                                 </span>
                             </div>
@@ -160,11 +177,15 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-md-6">
-                                    <strong>Date attribution:</strong> {{ attribution_active.date_attribution|date:"d/m/Y H:i" }}<br>
-                                    {% if attribution_active.date_retour_prevue %}
-                                    <strong>Retour prévu:</strong> {{ attribution_active.date_retour_prevue|date:"d/m/Y" }}<br>
+                                    <strong>Date attribution:</strong> {{
+                                    attribution_active.date_attribution|date:"d/m/Y H:i" }}<br>
+                                    <strong>Attribution:</strong> {{ attribution_active.get_type_attribution_display }}<br>
+                                    {% if attribution_active.type_attribution == "TEMPORAIRE" and attribution_active.date_retour_prevue %}
+                                    <strong>Retour pr?vu:</strong> {{ attribution_active.date_retour_prevue|date:"d/m/Y" }}<br>
+                                    {% elif attribution_active.type_attribution == "INDEFINIE" %}
+                                    <strong>Retour:</strong> Indefinie<br>
                                     {% endif %}
-                                    {% if attribution_active.est_en_retard %}
+                                    {% if attribution_active.is_overdue %}
                                     <span class="badge bg-danger mt-2">EN RETARD</span>
                                     {% endif %}
                                 </div>
@@ -208,15 +229,15 @@
                 </div>
                 <div class="card-body text-center">
                     {% if materiel.qr_code %}
-                    <img src="{{ materiel.qr_code.url }}" alt="QR Code {{ materiel.asset_id }}" 
-                         class="img-fluid mb-3" style="max-width: 200px;">
+                    <img src="{{ materiel.qr_code.url }}" alt="QR Code {{ materiel.asset_id }}" class="img-fluid mb-3"
+                        style="max-width: 200px;">
                     <br>
                     <a href="{{ materiel.qr_code.url }}" download class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-download me-1"></i>Télécharger
                     </a>
                     {% else %}
                     <p class="text-muted">QR Code non généré</p>
-                    <form method="post" action="{% url 'materiel_update' materiel.pk %}">
+                    <form method="post" action="{% url 'assets:materiel_update' materiel.pk %}">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-primary" name="generate_qr">
                             <i class="bi bi-qr-code me-1"></i>Générer QR Code

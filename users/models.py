@@ -33,3 +33,17 @@ class ProfilUtilisateur(models.Model):
     
     def est_manager_departement(self):
         return self.role in ['SUPER_ADMIN', 'DEPT_MANAGER']
+
+
+class UserPreferences(models.Model):
+    """Préférences utilisateur pour l'interface"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
+    dark_mode = models.BooleanField(default=False, verbose_name="Mode sombre")
+    date_modification = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Préférences Utilisateur"
+        verbose_name_plural = "Préférences Utilisateurs"
+    
+    def __str__(self):
+        return f"Préférences de {self.user.username}"

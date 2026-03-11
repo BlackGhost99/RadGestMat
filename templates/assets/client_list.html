@@ -21,8 +21,9 @@
         <div class="col-12">
             <form method="get" class="row g-3">
                 <div class="col-md-6">
-                    <input type="text" name="search" class="form-control" placeholder="Rechercher un client..." 
-                           value="{{ request.GET.search }}">
+                    <input type="text" id="client-search" name="search" class="form-control" placeholder="Rechercher un client..." 
+                           value="{{ request.GET.search }}" list="client-suggestions" autocomplete="off">
+                    <datalist id="client-suggestions"></datalist>
                 </div>
                 <div class="col-md-4">
                     <select name="type_client" class="form-select">
@@ -116,4 +117,66 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const input = document.getElementById('client-search');
+  const list = document.getElementById('client-suggestions');
+  if (!input || !list) return;
+
+  const endpoint = "{% url 'assets:api_search_suggestions' %}";
+  let timer = null;
+  let activeController = null;
+
+  function clearOptions() {
+    list.innerHTML = '';
+  }
+
+  function populate(items) {
+    clearOptions();
+    if (!Array.isArray(items)) return;
+    items.forEach((item) => {
+      if (!item) return;
+      const option = document.createElement('option');
+      option.value = item;
+      list.appendChild(option);
+    });
+  }
+
+  input.addEventListener('input', () => {
+    const value = input.value.trim();
+    if (timer) window.clearTimeout(timer);
+
+    timer = window.setTimeout(() => {
+      if (value.length < 1) {
+        clearOptions();
+        return;
+      }
+
+      if (activeController) {
+        activeController.abort();
+      }
+      activeController = new AbortController();
+
+      const url = new URL(endpoint, window.location.origin);
+      url.searchParams.set('scope', 'client');
+      url.searchParams.set('q', value);
+      url.searchParams.set('limit', '12');
+
+      fetch(url.toString(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        signal: activeController.signal,
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => populate(data && data.suggestions ? data.suggestions : []))
+        .catch((err) => {
+          if (err && err.name === 'AbortError') return;
+          clearOptions();
+        });
+    }, 200);
+  });
+})();
+</script>
 {% endblock %}

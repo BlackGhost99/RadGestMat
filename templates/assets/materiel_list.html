@@ -1,215 +1,503 @@
-<!-- templates/assets/materiel_list.html -->
 {% extends "base.html" %}
 {% load static %}
 
 {% block title %}Inventaire - RadGestMat{% endblock %}
 
-{% block content %}
-<div class="inventory-container w-100">
-<div class="w-100 py-3 py-md-4">
-    <!-- En-tête -->
+{% block content_wrapper %}
+<div class="inventory-container w-100 h-100 d-flex flex-column">
+  <div class="w-100 py-3 py-md-4 flex-grow-1 d-flex flex-column" style="min-height: 0;">
+    {% block content %}
     <div class="row mb-4">
-        <div class="col">
-            <h1 class="h2">
-                <i class="bi bi-box-seam me-2"></i>Inventaire
-            </h1>
-            <p class="text-muted">Matériel groupé par équipement</p>
-        </div>
-        <div class="col-auto">
-            <a href="{% url 'assets:materiel_create' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-1"></i>Ajouter du matériel
-            </a>
-        </div>
+      <div class="col">
+        <h1 class="h2">
+          <i class="bi bi-box-seam me-2"></i>Inventaire
+        </h1>
+        <p class="text-muted">Materiel groupe par equipement avec filtres avances</p>
+      </div>
+      {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+      <div class="col-auto">
+        <a href="{% url 'assets:materiel_create' %}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>Ajouter du materiel
+        </a>
+      </div>
+      {% endif %}
     </div>
 
-    <!-- Cartes de statistiques -->
     <div class="row g-3 mb-4">
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card stat-card h-100">
-                <div class="card-body text-center">
-                    <h3 class="fw-bold text-primary">{{ stats.total }}</h3>
-                    <small class="text-muted">Total</small>
-                </div>
-            </div>
+      <div class="col-xl-2 col-md-4 col-6">
+        <div class="card stat-card h-100">
+          <div class="card-body text-center">
+            <h3 class="fw-bold text-primary" id="stats-total">{{ stats.total }}</h3>
+            <small class="text-muted">Total</small>
+          </div>
         </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card stat-card disponible h-100">
-                <div class="card-body text-center">
-                    <h3 class="fw-bold text-success">{{ stats.disponible }}</h3>
-                    <small class="text-muted">Disponible</small>
-                </div>
-            </div>
+      </div>
+      <div class="col-xl-2 col-md-4 col-6">
+        <div class="card stat-card disponible h-100">
+          <div class="card-body text-center">
+            <h3 class="fw-bold text-success" id="stats-disponible">{{ stats.disponible }}</h3>
+            <small class="text-muted">Disponible</small>
+          </div>
         </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card stat-card attribue h-100">
-                <div class="card-body text-center">
-                    <h3 class="fw-bold text-warning">{{ stats.attribue }}</h3>
-                    <small class="text-muted">Attribué</small>
-                </div>
-            </div>
+      </div>
+      <div class="col-xl-2 col-md-4 col-6">
+        <div class="card stat-card attribue h-100">
+          <div class="card-body text-center">
+            <h3 class="fw-bold text-warning" id="stats-attribue">{{ stats.attribue }}</h3>
+            <small class="text-muted">Attribue</small>
+          </div>
         </div>
-        <div class="col-xl-2 col-md-4 col-6">
-            <div class="card stat-card maintenance h-100">
-                <div class="card-body text-center">
-                    <h3 class="fw-bold text-info">{{ stats.maintenance }}</h3>
-                    <small class="text-muted">Maintenance</small>
-                </div>
-            </div>
+      </div>
+      <div class="col-xl-2 col-md-4 col-6">
+        <div class="card stat-card maintenance h-100">
+          <div class="card-body text-center">
+            <h3 class="fw-bold text-info" id="stats-maintenance">{{ stats.maintenance }}</h3>
+            <small class="text-muted">Maintenance</small>
+          </div>
         </div>
+      </div>
     </div>
 
-    <!-- Filtres et recherche -->
     <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-5">
-                    <label for="q" class="form-label">Recherche</label>
-                    <input type="text" class="form-control" id="q" name="q" value="{{ query }}" 
-                           placeholder="Nom d'équipement, modèle...">
-                </div>
-                <div class="col-md-5">
-                    <label for="categorie" class="form-label">Catégorie</label>
-                    <select class="form-select" id="categorie" name="categorie">
-                        <option value="">Toutes les catégories</option>
-                        {% for cat in categories %}
-                        <option value="{{ cat.id }}" {% if categorie_filter == cat.id|stringformat:"s" %}selected{% endif %}>
-                            {{ cat.nom }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-funnel me-1"></i>Filtrer
-                    </button>
-                </div>
-            </form>
-        </div>
+      <div class="card-body">
+        <form method="get" class="row g-3">
+          <div class="col-md-3">
+            <label for="q" class="form-label">Recherche</label>
+            <input type="text" class="form-control" id="q" name="q" value="{{ query }}" placeholder="Nom d'equipement, modele..." list="materiel-suggestions" autocomplete="off">
+            <datalist id="materiel-suggestions"></datalist>
+          </div>
+          <div class="col-md-2">
+            <label for="categorie" class="form-label">Categorie</label>
+            <select class="form-select" id="categorie" name="categorie">
+              <option value="">Toutes les categories</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if categorie_filter|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="location" class="form-label">Localisation</label>
+            <select class="form-select" id="location" name="location">
+              <option value="">Toutes les localisations</option>
+              {% for loc in locations %}
+              <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>{{ loc }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="statut_disponibilite" class="form-label">Statut</label>
+            <select class="form-select" id="statut_disponibilite" name="statut_disponibilite">
+              <option value="">Tous les statuts</option>
+              {% for value, label in statut_choices %}
+              <option value="{{ value }}" {% if statut_filter == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="etat_technique" class="form-label">Etat technique</label>
+            <select class="form-select" id="etat_technique" name="etat_technique">
+              <option value="">Tous les etats</option>
+              {% for value, label in etat_choices %}
+              <option value="{{ value }}" {% if etat_filter == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="marque" class="form-label">Marque</label>
+            <select class="form-select" id="marque" name="marque">
+              <option value="">Toutes les marques</option>
+              {% for marque in marques %}
+              <option value="{{ marque }}" {% if marque_filter == marque %}selected{% endif %}>{{ marque }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="date_achat_from" class="form-label">Achat du</label>
+            <input type="date" class="form-control" id="date_achat_from" name="date_achat_from" value="{{ date_achat_from }}">
+          </div>
+          <div class="col-md-2">
+            <label for="date_achat_to" class="form-label">Achat au</label>
+            <input type="date" class="form-control" id="date_achat_to" name="date_achat_to" value="{{ date_achat_to }}">
+          </div>
+
+          {% if user_profile and user_profile.role == 'SUPER_ADMIN' and departements %}
+          <div class="col-md-2">
+            <label for="departement" class="form-label">Departement</label>
+            <select class="form-select" id="departement" name="departement">
+              <option value="">Tous les departements</option>
+              {% for d in departements %}
+              <option value="{{ d.id }}" {% if request.GET.departement|stringformat:"s" == d.id|stringformat:"s" %}selected{% endif %}>{{ d.nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-funnel me-1"></i>Filtrer
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <!-- Tableau des groupes de matériels -->
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Liste des équipements</h5>
-            <span class="badge bg-primary">{{ groupes_materiels|length }} type(s) d'équipement</span>
+    <div class="card flex-grow-1 d-flex flex-column" style="min-height: 0;">
+      <div class="card-header d-flex justify-content-between align-items-center flex-shrink-0">
+        <h5 class="card-title mb-0">Liste des equipements</h5>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-primary" id="group-count">
+            {{ groupes_materiels|length }} type(s) d'equipement
+          </span>
+          {% if can_manage and groupes_materiels %}
+          <span class="text-muted small" id="selection-count">0 selectionne(s)</span>
+          <button type="button" class="btn btn-danger btn-sm" id="bulk-delete-button" disabled>
+            <i class="bi bi-trash me-1"></i>Supprimer la selection
+          </button>
+          {% endif %}
         </div>
-        <div class="card-body p-0">
-            {% if groupes_materiels %}
-            <div class="table-responsive" style="max-height: calc(100vh - 450px); overflow-y: auto;">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Nom de l'équipement</th>
-                            <th>Quantité</th>
-                            <th>Catégorie</th>
-                            <th>Disponible</th>
-                            <th>Attribué</th>
-                            <th>Maintenance</th>
-                            <th>Dernière modification</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for groupe in groupes_materiels %}
-                        <tr style="cursor: pointer;" onclick="window.location.href='{% url 'assets:materiel_group_detail' nom=groupe.nom %}'">
-                            <td>
-                                <strong>{{ groupe.nom }}</strong>
-                            </td>
-                            <td>
-                                <span class="badge bg-primary">{{ groupe.quantite }}</span>
-                            </td>
-                            <td>
-                                {% if groupe.categorie %}
-                                <span class="badge bg-secondary">{{ groupe.categorie.nom }}</span>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="badge bg-success">{{ groupe.disponible }}</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-warning text-dark">{{ groupe.attribue }}</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-info">{{ groupe.maintenance }}</span>
-                            </td>
-                            <td>
-                                <small class="text-muted">{{ groupe.date_modification|date:"d/m/Y H:i" }}</small>
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm" onclick="event.stopPropagation();">
-                                    <a href="{% url 'assets:materiel_group_detail' nom=groupe.nom %}" class="btn btn-outline-primary" title="Voir tous les matériels">
-                                        <i class="bi bi-eye"></i> Voir
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-inbox display-1 text-muted"></i>
-                <h4 class="text-muted mt-3">Aucun équipement trouvé</h4>
-                <p class="text-muted">Aucun équipement ne correspond à vos critères de recherche.</p>
-                <a href="{% url 'assets:materiel_create' %}" class="btn btn-primary">
-                    <i class="bi bi-plus-circle me-1"></i>Ajouter du matériel
-                </a>
-            </div>
+      </div>
+
+      <div class="card-body p-0 d-flex flex-column flex-grow-1" style="min-height: 0;">
+        {% if groupes_materiels %}
+          {% if can_manage %}
+          <form id="bulk-delete-form" method="post" action="{% url 'assets:materiel_group_bulk_delete' %}">
+            {% csrf_token %}
+          </form>
+          {% endif %}
+
+          <div class="table-responsive flex-grow-1" id="group-table-wrapper" style="overflow-y: auto; overflow-x: auto;">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  {% if can_manage %}
+                  <th style="width: 36px;">
+                    <input class="form-check-input" type="checkbox" id="select-all" aria-label="Tout selectionner" onclick="event.stopPropagation();">
+                  </th>
+                  {% endif %}
+                  <th>Nom de l'equipement</th>
+                  {% if show_all %}
+                  <th>Departement</th>
+                  {% endif %}
+                  <th>Quantite</th>
+                  <th>Disponible</th>
+                  <th>Attribue</th>
+                  <th>Maintenance</th>
+                  <th>Hors service</th>
+                  <th>Derniere modification</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for groupe in groupes_materiels %}
+                <tr
+                  style="cursor: pointer;"
+                  data-nom="{{ groupe.nom }}"
+                  data-departement-id="{% if groupe.departement %}{{ groupe.departement.id }}{% endif %}"
+                  data-quantite="{{ groupe.quantite }}"
+                  data-disponible="{{ groupe.disponible }}"
+                  data-attribue="{{ groupe.attribue }}"
+                  data-maintenance="{{ groupe.maintenance }}"
+                  onclick="window.location.href='{% url 'assets:materiel_group_detail' nom=groupe.nom %}'"
+                >
+                  {% if can_manage %}
+                  <td onclick="event.stopPropagation();">
+                    <input class="form-check-input group-select" type="checkbox" aria-label="Selectionner {{ groupe.group_display }}" onclick="event.stopPropagation();">
+                  </td>
+                  {% endif %}
+
+                  <td><strong>{{ groupe.group_display|default:groupe.nom }}</strong></td>
+
+                  {% if show_all %}
+                  <td>
+                    {% if groupe.departement %}
+                    <span class="badge bg-info text-dark">{{ groupe.departement.nom }}</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  {% endif %}
+
+                  <td><span class="badge bg-primary">{{ groupe.quantite }}</span></td>
+                  <td><span class="badge bg-success">{{ groupe.disponible }}</span></td>
+                  <td><span class="badge bg-warning text-dark">{{ groupe.attribue }}</span></td>
+                  <td><span class="badge bg-info">{{ groupe.maintenance }}</span></td>
+                  <td><span class="badge bg-secondary">{{ groupe.hors_service|default:0 }}</span></td>
+                  <td><small class="text-muted">{{ groupe.date_modification|date:"d/m/Y H:i" }}</small></td>
+
+                  <td>
+                    <div class="btn-group btn-group-sm" onclick="event.stopPropagation();">
+                      <a href="{% url 'assets:materiel_group_detail' nom=groupe.nom %}" class="btn btn-outline-primary" title="Voir tous les materiels">
+                        <i class="bi bi-eye"></i> Voir
+                      </a>
+                      {% if can_manage %}
+                      <button type="button" class="btn btn-outline-danger js-delete-group" title="Supprimer" data-nom="{{ groupe.nom }}" data-departement-id="{% if groupe.departement %}{{ groupe.departement.id }}{% endif %}">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="text-center py-5 d-none" id="group-empty-state">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <h4 class="text-muted mt-3">Aucun groupe trouve</h4>
+            <p class="text-muted">Aucun materiel ne correspond a vos criteres.</p>
+          </div>
+        {% else %}
+          <div class="text-center py-5" id="group-empty-state">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <h4 class="text-muted mt-3">Aucun groupe trouve</h4>
+            <p class="text-muted">Aucun materiel ne correspond a vos criteres de recherche.</p>
+            {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+            <a href="{% url 'assets:materiel_create' %}" class="btn btn-primary">
+              <i class="bi bi-plus-circle me-1"></i>Ajouter du materiel
+            </a>
             {% endif %}
-        </div>
+          </div>
+        {% endif %}
+      </div>
     </div>
+    {% endblock %}
+  </div>
 </div>
-</div>
+{% endblock %}
 
 <style>
-.inventory-container {
-    height: calc(100vh - 120px);
-    overflow-y: auto;
-    overflow-x: hidden;
+  .inventory-container {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
     width: 100%;
-}
+    display: flex;
+    flex-direction: column;
+  }
 
-.inventory-container .container-fluid {
-    min-height: 100%;
-    padding-bottom: 2rem;
-}
+  .inventory-container > div {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
 
-/* Tableau avec scroll interne */
-.table-responsive {
-    position: relative;
-}
-
-.table-responsive table thead {
+  .table-responsive table thead {
     position: sticky;
     top: 0;
     background-color: #f8f9fa;
     z-index: 10;
-}
+  }
 
-.table-responsive table thead th {
+  .table-responsive table thead th {
     background-color: #f8f9fa;
     border-bottom: 2px solid #dee2e6;
-}
-
-/* Améliorer la visibilité du scroll */
-.table-responsive::-webkit-scrollbar {
-    width: 8px;
-}
-
-.table-responsive::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.table-responsive::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
+  }
 </style>
+
+{% block extra_js %}
+<script>
+(function () {
+  const input = document.getElementById('q');
+  const list = document.getElementById('materiel-suggestions');
+  if (!input || !list) return;
+
+  const endpoint = "{% url 'assets:api_search_suggestions' %}";
+  let timer = null;
+  let activeController = null;
+
+  function clearOptions() {
+    list.innerHTML = '';
+  }
+
+  function populate(items) {
+    clearOptions();
+    if (!Array.isArray(items)) return;
+    items.forEach((item) => {
+      if (!item) return;
+      const option = document.createElement('option');
+      option.value = item;
+      list.appendChild(option);
+    });
+  }
+
+  input.addEventListener('input', () => {
+    const value = input.value.trim();
+    if (timer) window.clearTimeout(timer);
+
+    timer = window.setTimeout(() => {
+      if (value.length < 1) {
+        clearOptions();
+        return;
+      }
+
+      if (activeController) {
+        activeController.abort();
+      }
+      activeController = new AbortController();
+
+      const url = new URL(endpoint, window.location.origin);
+      url.searchParams.set('scope', 'materiel');
+      url.searchParams.set('q', value);
+      url.searchParams.set('limit', '12');
+
+      fetch(url.toString(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        signal: activeController.signal,
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => populate(data && data.suggestions ? data.suggestions : []))
+        .catch((err) => {
+          if (err && err.name === 'AbortError') return;
+          clearOptions();
+        });
+    }, 200);
+  });
+})();
+</script>
+<script>
+(function () {
+  const form = document.getElementById('bulk-delete-form');
+  if (!form) return;
+
+  const deleteButton = document.getElementById('bulk-delete-button');
+  const selectionCount = document.getElementById('selection-count');
+  const selectAll = document.getElementById('select-all');
+  const groupCount = document.getElementById('group-count');
+
+  const statsTotalEl = document.getElementById('stats-total');
+  const statsDispoEl = document.getElementById('stats-disponible');
+  const statsAttribEl = document.getElementById('stats-attribue');
+  const statsMaintenanceEl = document.getElementById('stats-maintenance');
+
+  function getRows() {
+    return Array.from(document.querySelectorAll('tr[data-nom]')).filter((row) => row.dataset.nom);
+  }
+
+  function getCheckboxes() {
+    return Array.from(document.querySelectorAll('.group-select'));
+  }
+
+  function updateSelectionUI() {
+    const boxes = getCheckboxes();
+    const selected = boxes.filter((cb) => cb.checked).length;
+
+    if (selectionCount) selectionCount.textContent = `${selected} selectionne(s)`;
+    if (deleteButton) deleteButton.disabled = selected === 0;
+
+    if (selectAll) {
+      selectAll.indeterminate = selected > 0 && selected < boxes.length;
+      selectAll.checked = boxes.length > 0 && selected === boxes.length;
+    }
+  }
+
+  function recomputeStats() {
+    const rows = getRows();
+    let total = 0;
+    let dispo = 0;
+    let attrib = 0;
+    let maintenance = 0;
+
+    rows.forEach((row) => {
+      total += parseInt(row.dataset.quantite || '0', 10);
+      dispo += parseInt(row.dataset.disponible || '0', 10);
+      attrib += parseInt(row.dataset.attribue || '0', 10);
+      maintenance += parseInt(row.dataset.maintenance || '0', 10);
+    });
+
+    if (statsTotalEl) statsTotalEl.textContent = total;
+    if (statsDispoEl) statsDispoEl.textContent = dispo;
+    if (statsAttribEl) statsAttribEl.textContent = attrib;
+    if (statsMaintenanceEl) statsMaintenanceEl.textContent = maintenance;
+    if (groupCount) groupCount.textContent = `${rows.length} type(s) d'equipement`;
+  }
+
+  function csrfToken() {
+    const tokenInput = form.querySelector('[name=csrfmiddlewaretoken]');
+    return tokenInput ? tokenInput.value : '';
+  }
+
+  function selectedRows() {
+    return getCheckboxes()
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.closest('tr'))
+      .filter(Boolean);
+  }
+
+  async function submitDeletion(rows) {
+    if (!rows.length) {
+      window.alert('Aucun equipement selectionne.');
+      return;
+    }
+
+    const ok = window.confirm(`Supprimer ${rows.length} equipement(s) et tous les materiels associes ?`);
+    if (!ok) return;
+
+    const payload = {
+      groups: rows.map((row) => ({
+        nom: row.dataset.nom,
+        departement_id: row.dataset.departementId || null,
+      })),
+    };
+
+    const response = await fetch(form.action, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrfToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data || !data.success) {
+      window.alert((data && data.error) || 'Erreur pendant la suppression.');
+      return;
+    }
+
+    rows.forEach((row) => row.remove());
+    updateSelectionUI();
+    recomputeStats();
+    window.alert(data.message || 'Suppression effectuee.');
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', () => {
+      const checked = selectAll.checked;
+      getCheckboxes().forEach((cb) => {
+        cb.checked = checked;
+      });
+      updateSelectionUI();
+    });
+  }
+
+  document.addEventListener('change', (event) => {
+    if (event.target && event.target.classList.contains('group-select')) {
+      updateSelectionUI();
+    }
+  });
+
+  if (deleteButton) {
+    deleteButton.addEventListener('click', () => {
+      submitDeletion(selectedRows());
+    });
+  }
+
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('.js-delete-group');
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const row = button.closest('tr');
+    if (!row) return;
+    submitDeletion([row]);
+  });
+
+  updateSelectionUI();
+})();
+</script>
 {% endblock %}

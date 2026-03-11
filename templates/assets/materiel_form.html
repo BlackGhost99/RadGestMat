@@ -73,25 +73,15 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <label for="{{ form.nom_categorie.id_for_label }}" class="form-label">
+                                <label for="{{ form.categorie.id_for_label }}" class="form-label">
                                     Catégorie
                                 </label>
-                                <div class="input-group">
-                                    {{ form.nom_categorie }}
-                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCreerCategorie">
-                                        <i class="bi bi-plus-lg"></i> Nouveau
-                                    </button>
-                                </div>
-                                <datalist id="categories_list">
-                                    {% for cat in categories %}
-                                    <option value="{{ cat.nom }}">
-                                    {% endfor %}
-                                </datalist>
-                                {% if form.nom_categorie.errors %}
-                                <div class="text-danger small">{{ form.nom_categorie.errors }}</div>
+                                {{ form.categorie }}
+                                {% if form.categorie.errors %}
+                                <div class="text-danger small">{{ form.categorie.errors }}</div>
                                 {% endif %}
-                                {% if form.nom_categorie.help_text %}
-                                <small class="form-text text-muted">{{ form.nom_categorie.help_text }}</small>
+                                {% if form.categorie.help_text %}
+                                <small class="form-text text-muted">{{ form.categorie.help_text }}</small>
                                 {% endif %}
                             </div>
                             {% if form.departement %}
@@ -103,6 +93,22 @@
                                 {% endif %}
                             </div>
                             {% endif %}
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.location.id_for_label }}" class="form-label">Localisation</label>
+                                {{ form.location }}
+                                <datalist id="locations_list">
+                                    {% for loc in locations_existantes %}
+                                    <option value="{{ loc }}">
+                                    {% endfor %}
+                                </datalist>
+                                {% if form.location.errors %}
+                                <div class="text-danger small">{{ form.location.errors }}</div>
+                                {% endif %}
+                                {% if form.location.help_text %}
+                                <small class="form-text text-muted">{{ form.location.help_text }}</small>
+                                {% endif %}
+                            </div>
                             
                             <div class="col-md-6">
                                 <label for="{{ form.statut_disponibilite.id_for_label }}" class="form-label">Statut</label>
@@ -162,6 +168,19 @@
                                 {% endif %}
                             </div>
                             
+                            {% if form.salle %}
+                            <div class="col-md-6">
+                                <label for="{{ form.salle.id_for_label }}" class="form-label">Salle (optionnel)</label>
+                                {{ form.salle }}
+                                {% if form.salle.errors %}
+                                <div class="text-danger small">{{ form.salle.errors }}</div>
+                                {% endif %}
+                                {% if form.salle.help_text %}
+                                <small class="form-text text-muted">{{ form.salle.help_text }}</small>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
                             <!-- Notes -->
                             <div class="col-12">
                                 <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
@@ -188,40 +207,6 @@
                     </form>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal pour créer une nouvelle catégorie -->
-<div class="modal fade" id="modalCreerCategorie" tabindex="-1" aria-labelledby="modalCreerCategorieLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalCreerCategorieLabel">
-                    <i class="bi bi-plus-circle me-2"></i>Créer une nouvelle catégorie
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <form id="formCreerCategorie">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="nouvelle_categorie_nom" class="form-label">Nom de la catégorie *</label>
-                        <input type="text" class="form-control" id="nouvelle_categorie_nom" name="nom" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="nouvelle_categorie_description" class="form-label">Description</label>
-                        <textarea class="form-control" id="nouvelle_categorie_description" name="description" rows="3"></textarea>
-                    </div>
-                    <div id="messageCreerCategorie" class="alert d-none"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg me-1"></i>Créer
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -293,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Préremplir les champs asset_id et numero_inventaire si création
     {% if not materiel %}
-    const assetIdField = document.getElementById('{{ form.asset_id.id_for_label }}');
+    // Réutiliser assetIdField déjà déclaré plus haut
     const numeroInvField = document.getElementById('{{ form.numero_inventaire.id_for_label }}');
     if (assetIdField) {
         // Laisser vide pour que la génération automatique se fasse côté serveur
@@ -320,12 +305,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalCreerNom = new bootstrap.Modal(document.getElementById('modalCreerNom'));
     const messageDiv = document.getElementById('messageCreerNom');
     const nomMaterielField = document.getElementById('id_nom_materiel');
-    const nomCategorieField = document.getElementById('id_nom_categorie');
-    
-    // Gestion du formulaire de création de catégorie
-    const formCreerCategorie = document.getElementById('formCreerCategorie');
-    const modalCreerCategorie = new bootstrap.Modal(document.getElementById('modalCreerCategorie'));
-    const messageCategorieDiv = document.getElementById('messageCreerCategorie');
     
     if (formCreerNom) {
         formCreerNom.addEventListener('submit', function(e) {
@@ -367,16 +346,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Remplir les champs du formulaire principal
                     nomMaterielField.value = data.nom;
-                    if (data.categorie_id && nomCategorieField) {
-                        // Récupérer le nom de la catégorie depuis le select
-                        const categorieSelect = document.getElementById('nouvelle_categorie_popup');
-                        if (categorieSelect) {
-                            const selectedOption = categorieSelect.options[categorieSelect.selectedIndex];
-                            if (selectedOption) {
-                                nomCategorieField.value = selectedOption.text;
-                            }
-                        }
-                    }
                     
                     showMessage('Nom de matériel créé avec succès !', 'success');
                     
@@ -401,70 +370,6 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.textContent = message;
         messageDiv.className = `alert alert-${type}`;
         messageDiv.classList.remove('d-none');
-    }
-    
-    // Gestion de la création de catégorie
-    if (formCreerCategorie) {
-        formCreerCategorie.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const nouveauNom = formData.get('nom').trim();
-            const description = formData.get('description').trim();
-            
-            if (!nouveauNom) {
-                showMessageCategorie('Le nom est requis', 'danger');
-                return;
-            }
-            
-            // Récupérer le token CSRF depuis le DOM
-            const csrftoken = (document.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value;
-
-            // Envoyer la requête
-            fetch('{% url "assets:api_creer_categorie" %}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': csrftoken
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Ajouter la catégorie au datalist
-                    const datalist = document.getElementById('categories_list');
-                    const option = document.createElement('option');
-                    option.value = data.nom;
-                    datalist.appendChild(option);
-                    
-                    // Remplir le champ du formulaire principal
-                    if (nomCategorieField) {
-                        nomCategorieField.value = data.nom;
-                    }
-                    
-                    showMessageCategorie('Catégorie créée avec succès !', 'success');
-                    
-                    // Fermer le modal après 1 seconde
-                    setTimeout(() => {
-                        modalCreerCategorie.hide();
-                        formCreerCategorie.reset();
-                        messageCategorieDiv.classList.add('d-none');
-                    }, 1000);
-                } else {
-                    showMessageCategorie(data.error || 'Erreur lors de la création', 'danger');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showMessageCategorie('Erreur lors de la communication avec le serveur', 'danger');
-            });
-        });
-    }
-    
-    function showMessageCategorie(message, type) {
-        messageCategorieDiv.textContent = message;
-        messageCategorieDiv.className = `alert alert-${type}`;
-        messageCategorieDiv.classList.remove('d-none');
     }
 });
 </script>

@@ -11,6 +11,15 @@ class WhatsAppTemplates:
     """
     
     @staticmethod
+    def _return_label(attribution):
+        attr_type = getattr(attribution, 'type_attribution', None)
+        if attr_type == 'INDEFINIE':
+            return 'Indefinie'
+        if attr_type == 'USAGE_UNIQUE':
+            return 'Usage unique'
+        return attribution.date_retour_prevue or 'Non defini'
+
+    @staticmethod
     def creation(attribution, materiel, client, duree_emprunt, **kwargs):
         """
         Message sent when material is borrowed
@@ -21,7 +30,7 @@ Votre demande d'emprunt a été confirmée:
 
 📦 *Matériel:* {materiel.nom}
 🏷️ *Référence:* {materiel.code}
-📅 *Date retour:* {attribution.date_retour_prevue}
+📅 *Date retour:* {WhatsAppTemplates._return_label(attribution)}
 🕐 *Heure retour:* {attribution.heure_retour_prevue or 'À convenir'}
 
 ✅ Vous pouvez retirer le matériel au point de distribution.
@@ -62,7 +71,7 @@ Vous avez emprunté un matériel qui doit être restitué dans 2 jours:
 
 📦 *Matériel:* {materiel.nom}
 🏷️ *Référence:* {materiel.code}
-📅 *Date retour:* {attribution.date_retour_prevue}
+📅 *Date retour:* {WhatsAppTemplates._return_label(attribution)}
 🕐 *Heure retour:* {attribution.heure_retour_prevue or 'Avant 18h'}
 
 Préparez le matériel et vérifiez son état.
@@ -83,7 +92,7 @@ Votre emprunt expire DEMAIN:
 
 📦 *Matériel:* {materiel.nom}
 🏷️ *Référence:* {materiel.code}
-📅 *Date retour:* {attribution.date_retour_prevue}
+📅 *Date retour:* {WhatsAppTemplates._return_label(attribution)}
 🕐 *Heure limite:* {attribution.heure_retour_prevue or 'Avant 18h'}
 
 ⚠️ *Actions requises:*
@@ -130,7 +139,7 @@ Le matériel suivant est EN RETARD:
 
 📦 *Matériel:* {materiel.nom}
 🏷️ *Référence:* {materiel.code}
-📅 *Date retour prévue:* {attribution.date_retour_prevue}
+📅 *Date retour prévue:* {WhatsAppTemplates._return_label(attribution)}
 
 🚨 *Situation actuelle:*
 • Matériel non restitué
@@ -166,3 +175,6 @@ Merci d'avoir utilisé notre service de gestion des matériels!
 
 📈 Vous pouvez à nouveau faire une demande d'emprunt.
 👍 Bon travail!"""
+
+
+

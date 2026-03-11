@@ -9,8 +9,11 @@ redis==5.2.0
 sentry-sdk==2.19.0
 python-json-logger==2.0.7
 whitenoise==6.8.2
-gunicorn==23.0.0
+gunicorn==23.0.0  # Linux/Unix only
+waitress==3.0.0  # Windows-compatible WSGI server
 weasyprint
 pdfkit
 APScheduler==3.10.4
 twilio==9.2.3
+pandas>=2.0.0
+openpyxl>=3.1.0

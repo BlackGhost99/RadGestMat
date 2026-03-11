@@ -1,24 +1,26 @@
 <!-- templates/base.html -->
 {% load static %}
 <!DOCTYPE html>
-<html lang="fr" data-bs-theme="light">
+<html lang="fr" data-bs-theme="{{ theme|default:'light' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}RadGestMat - Gestion de Matériel{% endblock %}</title>
+    <link rel="icon" href="{% static 'images/logo/rad.png' %}" type="image/png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/font/bootstrap-icons.css' %}">
     <!-- Custom CSS -->
     <link href="{% static 'css/custom.css' %}" rel="stylesheet">
     <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
 </head>
-<body class="app-body d-flex flex-column min-vh-100">
+<body class="app-body d-flex flex-column min-vh-100 {% block body_class %}{% endblock %}">
+    {% block header %}
     <!-- Navigation -->
     <header class="app-header">
         <nav class="navbar navbar-expand-lg navbar-elevated py-2" style="position: static;">
@@ -56,6 +58,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'assets:categorie_list' %}">
+                                <i class="bi bi-tags me-1"></i>Catégories
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'assets:attribution_list' %}">
                                 <i class="bi bi-arrow-left-right me-1"></i>Attributions
                             </a>
@@ -76,6 +83,9 @@
 
                     <div class="d-flex align-items-center gap-3">
                         {% if user.is_authenticated %}
+                        <button type="button" class="btn btn-outline-light btn-sm" id="themeToggleBtn" onclick="toggleTheme()" title="Changer le thème">
+                            <i class="bi {% if theme == 'dark' %}bi-sun{% else %}bi-moon{% endif %}"></i>
+                        </button>
                         <a href="{% url 'assets:materiel_create' %}" class="btn btn-gradient d-none d-xl-inline-flex">
                             <i class="bi bi-plus-lg me-2"></i>Nouveau matériel
                         </a>
@@ -93,6 +103,18 @@
                                 <li>
                                     <button type="button" class="dropdown-item-text small text-body-secondary">
                                         Connecté en tant que <strong>{{ user.username }}</strong>
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'users:user_settings' %}">
+                                        <i class="bi bi-gear me-2"></i>Paramètres
+                                    </a>
+                                </li>
+                                <li>
+                                    <button type="button" class="dropdown-item" onclick="toggleTheme()">
+                                        <i class="bi {% if theme == 'dark' %}bi-sun{% else %}bi-moon{% endif %} me-2"></i>
+                                        {% if theme == 'dark' %}Mode clair{% else %}Mode sombre{% endif %}
                                     </button>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
@@ -147,6 +169,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'assets:categorie_list' %}">
+                            <i class="bi bi-tags me-2"></i>Catégories
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'assets:attribution_list' %}">
                             <i class="bi bi-arrow-left-right me-2"></i>Attributions
                         </a>
@@ -180,6 +207,7 @@
             </div>
         </div>
     </header>
+    {% endblock %}
 
     <!-- Messages -->
     <div class="alert-container">
@@ -197,10 +225,12 @@
 
     <!-- Contenu principal -->
     <main class="app-main flex-grow-1">
+        {% block content_wrapper %}
         <div class="app-content py-3 py-md-4">
             {% block content %}
             {% endblock %}
         </div>
+        {% endblock %}
     </main>
 
     <!-- Footer -->
@@ -218,12 +248,13 @@
     {% include 'includes/sidebar_actions.html' %}
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
     <!-- Custom JS -->
     <script src="{% static 'js/custom.js' %}"></script>
-
+    <script src="{% static 'js/theme-toggle.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+

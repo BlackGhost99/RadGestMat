@@ -1,7 +1,76 @@
-{% extends 'base.html' %}
-{% block title %}Rapport {{ report.pk }} - PDF{% endblock %}
-{% block content %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rapport {{ report.pk }} - PDF</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            padding: 18px;
+            color: #222;
+            margin: 0;
+        }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo-container img {
+            max-height: 50px;
+        }
+        h1 {
+            margin: 0 0 6px 0;
+            font-size: 20px;
+        }
+        .header-info {
+            color: #666;
+            font-size: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+        .context-box {
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .summary-box {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        footer {
+            position: fixed;
+            bottom: 12px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
 <div style="font-family: Arial, Helvetica, sans-serif; padding: 18px; color: #222;">
+  <!-- Logo en-tête -->
+  <div style="text-align:center;margin-bottom:20px;">
+    {% if logo_url %}
+      <img src="{{ logo_url }}" alt="Radisson BLU" style="max-height: 50px;">
+    {% endif %}
+  </div>
+  
   <div style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
       <h1 style="margin:0 0 6px 0;font-size:20px;">Rapport d'activité — {{ report.pk }}</h1>
@@ -20,38 +89,47 @@
 
   <table style="width:90%;border-collapse:collapse;margin:0 auto 12px auto;">
     <tr>
-      <td style="vertical-align:top;width:48%;padding:6px;text-align:left;">
-        <strong>Contexte</strong>
-        <div style="margin-top:6px;padding:8px;background:#f8f9fa;border-left:4px solid #0d6efd;">{{ context_sentence }}</div>
+      <td style="vertical-align:top;width:48%;padding:8px;text-align:left;">
+        <strong style="font-size:14px;color:#333;">📋 Contexte</strong>
+        <div style="margin-top:8px;padding:10px;background:#f8f9fa;border-left:4px solid #0d6efd;border-radius:4px;font-size:12px;">{{ context_sentence }}</div>
       </td>
       <td style="vertical-align:top;width:4%;"></td>
-      <td style="vertical-align:top;width:48%;padding:6px;text-align:left;">
-        <strong>Résumé</strong>
-        <div style="font-size:12px;margin-top:6px;">{{ summary }}</div>
+      <td style="vertical-align:top;width:48%;padding:8px;text-align:left;">
+        <strong style="font-size:14px;color:#333;">📄 Résumé</strong>
+        <div style="font-size:12px;margin-top:8px;padding:10px;background:#f8f9fa;border-radius:4px;">{{ summary }}</div>
       </td>
     </tr>
   </table>
 
-  <div style="margin-top:6px;margin-bottom:12px;width:90%;margin-left:auto;margin-right:auto;">
-    <strong>Détails</strong>
+  <div style="margin-top:12px;margin-bottom:12px;width:90%;margin-left:auto;margin-right:auto;">
+    <strong style="font-size:14px;color:#333;">📊 Détails des modifications</strong>
     {% if formatted_changes %}
-      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;border:1px solid #ddd;">
         <thead>
-          <tr style="background:#f0f0f0;"><th style="text-align:left;padding:6px;border:1px solid #e6e6e6;">Champ</th><th style="text-align:left;padding:6px;border:1px solid #e6e6e6;">Avant</th><th style="text-align:left;padding:6px;border:1px solid #e6e6e6;">Après</th></tr>
+          <tr style="background:#f0f0f0;">
+            <th style="text-align:left;padding:8px;border:1px solid #ddd;font-weight:600;">Champ</th>
+            <th style="text-align:left;padding:8px;border:1px solid #ddd;font-weight:600;">Avant</th>
+            <th style="text-align:left;padding:8px;border:1px solid #ddd;font-weight:600;">Après</th>
+          </tr>
         </thead>
         <tbody>
         {% for c in formatted_changes %}
-          <tr><td style="padding:6px;border:1px solid #eee;">{{ c.field }}</td><td style="padding:6px;border:1px solid #eee;color:#666;">{% if c.old is not None %}{{ c.old }}{% else %}&mdash;{% endif %}</td><td style="padding:6px;border:1px solid #eee;">{{ c.new|default:'&mdash;' }}</td></tr>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:8px;border:1px solid #eee;font-weight:500;">{{ c.field }}</td>
+            <td style="padding:8px;border:1px solid #eee;color:#666;">{% if c.old is not None %}{{ c.old }}{% else %}&mdash;{% endif %}</td>
+            <td style="padding:8px;border:1px solid #eee;font-weight:500;">{{ c.new|default:'&mdash;' }}</td>
+          </tr>
         {% endfor %}
         </tbody>
       </table>
     {% else %}
-      <div style="font-size:12px;color:#666;margin-top:6px;">Aucun détail disponible.</div>
+      <div style="font-size:12px;color:#666;margin-top:8px;padding:10px;background:#f8f9fa;border-radius:4px;">Aucun détail disponible.</div>
     {% endif %}
   </div>
 
-  <footer style="position:fixed;bottom:12px;left:0;right:0;text-align:center;font-size:10px;color:#666;">
-    © {% now "Y" %} RadGestMat — Gestion de Matériel
+  <footer>
+    © {% now "Y" %} Radisson BLU — RadGestMat — Gestion de Matériel
   </footer>
 </div>
-{% endblock %}
+</body>
+</html>

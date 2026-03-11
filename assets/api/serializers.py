@@ -77,15 +77,15 @@ class AttributionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'materiel', 'client', 'employe_responsable',
             'departement', 'date_attribution', 'date_retour_prevue',
-            'date_retour_effective', 'motif', 'notes', 'is_overdue'
+            'date_retour_effective', 'type_attribution', 'motif', 'notes', 'is_overdue'
         ]
     
     def get_is_overdue(self, obj):
         """Check if attribution is overdue"""
-        from django.utils import timezone
-        if obj.date_retour_effective:
+        try:
+            return obj.is_overdue()
+        except Exception:
             return False
-        return obj.date_retour_prevue < timezone.now().date()
 
 
 class AlerteSerializer(serializers.ModelSerializer):

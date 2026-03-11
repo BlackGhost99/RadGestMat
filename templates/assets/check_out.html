@@ -79,8 +79,19 @@
           {% endif %}
         </div>
 
-        <!-- Date retour prévue -->
+        <!-- Type d'attribution -->
         <div class="mb-4">
+          <label for="{{ form.type_attribution.id_for_label }}" class="form-label">
+            <strong>Type d'attribution *</strong>
+          </label>
+          {{ form.type_attribution }}
+          {% if form.type_attribution.errors %}
+            <div class="invalid-feedback d-block">{{ form.type_attribution.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Date retour pr?vue -->
+        <div class="mb-4" id="date_retour_block">
           <label for="{{ form.date_retour_prevue.id_for_label }}" class="form-label">
             <strong>Date retour prévue *</strong>
           </label>
@@ -125,33 +136,137 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="create_client">
         <div class="modal-body">
-          <div class="mb-3">
-            <label for="{{ quick_form.nom.id_for_label }}" class="form-label">{{ quick_form.nom.label }}</label>
-            {{ quick_form.nom }}
-            {% if quick_form.nom.errors %}
-              <div class="invalid-feedback d-block">{{ quick_form.nom.errors.0 }}</div>
-            {% endif %}
+          <div id="quick-client-errors" class="alert alert-danger d-none"></div>
+
+          <div class="card mb-3">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informations générales *</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ quick_form.nom.id_for_label }}" class="form-label">{{ quick_form.nom.label }}</label>
+                  {{ quick_form.nom }}
+                  {% if quick_form.nom.errors %}
+                    <div class="invalid-feedback d-block">{{ quick_form.nom.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="{{ quick_form.type_client.id_for_label }}" class="form-label">{{ quick_form.type_client.label }}</label>
+                  {{ quick_form.type_client }}
+                  {% if quick_form.type_client.errors %}
+                    <div class="invalid-feedback d-block">{{ quick_form.type_client.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="mb-3">
-            <label for="{{ quick_form.type_client.id_for_label }}" class="form-label">{{ quick_form.type_client.label }}</label>
-            {{ quick_form.type_client }}
-            {% if quick_form.type_client.errors %}
-              <div class="invalid-feedback d-block">{{ quick_form.type_client.errors.0 }}</div>
-            {% endif %}
+
+          <div class="card mb-3">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="bi bi-telephone me-2"></i>Coordonnées</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ quick_form.email.id_for_label }}" class="form-label">{{ quick_form.email.label }}</label>
+                  {{ quick_form.email }}
+                  {% if quick_form.email.errors %}
+                    <div class="invalid-feedback d-block">{{ quick_form.email.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="{{ quick_form.telephone.id_for_label }}" class="form-label">{{ quick_form.telephone.label }}</label>
+                  {{ quick_form.telephone }}
+                  {% if quick_form.telephone.errors %}
+                    <div class="invalid-feedback d-block">{{ quick_form.telephone.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="mb-3">
-            <label for="{{ quick_form.email.id_for_label }}" class="form-label">{{ quick_form.email.label }}</label>
-            {{ quick_form.email }}
-            {% if quick_form.email.errors %}
-              <div class="invalid-feedback d-block">{{ quick_form.email.errors.0 }}</div>
-            {% endif %}
+
+          <div class="card mb-3" id="quick-section-hebergement">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="bi bi-door-closed me-2"></i>Informations hébergement</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label for="{{ quick_form.numero_chambre.id_for_label }}" class="form-label">{{ quick_form.numero_chambre.label }}</label>
+                  {{ quick_form.numero_chambre }}
+                  {% if quick_form.numero_chambre.errors %}
+                    <div class="invalid-feedback d-block">{{ quick_form.numero_chambre.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="{{ quick_form.date_arrivee.id_for_label }}" class="form-label">{{ quick_form.date_arrivee.label }}</label>
+                  {{ quick_form.date_arrivee }}
+                  {% if quick_form.date_arrivee.errors %}
+                    <div class="invalid-feedback d-block">{{ quick_form.date_arrivee.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="{{ quick_form.date_depart.id_for_label }}" class="form-label">{{ quick_form.date_depart.label }}</label>
+                  {{ quick_form.date_depart }}
+                  {% if quick_form.date_depart.errors %}
+                    <div class="invalid-feedback d-block">{{ quick_form.date_depart.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="mb-3">
-            <label for="{{ quick_form.telephone.id_for_label }}" class="form-label">{{ quick_form.telephone.label }}</label>
-            {{ quick_form.telephone }}
-            {% if quick_form.telephone.errors %}
-              <div class="invalid-feedback d-block">{{ quick_form.telephone.errors.0 }}</div>
-            {% endif %}
+
+          <div class="card mb-3" id="quick-section-conference" style="display: none;">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Informations conférence/événement</h6>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label for="{{ quick_form.nom_evenement.id_for_label }}" class="form-label">{{ quick_form.nom_evenement.label }}</label>
+                {{ quick_form.nom_evenement }}
+                {% if quick_form.nom_evenement.errors %}
+                  <div class="invalid-feedback d-block">{{ quick_form.nom_evenement.errors.0 }}</div>
+                {% endif %}
+              </div>
+              <div class="mb-3">
+                <label for="{{ quick_form.salle.id_for_label }}" class="form-label">{{ quick_form.salle.label }}</label>
+                {{ quick_form.salle }}
+                {% if quick_form.salle.errors %}
+                  <div class="invalid-feedback d-block">{{ quick_form.salle.errors.0 }}</div>
+                {% endif %}
+                <div class="form-text">La salle est requise pour un client externe.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-3" id="quick-section-interne" style="display: none;">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="bi bi-building me-2"></i>Informations interne</h6>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label for="{{ quick_form.departement.id_for_label }}" class="form-label">{{ quick_form.departement.label }}</label>
+                {{ quick_form.departement }}
+                {% if quick_form.departement.errors %}
+                  <div class="invalid-feedback d-block">{{ quick_form.departement.errors.0 }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-3">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Notes</h6>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                {{ quick_form.notes }}
+                {% if quick_form.notes.errors %}
+                  <div class="invalid-feedback d-block">{{ quick_form.notes.errors.0 }}</div>
+                {% endif %}
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -166,6 +281,45 @@
 </div>
 
 <script>
+  function updateQuickClientSections() {
+    const typeSelect = document.getElementById('{{ quick_form.type_client.id_for_label }}');
+    if (!typeSelect) return;
+    const typeClient = typeSelect.value;
+    const hebergement = document.getElementById('quick-section-hebergement');
+    const conference = document.getElementById('quick-section-conference');
+    const interne = document.getElementById('quick-section-interne');
+    if (hebergement) hebergement.style.display = typeClient === 'HEBERGEMENT' ? 'block' : 'none';
+    if (conference) conference.style.display = typeClient === 'CONFERENCE' ? 'block' : 'none';
+    if (interne) interne.style.display = typeClient === 'INTERNE' ? 'block' : 'none';
+  }
+
+  const quickTypeSelect = document.getElementById('{{ quick_form.type_client.id_for_label }}');
+  if (quickTypeSelect) {
+    quickTypeSelect.addEventListener('change', updateQuickClientSections);
+  }
+  updateQuickClientSections();
+
+  function showQuickClientErrors(errors) {
+    const errorBox = document.getElementById('quick-client-errors');
+    if (!errorBox) return;
+    if (!errors || Object.keys(errors).length === 0) {
+      errorBox.classList.add('d-none');
+      errorBox.innerHTML = '';
+      return;
+    }
+    const items = [];
+    Object.keys(errors).forEach(key => {
+      const msgs = errors[key];
+      if (Array.isArray(msgs)) {
+        msgs.forEach(msg => items.push(msg));
+      } else if (msgs) {
+        items.push(msgs);
+      }
+    });
+    errorBox.innerHTML = `<strong>Erreur:</strong><ul class="mb-0">${items.map(m => `<li>${m}</li>`).join('')}</ul>`;
+    errorBox.classList.remove('d-none');
+  }
+
   // Gérer la soumission du formulaire de création rapide de client
   document.getElementById('quick_client_form').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -182,6 +336,7 @@
     .then(response => response.json())
     .then(data => {
       if (data.success) {
+        showQuickClientErrors(null);
         // Fermer la modal
         bootstrap.Modal.getInstance(document.getElementById('addClientModal')).hide();
         
@@ -204,8 +359,9 @@
         
         // Nettoyer le formulaire
         document.getElementById('quick_client_form').reset();
+        updateQuickClientSections();
       } else {
-        alert('Erreur: ' + JSON.stringify(data.errors));
+        showQuickClientErrors(data.errors || {});
       }
     })
     .catch(error => console.error('Erreur:', error));
@@ -230,5 +386,25 @@
   document.querySelectorAll('input[name="destination_type"]').forEach(el => el.addEventListener('change', updateDestinationBlocks));
   // initialize on load
   updateDestinationBlocks();
+
+  // Toggle return date based on attribution type
+  function updateReturnDateBlock(){
+    const typeSelect = document.getElementById('{{ form.type_attribution.id_for_label }}');
+    const dateBlock = document.getElementById('date_retour_block');
+    if (!typeSelect || !dateBlock) return;
+    const needsDate = typeSelect.value === 'TEMPORAIRE';
+    dateBlock.style.display = needsDate ? 'block' : 'none';
+  }
+
+  const typeSelect = document.getElementById('{{ form.type_attribution.id_for_label }}');
+  if (typeSelect) {
+    typeSelect.addEventListener('change', updateReturnDateBlock);
+  }
+  updateReturnDateBlock();
 </script>
 {% endblock %}
+
+
+
+
+

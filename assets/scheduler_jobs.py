@@ -23,6 +23,7 @@ def check_court_terme_reminders():
         # Find attributions with court terme loans that need reminders
         # Not yet returned and within 2.5 hours of return time
         attributions = Attribution.objects.filter(
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
             duree_emprunt=Attribution.DUREE_COURT_TERME,
             heure_retour_effective__isnull=True,  # Not returned yet
         ).select_related('client', 'materiel')
@@ -74,6 +75,7 @@ def check_moyen_terme_reminders():
         now = timezone.now()
         
         attributions = Attribution.objects.filter(
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
             duree_emprunt=Attribution.DUREE_MOYEN_TERME,
             heure_retour_effective__isnull=True,
         ).select_related('client', 'materiel')
@@ -125,6 +127,7 @@ def check_long_terme_reminders():
         today = now.date()
         
         attributions = Attribution.objects.filter(
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
             duree_emprunt=Attribution.DUREE_LONG_TERME,
             heure_retour_effective__isnull=True,
         ).select_related('client', 'materiel')
@@ -202,12 +205,14 @@ def check_overdue_materials():
         
         # Find attributions that are overdue
         attributions = Attribution.objects.filter(
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
             heure_retour_effective__isnull=True,  # Not returned yet
             date_retour_prevue__lt=now.date(),  # Return date has passed
         ).select_related('client', 'materiel')
         
         # Also check current day but past return time
         attributions_today = Attribution.objects.filter(
+            type_attribution=Attribution.TYPE_TEMPORAIRE,
             heure_retour_effective__isnull=True,
             date_retour_prevue=now.date(),
         ).select_related('client', 'materiel')

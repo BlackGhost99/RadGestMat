@@ -10,4 +10,6 @@ urlpatterns = [
     path('utilisateurs/creer/', views.user_create, name='user_create'),
     path('utilisateurs/<int:pk>/modifier/', views.user_update, name='user_update'),
     path('utilisateurs/<int:pk>/supprimer/', views.user_delete, name='user_delete'),
+    path('settings/', views.user_settings, name='user_settings'),
+    path('api/toggle-theme/', views.toggle_dark_mode, name='toggle_dark_mode'),
 ]

@@ -1,3 +1,4 @@
+import os
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
@@ -6,6 +7,9 @@ from django.utils.timezone import now
 
 from .models import AuditLog
 from .middleware import get_current_user, get_current_request
+
+# Disable signals during migrations
+SIGNALS_DISABLED = os.environ.get('DISABLE_SIGNALS', '0') == '1'
 
 
 def _safe_repr(obj):
@@ -73,51 +77,59 @@ def _diff_instance(old, new):
 
 @receiver(post_save)
 def audit_post_save(sender, instance, created, **kwargs):
+    if SIGNALS_DISABLED:
+        return
     # Skip AuditLog itself to avoid recursion
     if sender.__name__ == 'AuditLog':
         return
 
-    user = get_current_user()
-    request = get_current_request()
-    ct = ContentType.objects.get_for_model(sender)
-    object_repr = _safe_repr(instance)
-    obj_id = getattr(instance, 'pk', None)
+    try:
+        user = get_current_user()
+        request = get_current_request()
+        ct = ContentType.objects.get_for_model(sender)
+        object_repr = _safe_repr(instance)
+        obj_id = getattr(instance, 'pk', None)
 
-    if created:
-        changes = _diff_instance(None, instance)
-        AuditLog.objects.create(
-            user=user,
-            action=AuditLog.ACTION_CREATE,
-            content_type=ct,
-            object_id=str(obj_id) if obj_id is not None else None,
-            object_repr=object_repr,
-            changes=changes or None,
-            ip_address=getattr(request, 'META', {}).get('REMOTE_ADDR') if request else None,
-            metadata=_safe_jsonify({'path': getattr(request, 'path', None)}) if request else None,
-        )
-    else:
-        # For update, we try to get previous state by fetching fresh from DB
-        try:
-            old = sender.objects.get(pk=instance.pk)
-        except Exception:
-            old = None
-        # If old is equal to instance as fetched (unlikely), record diffs by comparing field values
-        changes = _diff_instance(old, instance)
-        if changes:
+        if created:
+            changes = _diff_instance(None, instance)
             AuditLog.objects.create(
                 user=user,
-                action=AuditLog.ACTION_UPDATE,
+                action=AuditLog.ACTION_CREATE,
                 content_type=ct,
                 object_id=str(obj_id) if obj_id is not None else None,
                 object_repr=object_repr,
-                changes=changes,
+                changes=changes or None,
                 ip_address=getattr(request, 'META', {}).get('REMOTE_ADDR') if request else None,
                 metadata=_safe_jsonify({'path': getattr(request, 'path', None)}) if request else None,
             )
+        else:
+            # For update, we try to get previous state by fetching fresh from DB
+            try:
+                old = sender.objects.get(pk=instance.pk)
+            except Exception:
+                old = None
+            # If old is equal to instance as fetched (unlikely), record diffs by comparing field values
+            changes = _diff_instance(old, instance)
+            if changes:
+                AuditLog.objects.create(
+                    user=user,
+                    action=AuditLog.ACTION_UPDATE,
+                    content_type=ct,
+                    object_id=str(obj_id) if obj_id is not None else None,
+                    object_repr=object_repr,
+                    changes=changes,
+                    ip_address=getattr(request, 'META', {}).get('REMOTE_ADDR') if request else None,
+                    metadata=_safe_jsonify({'path': getattr(request, 'path', None)}) if request else None,
+                )
+    except Exception:
+        # Silently ignore audit errors during migrations or other critical operations
+        pass
 
 
 @receiver(post_delete)
 def audit_post_delete(sender, instance, **kwargs):
+    if SIGNALS_DISABLED:
+        return
     if sender.__name__ == 'AuditLog':
         return
     user = get_current_user()

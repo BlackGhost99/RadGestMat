@@ -63,6 +63,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # Custom middleware
     'users.middleware.DepartementMiddleware',
+    # Debug middleware for admin template resolution
+    'radgestmat.admin_debug_middleware.AdminDebugMiddleware',
 ]
 
 ROOT_URLCONF = 'radgestmat.urls'
@@ -80,6 +82,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'users.context_processors.user_profile',
+                'users.context_processors.theme_context',
                 'assets.context_processors.alertes_context',
             ],
         },
@@ -154,6 +157,7 @@ EMAIL_USE_TLS = get_config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = get_config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = get_config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = get_config('DEFAULT_FROM_EMAIL', default='RadGestMat <noreply@radgestmat.local>')
+SITE_URL = get_config('SITE_URL', default='http://localhost:8000')
 
 # Security settings
 SECURE_BROWSER_XSS_FILTER = True
@@ -289,4 +293,3 @@ CACHES = {
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
-

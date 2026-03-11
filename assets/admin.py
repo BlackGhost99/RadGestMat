@@ -61,9 +61,9 @@ class SalleAdmin(admin.ModelAdmin):
 
 @admin.register(Materiel)
 class MaterielAdmin(admin.ModelAdmin):
-    list_display = ('asset_id', 'nom', 'departement', 'salle', 'etat_technique', 'statut_disponibilite', 'date_creation')
-    list_filter = ('departement', 'etat_technique', 'statut_disponibilite', 'date_creation')
-    search_fields = ('asset_id', 'numero_inventaire', 'nom', 'marque')
+    list_display = ('asset_id', 'nom', 'departement', 'location', 'salle', 'etat_technique', 'statut_disponibilite', 'date_creation')
+    list_filter = ('departement', 'location', 'etat_technique', 'statut_disponibilite', 'date_creation')
+    search_fields = ('asset_id', 'numero_inventaire', 'nom', 'marque', 'location')
     readonly_fields = ('qr_code', 'date_creation', 'date_modification')
     actions = ['force_delete_selected']
     fieldsets = (
@@ -71,7 +71,7 @@ class MaterielAdmin(admin.ModelAdmin):
             'fields': ('asset_id', 'numero_inventaire')
         }),
         ('Informations générales', {
-            'fields': ('nom', 'description', 'categorie', 'departement', 'salle')
+            'fields': ('nom', 'description', 'categorie', 'departement', 'location', 'salle')
         }),
         ('Caractéristiques techniques', {
             'fields': ('marque', 'modele', 'numero_serie')
@@ -182,11 +182,89 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Attribution)
 class AttributionAdmin(admin.ModelAdmin):
-    list_display = ('materiel', 'client', 'departement', 'date_attribution', 'date_retour_prevue', 'date_retour_effective')
-    list_filter = ('departement', 'date_attribution', 'date_retour_effective')
+    list_display = ('materiel', 'client', 'departement', 'type_attribution', 'date_attribution', 'date_retour_prevue', 'date_retour_effective')
+    list_filter = ('departement', 'type_attribution', 'date_attribution', 'date_retour_effective')
     search_fields = ('materiel__asset_id', 'client__nom', 'motif')
-    readonly_fields = ('date_attribution', 'materiel', 'client')
+    readonly_fields = ('date_attribution',)
     date_hierarchy = 'date_attribution'
+    
+    def get_queryset(self, request):
+        """Filtrer les attributions par département selon le rôle de l'utilisateur"""
+        queryset = super().get_queryset(request).select_related(
+            'materiel', 'client', 'departement', 'employe_responsable'
+        )
+        profil = getattr(request, 'profil_utilisateur', None)
+        departement = getattr(request, 'departement', None)
+        
+        # SUPER_ADMIN voit toutes les attributions
+        if profil and profil.role == 'SUPER_ADMIN':
+            return queryset
+        
+        # Autres utilisateurs : uniquement leur département
+        if departement:
+            return queryset.filter(departement=departement)
+        
+        # Si pas de département, retourner un queryset vide
+        return queryset.none()
+    
+    def has_view_permission(self, request, obj=None):
+        """Vérifier l'accès en lecture"""
+        if obj is None:
+            # Pour la liste, utiliser get_queryset qui filtre déjà
+            return True
+        
+        profil = getattr(request, 'profil_utilisateur', None)
+        departement = getattr(request, 'departement', None)
+        
+        # SUPER_ADMIN a accès à tout
+        if profil and profil.role == 'SUPER_ADMIN':
+            return True
+        
+        # Vérifier que l'utilisateur a accès au département de l'attribution
+        return departement and obj.departement == departement
+    
+    def has_change_permission(self, request, obj=None):
+        """Vérifier l'accès en modification"""
+        if obj is None:
+            # Pour la liste, vérifier que l'utilisateur a un département
+            departement = getattr(request, 'departement', None)
+            profil = getattr(request, 'profil_utilisateur', None)
+            return (profil and profil.role == 'SUPER_ADMIN') or departement is not None
+        
+        profil = getattr(request, 'profil_utilisateur', None)
+        departement = getattr(request, 'departement', None)
+        
+        # SUPER_ADMIN a accès à tout
+        if profil and profil.role == 'SUPER_ADMIN':
+            return True
+        
+        # Vérifier que l'utilisateur a accès au département de l'attribution
+        return departement and obj.departement == departement
+    
+    def has_delete_permission(self, request, obj=None):
+        """Vérifier l'accès en suppression"""
+        if obj is None:
+            # Pour la liste, vérifier que l'utilisateur a un département
+            departement = getattr(request, 'departement', None)
+            profil = getattr(request, 'profil_utilisateur', None)
+            return (profil and profil.role == 'SUPER_ADMIN') or departement is not None
+        
+        profil = getattr(request, 'profil_utilisateur', None)
+        departement = getattr(request, 'departement', None)
+        
+        # SUPER_ADMIN a accès à tout
+        if profil and profil.role == 'SUPER_ADMIN':
+            return True
+        
+        # Vérifier que l'utilisateur a accès au département de l'attribution
+        return departement and obj.departement == departement
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Rendre materiel et client en lecture seule uniquement lors de la modification"""
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj:  # Si l'objet existe (modification), rendre materiel et client en lecture seule
+            readonly.extend(['materiel', 'client'])
+        return readonly
     
     fieldsets = (
         ('Matériel et client', {

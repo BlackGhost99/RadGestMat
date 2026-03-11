@@ -46,8 +46,32 @@ def get_local_ip():
     # Fallback: localhost
     return '127.0.0.1'
 
-# Obtenir l'IP locale
-LOCAL_IP = get_local_ip()
+# IP fixe du serveur (réseau admin Ethernet)
+# Peut être surchargée par variable d'environnement LOCAL_NETWORK_IP
+LOCAL_IP = os.environ.get('LOCAL_NETWORK_IP', '10.105.42.118')
+
+# #region agent log
+import json
+from datetime import datetime
+try:
+    log_path = BASE_DIR / '.cursor' / 'debug.log'
+    log_data = {
+        'sessionId': 'debug-session',
+        'runId': 'run1',
+        'hypothesisId': 'A',
+        'location': 'local_network.py:51',
+        'message': 'Settings loaded - LOCAL_IP configured',
+        'data': {
+            'LOCAL_IP': LOCAL_IP,
+            'from_env': os.environ.get('LOCAL_NETWORK_IP', 'default')
+        },
+        'timestamp': int(datetime.now().timestamp() * 1000)
+    }
+    with open(log_path, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(log_data) + '\n')
+except Exception:
+    pass
+# #endregion
 
 # ====================
 # CONFIGURATION SERVEUR
@@ -59,6 +83,7 @@ allowed_hosts_list = [
     'localhost',
     '127.0.0.1',
     '0.0.0.0',  # Pour bind sur toutes les interfaces
+    '*',  # Permettre toutes les IPs pour réseau local (temporaire pour debug)
 ]
 
 # Ajouter l'IP depuis variable d'environnement si fournie
@@ -68,6 +93,11 @@ if env_allowed:
 
 # Supprimer les doublons
 ALLOWED_HOSTS = list(dict.fromkeys(allowed_hosts_list))
+
+# Pour réseau local, permettre toutes les IPs si DEBUG ou si variable d'environnement
+if DEBUG or os.environ.get('ALLOW_ALL_HOSTS', 'False').lower() == 'true':
+    if '*' not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append('*')
 
 # ====================
 # CSRF TRUSTED ORIGINS
@@ -148,7 +178,24 @@ LOGGING['formatters']['verbose']['format'] = (
 # DEBUG MODE
 # ====================
 # Peut être activé pour réseau local (plus facile de débugger)
+# Garder DEBUG=False pour mode production, mais utiliser WhiteNoise pour servir les fichiers statiques
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+
+# ====================
+# FICHIERS STATIQUES - WhiteNoise
+# ====================
+# Utiliser WhiteNoise pour servir les fichiers statiques même avec DEBUG=False
+# WhiteNoise permet de servir les fichiers statiques sans avoir besoin de DEBUG=True
+# Il faut l'ajouter au middleware APRÈS SecurityMiddleware
+if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
+    # Insérer WhiteNoise après SecurityMiddleware
+    security_index = MIDDLEWARE.index('django.middleware.security.SecurityMiddleware')
+    MIDDLEWARE.insert(security_index + 1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
+# Configuration WhiteNoise pour servir depuis STATICFILES_DIRS en développement
+# En production, utiliser STATIC_ROOT après collectstatic
+WHITENOISE_USE_FINDERS = True  # Permet de servir depuis STATICFILES_DIRS sans collectstatic
+WHITENOISE_AUTOREFRESH = True  # Recharge automatiquement les fichiers statiques modifiés
 
 # ====================
 # INFORMATION IP
@@ -156,3 +203,26 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 # Stocker l'IP détectée pour affichage dans les logs
 print(f"[RadGestMat] Configuration réseau local - IP détectée: {LOCAL_IP}")
 print(f"[RadGestMat] ALLOWED_HOSTS: {', '.join(ALLOWED_HOSTS)}")
+
+# #region agent log
+try:
+    log_path = BASE_DIR / '.cursor' / 'debug.log'
+    log_data = {
+        'sessionId': 'debug-session',
+        'runId': 'run1',
+        'hypothesisId': 'A',
+        'location': 'local_network.py:160',
+        'message': 'Settings fully configured',
+        'data': {
+            'LOCAL_IP': LOCAL_IP,
+            'ALLOWED_HOSTS': ALLOWED_HOSTS,
+            'CSRF_TRUSTED_ORIGINS': CSRF_TRUSTED_ORIGINS,
+            'DEBUG': DEBUG
+        },
+        'timestamp': int(datetime.now().timestamp() * 1000)
+    }
+    with open(log_path, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(log_data) + '\n')
+except Exception:
+    pass
+# #endregion

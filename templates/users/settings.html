@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Paramètres{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-1">
+                <i class="bi bi-gear me-2"></i>Paramètres
+            </h1>
+            <p class="text-muted">Gérez vos préférences et paramètres personnels</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form method="post" action="{% url 'users:user_settings' %}">
+                {% csrf_token %}
+                
+                <!-- Section Apparence -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-palette me-2"></i>Apparence
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Mode sombre</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" 
+                                       id="darkMode" name="dark_mode" 
+                                       {% if preferences.dark_mode %}checked{% endif %}
+                                       onchange="toggleThemeQuick(this.checked)">
+                                <label class="form-check-label" for="darkMode">
+                                    Activer le mode sombre
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Le mode sombre réduit la fatigue visuelle dans les environnements peu éclairés.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Notifications -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-bell me-2"></i>Notifications
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Gérez vos préférences de notifications pour les attributions et rappels.
+                        </p>
+                        <a href="{% url 'assets:notification_preferences' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-gear me-2"></i>Gérer les notifications
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Section Compte -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person-circle me-2"></i>Compte
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Nom d'utilisateur:</dt>
+                            <dd class="col-sm-8">{{ user.username }}</dd>
+
+                            <dt class="col-sm-4">Email:</dt>
+                            <dd class="col-sm-8">{{ user.email|default:"—" }}</dd>
+
+                            <dt class="col-sm-4">Nom complet:</dt>
+                            <dd class="col-sm-8">{{ user.get_full_name|default:"—" }}</dd>
+
+                            <dt class="col-sm-4">Département:</dt>
+                            <dd class="col-sm-8">
+                                {% if user_profile %}
+                                    {{ user_profile.departement.nom }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-4">Rôle:</dt>
+                            <dd class="col-sm-8">
+                                {% if user_profile %}
+                                    {{ user_profile.get_role_display }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>Enregistrer les modifications
+                    </button>
+                    <a href="{% url 'assets:dashboard' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleThemeQuick(enabled) {
+    // Changement immédiat via AJAX
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                      document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    
+    fetch('{% url "users:toggle_dark_mode" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            dark_mode: enabled
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Appliquer le thème immédiatement
+            document.documentElement.setAttribute('data-bs-theme', data.theme);
+            // Mettre à jour l'icône du toggle dans le header si présent
+            if (window.updateThemeIcon) {
+                window.updateThemeIcon(data.theme);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Erreur lors du changement de thème:', error);
+    });
+}
+</script>
+{% endblock %}

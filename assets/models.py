@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -56,7 +56,7 @@ class Materiel(models.Model):
     STATUT_HORS_SERVICE = 'HORS_SERVICE'
     STATUT_CHOICES = [(STATUT_DISPONIBLE, 'Disponible'), (STATUT_ATTRIBUE, 'Attribué'), (STATUT_MAINTENANCE, 'Maintenance'), (STATUT_HORS_SERVICE, 'Hors service')]
     
-    asset_id = models.CharField(max_length=50, default='NEW')
+    asset_id = models.CharField(max_length=50, default='NEW', unique=True)
     numero_inventaire = models.CharField(max_length=50, unique=True)
     nom = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
@@ -72,6 +72,7 @@ class Materiel(models.Model):
     qr_code = models.FileField(upload_to='qr_codes/', blank=True, null=True)
     # Salle de conférence à laquelle le matériel peut être assigné (optionnel)
     salle = models.ForeignKey('Salle', on_delete=models.SET_NULL, null=True, blank=True, related_name='materiels')
+    location = models.CharField(max_length=200, blank=True, null=True, verbose_name="Localisation", help_text="Localisation physique du matériel (ex: Bureau IT, Salle 122, etc.)")
     notes = models.TextField(blank=True, null=True)
     date_creation = models.DateTimeField(auto_now_add=True)
     date_modification = models.DateTimeField(auto_now=True)
@@ -80,7 +81,6 @@ class Materiel(models.Model):
     class Meta:
         verbose_name = "Matériel"
         verbose_name_plural = "Matériels"
-        unique_together = ('asset_id', 'departement')
         ordering = ['-date_creation']
 
     def __str__(self):
@@ -88,9 +88,49 @@ class Materiel(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk:
-            # Validation explicite : le département est requis avant génération du QR code
+            # Validation explicite : le département est requis avant génération
             if not self.departement_id:
                 raise ValidationError("Le département est requis pour créer un matériel.")
+
+            # Générer automatiquement asset_id si nécessaire (recherche globale pour unicité)
+            asset_id_value = getattr(self, 'asset_id', '') or ''
+            if (not asset_id_value or asset_id_value.strip() == '' or asset_id_value == 'NEW' or
+                (asset_id_value and not asset_id_value.startswith('OKP-'))):
+                # Rechercher le max globalement (pas seulement dans le département)
+                existing_assets = self.__class__.objects.filter(
+                    asset_id__startswith='OKP-'
+                ).values_list('asset_id', flat=True)
+                max_num = 0
+                for aid in existing_assets:
+                    try:
+                        num = int(aid.split('-')[1])
+                        if num > max_num:
+                            max_num = num
+                    except (ValueError, IndexError):
+                        continue
+                nouveau_num = max_num + 1
+                self.asset_id = f"OKP-{nouveau_num:06d}"
+
+            # Générer automatiquement numero_inventaire si nécessaire (recherche globale pour unicité)
+            numero_inv_value = getattr(self, 'numero_inventaire', '') or ''
+            if (not numero_inv_value or numero_inv_value.strip() == '' or
+                (numero_inv_value and not numero_inv_value.startswith('RAD-'))):
+                # Rechercher le max globalement (pas seulement dans le département)
+                existing_invs = self.__class__.objects.filter(
+                    numero_inventaire__startswith='RAD-'
+                ).values_list('numero_inventaire', flat=True)
+                max_num = 0
+                for inv in existing_invs:
+                    try:
+                        num = int(inv.split('-')[1])
+                        if num > max_num:
+                            max_num = num
+                    except (ValueError, IndexError):
+                        continue
+                nouveau_num = max_num + 1
+                self.numero_inventaire = f"RAD-{nouveau_num:06d}"
+
+            # Générer QR uniquement si possible (peut échouer silencieusement)
             try:
                 import qrcode as qr_module
                 domain = os.environ.get('QR_DOMAIN', 'http://localhost:8000')
@@ -139,10 +179,9 @@ class Client(models.Model):
         return f"{self.nom} ({self.get_type_client_display()})"
 
     def clean(self):
-        # Validation serveur : si le client est de type 'CONFERENCE' (client externe),
-        # la salle doit être renseignée.
-        if self.type_client == self.TYPE_CONFERENCE and not self.salle:
-            raise ValidationError({'salle': 'La salle est requise pour un client externe.'})
+        # Validation serveur :
+        # (Anciennement: salle requise pour CONFERENCE. Désormais optionnelle).
+        pass
 
 
 class Salle(models.Model):
@@ -166,6 +205,16 @@ class Salle(models.Model):
 
 
 class Attribution(models.Model):
+    # Types d'attribution
+    TYPE_TEMPORAIRE = 'TEMPORAIRE'
+    TYPE_INDEFINIE = 'INDEFINIE'
+    TYPE_USAGE_UNIQUE = 'USAGE_UNIQUE'
+    TYPE_ATTRIBUTION_CHOICES = [
+        (TYPE_TEMPORAIRE, 'Temporaire'),
+        (TYPE_INDEFINIE, 'Indéfinie (interne)'),
+        (TYPE_USAGE_UNIQUE, 'Usage unique'),
+    ]
+
     # Constantes pour durée d'emprunt
     DUREE_COURT_TERME = 'COURT'    # 0-4h
     DUREE_MOYEN_TERME = 'MOYEN'    # 4h-24h
@@ -182,12 +231,18 @@ class Attribution(models.Model):
     employe_responsable = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='attributions_creees')
     departement = models.ForeignKey(Departement, on_delete=models.CASCADE, related_name='attributions')
     date_attribution = models.DateTimeField(auto_now_add=True)
-    date_retour_prevue = models.DateField()
+    date_retour_prevue = models.DateField(blank=True, null=True)
     date_retour_effective = models.DateField(blank=True, null=True)
     motif = models.CharField(max_length=200, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     # Optionnel: attribution vers une salle de conférence au lieu d'un client
     salle = models.ForeignKey('Salle', on_delete=models.CASCADE, null=True, blank=True, related_name='attributions')
+
+    type_attribution = models.CharField(
+        max_length=20,
+        choices=TYPE_ATTRIBUTION_CHOICES,
+        default=TYPE_TEMPORAIRE
+    )
     
     # Nouveaux champs pour gestion durée d'emprunt
     duree_emprunt = models.CharField(
@@ -218,7 +273,13 @@ class Attribution(models.Model):
 
     def __str__(self):
         # Destination may be a client or a salle (or missing). Build a safe label.
-        materiel_id = self.materiel.asset_id if self.materiel else '???'
+        # Vérifier que materiel_id existe avant d'accéder à la relation
+        materiel_id = '???'
+        if hasattr(self, 'materiel_id') and self.materiel_id:
+            try:
+                materiel_id = self.materiel.asset_id
+            except Exception:
+                materiel_id = '???'
         if self.client:
             dest = self.client.nom
         elif self.salle:
@@ -232,11 +293,14 @@ class Attribution(models.Model):
         from django.utils import timezone
         from datetime import datetime, time
         
-        if not self.date_retour_prevue:
+        if self.type_attribution != self.TYPE_TEMPORAIRE or not self.date_retour_prevue:
             return self.DUREE_LONG_TERME
         
+        # Si date_attribution n'est pas encore définie (création), utiliser maintenant
+        if not self.date_attribution:
+            start = timezone.now()
         # Conversion en datetime pour calcul précis
-        if isinstance(self.date_attribution, datetime):
+        elif isinstance(self.date_attribution, datetime):
             start = self.date_attribution
         else:
             start_naive = datetime.combine(self.date_attribution.date() if hasattr(self.date_attribution, 'date') else self.date_attribution, time.min)
@@ -261,7 +325,7 @@ class Attribution(models.Model):
     
     def is_overdue(self):
         """Vérifier si l'attribution est en retard"""
-        if self.date_retour_effective:
+        if self.date_retour_effective or self.type_attribution != self.TYPE_TEMPORAIRE or not self.date_retour_prevue:
             return False
         
         from django.utils import timezone
@@ -282,7 +346,7 @@ class Attribution(models.Model):
     
     def get_retard_minutes(self):
         """Retourner le nombre de minutes de retard"""
-        if self.date_retour_effective or not self.is_overdue():
+        if self.date_retour_effective or self.type_attribution != self.TYPE_TEMPORAIRE or not self.is_overdue():
             return 0
         
         from django.utils import timezone
@@ -299,11 +363,35 @@ class Attribution(models.Model):
     def save(self, *args, **kwargs):
         # Auto-calculer la durée d'emprunt
         self.duree_emprunt = self.calculate_duree_emprunt()
+
+        # Usage unique: pas de retour, clôturer automatiquement
+        if self.type_attribution == self.TYPE_USAGE_UNIQUE and not self.date_retour_effective:
+            from django.utils import timezone
+            self.date_retour_effective = timezone.now().date()
         
-        if not self.pk:
-            self.materiel.statut_disponibilite = Materiel.STATUT_ATTRIBUE
-            self.materiel.save()
+        # Si materiel (objet) est défini mais materiel_id ne l'est pas, l'assigner
+        try:
+            if hasattr(self, 'materiel') and self.materiel and not getattr(self, 'materiel_id', None):
+                self.materiel_id = self.materiel.pk
+        except Exception:
+            pass
+        
+        # Sauvegarder d'abord l'objet pour que materiel_id soit défini
+        is_new = not self.pk
         super().save(*args, **kwargs)
+        
+        # Mettre à jour le statut du matériel APRÈS la sauvegarde
+        if is_new:
+            try:
+                if hasattr(self, 'materiel_id') and self.materiel_id:
+                    if self.type_attribution == self.TYPE_USAGE_UNIQUE:
+                        self.materiel.statut_disponibilite = Materiel.STATUT_HORS_SERVICE
+                    else:
+                        self.materiel.statut_disponibilite = Materiel.STATUT_ATTRIBUE
+                    self.materiel.save()
+            except Exception:
+                # Ne pas lever l'exception pour ne pas bloquer la création de l'attribution
+                pass
 
 
 class HistoriqueAttribution(models.Model):
@@ -417,10 +505,12 @@ class NotificationLog(models.Model):
     ]
     
     # États de la notification
+    STATUT_EN_ATTENTE = 'EN_ATTENTE'
     STATUT_ENVOYEE = 'ENVOYEE'
     STATUT_ECHEC = 'ECHEC'
     STATUT_ECHEC_PERMANENT = 'ECHEC_PERM'
     STATUT_CHOICES = [
+        (STATUT_EN_ATTENTE, 'En attente'),
         (STATUT_ENVOYEE, 'Envoyée'),
         (STATUT_ECHEC, 'Échec (retry en cours)'),
         (STATUT_ECHEC_PERMANENT, 'Échec définitif'),
@@ -524,3 +614,12 @@ class WhatsAppConfig(models.Model):
     
     def __str__(self):
         return f"{self.get_api_provider_display()} - {self.phone_number_sender} ({'Active' if self.is_active else 'Inactive'})"
+
+
+
+
+
+
+
+
+

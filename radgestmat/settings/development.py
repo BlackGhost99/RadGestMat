@@ -31,6 +31,10 @@ if USE_DEBUG_TOOLBAR:
     MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
     INTERNAL_IPS = ['127.0.0.1']
 
+# Static files serving in development
+from django.conf.urls.static import static
+from django.conf import settings
+
 # CORS - Allow all in development (uncomment when corsheaders is installed)
 # CORS_ALLOW_ALL_ORIGINS = True
 

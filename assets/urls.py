@@ -11,11 +11,16 @@ urlpatterns = [
     # Materiel CRUD
     path('materiel/', views.materiel_list, name='materiel_list'),
     path('materiel/ajouter/', views.materiel_create, name='materiel_create'),
-    path('materiel/groupe/<str:nom>/', views.materiel_group_detail, name='materiel_group_detail'),
+    path('materiel/groupe/<path:nom>/', views.materiel_group_detail, name='materiel_group_detail'),
+    path('materiel/<int:pk>/cloner/', views.materiel_clone, name='materiel_clone'),
     path('materiel/<int:pk>/', views.materiel_detail, name='materiel_detail'),
     path('materiel/<int:pk>/modifier/', views.materiel_update, name='materiel_update'),
     path('materiel/<int:pk>/supprimer/', views.materiel_delete, name='materiel_delete'),
+    path('materiel/supprimer-lot/', views.materiel_bulk_delete, name='materiel_bulk_delete'),
+    path('materiel/supprimer-groupes/', views.materiel_group_bulk_delete, name='materiel_group_bulk_delete'),
+    path('api/search-suggestions/', views.api_search_suggestions, name='api_search_suggestions'),
     path('api/noms-materiels/', views.api_noms_materiels, name='api_noms_materiels'),
+    path('api/materiel/snapshot/', views.api_materiel_snapshot, name='api_materiel_snapshot'),
     path('api/creer-nom-materiel/', views.api_creer_nom_materiel, name='api_creer_nom_materiel'),
     path('api/creer-categorie/', views.api_creer_categorie, name='api_creer_categorie'),
 
@@ -35,6 +40,13 @@ urlpatterns = [
     path('clients/<int:pk>/modifier/', views.client_update, name='client_update'),
     path('clients/<int:pk>/supprimer/', views.client_delete, name='client_delete'),
 
+    # Catégories CRUD
+    path('categories/', views.categorie_list, name='categorie_list'),
+    path('categories/ajouter/', views.categorie_create, name='categorie_create'),
+    path('categories/<int:pk>/', views.categorie_detail, name='categorie_detail'),
+    path('categories/<int:pk>/modifier/', views.categorie_update, name='categorie_update'),
+    path('categories/<int:pk>/supprimer/', views.categorie_delete, name='categorie_delete'),
+
     # Attributions
     path('attributions/', views.attribution_list, name='attribution_list'),
     path('attributions/<int:pk>/modifier/', views.attribution_update, name='attribution_update'),
@@ -51,6 +63,10 @@ urlpatterns = [
     
     # Rapports / Audit
     path('rapports/', views.report_list, name='report_list'),
+    path('rapports/attribution/<int:pk>/', views.report_attribution_detail, name='report_attribution_detail'),
     path('rapports/<int:pk>/', views.report_detail, name='report_detail'),
     path('rapports/<int:pk>/pdf/', views.report_pdf, name='report_pdf'),
+    
+    # Health check pour Docker
+    path('health/', views.health_check, name='health_check'),
 ]

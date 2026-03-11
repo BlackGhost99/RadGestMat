@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}Rapport attribution - {{ attribution.pk }}{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 980px;">
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h2 class="mb-1">Rapport attribution - {{ attribution.pk }}</h2>
+      <div class="text-muted small">Date attribution : {{ attribution.date_attribution|date:"d/m/Y H:i:s" }}</div>
+    </div>
+    <div>
+      {% if attribution.date_retour_effective %}
+        <span class="badge bg-info">Retourne le {{ attribution.date_retour_effective|date:"d/m/Y" }}</span>
+      {% else %}
+        <span class="badge bg-success">Actif</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header"><strong>Informations de l'attribution</strong></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div><strong>Materiel:</strong>
+            {% if attribution.materiel %}
+              {{ attribution.materiel.asset_id }} - {{ attribution.materiel.nom }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div><strong>Beneficiaire:</strong>
+            {% if attribution.client %}
+              {{ attribution.client.nom }}
+            {% elif attribution.salle %}
+              Salle: {{ attribution.salle.nom }}
+            {% else %}
+              Inconnu
+            {% endif %}
+          </div>
+          <div><strong>Type:</strong> {{ attribution.get_type_attribution_display }}</div>
+        </div>
+        <div class="col-md-6">
+          <div><strong>Responsable:</strong>
+            {% if attribution.employe_responsable %}
+              {{ attribution.employe_responsable.username }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div><strong>Departement:</strong>
+            {% if attribution.departement %}
+              {{ attribution.departement.nom }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+          <div><strong>Retour prevu:</strong>
+            {% if attribution.date_retour_prevue %}
+              {{ attribution.date_retour_prevue|date:"d/m/Y" }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if attribution.notes %}
+      <div class="mt-3">
+        <strong>Notes:</strong>
+        <div class="border rounded p-2 bg-light mt-1">{{ attribution.notes|linebreaksbr }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><strong>Rapports d'audit lies a cette attribution</strong></div>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Utilisateur</th>
+            <th>Action</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in related_audit_reports %}
+          <tr>
+            <td>{{ r.timestamp|date:"d/m/Y H:i:s" }}</td>
+            <td>{% if r.user %}{{ r.user.username }}{% else %}System{% endif %}</td>
+            <td>{{ r.get_action_display }}</td>
+            <td>
+              <a href="{% url 'assets:report_detail' r.pk %}" class="btn btn-sm btn-outline-primary">Voir</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-muted">Aucun AuditLog associe, mais les informations d'attribution sont disponibles ci-dessus.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <a href="{% url 'assets:report_list' %}" class="btn btn-secondary">Retour</a>
+  </div>
+</div>
+{% endblock %}

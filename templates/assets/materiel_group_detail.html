@@ -21,9 +21,16 @@
             </p>
         </div>
         <div class="col-auto">
-            <a href="{% url 'assets:materiel_create' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-1"></i>Ajouter un matériel
-            </a>
+            {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+            <div class="btn-group">
+                <button type="button" class="btn btn-success" id="clone-button" data-bs-toggle="modal" data-bs-target="#modalCloner">
+                    <i class="bi bi-files me-1"></i>Cloner
+                </button>
+                <a href="{% url 'assets:materiel_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Ajouter un matériel
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -32,7 +39,7 @@
         <div class="col-md-3">
             <div class="card stat-card h-100">
                 <div class="card-body text-center">
-                    <h3 class="fw-bold text-primary">{{ stats_groupe.total }}</h3>
+                    <h3 class="fw-bold text-primary" id="stats-total">{{ stats_groupe.total }}</h3>
                     <small class="text-muted">Total</small>
                 </div>
             </div>
@@ -40,7 +47,7 @@
         <div class="col-md-3">
             <div class="card stat-card disponible h-100">
                 <div class="card-body text-center">
-                    <h3 class="fw-bold text-success">{{ stats_groupe.disponible }}</h3>
+                    <h3 class="fw-bold text-success" id="stats-disponible">{{ stats_groupe.disponible }}</h3>
                     <small class="text-muted">Disponible</small>
                 </div>
             </div>
@@ -48,7 +55,7 @@
         <div class="col-md-3">
             <div class="card stat-card attribue h-100">
                 <div class="card-body text-center">
-                    <h3 class="fw-bold text-warning">{{ stats_groupe.attribue }}</h3>
+                    <h3 class="fw-bold text-warning" id="stats-attribue">{{ stats_groupe.attribue }}</h3>
                     <small class="text-muted">Attribué</small>
                 </div>
             </div>
@@ -56,7 +63,7 @@
         <div class="col-md-3">
             <div class="card stat-card maintenance h-100">
                 <div class="card-body text-center">
-                    <h3 class="fw-bold text-info">{{ stats_groupe.maintenance }}</h3>
+                    <h3 class="fw-bold text-info" id="stats-maintenance">{{ stats_groupe.maintenance }}</h3>
                     <small class="text-muted">Maintenance</small>
                 </div>
             </div>
@@ -66,16 +73,35 @@
     <!-- Liste des matériels individuels -->
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Tous les matériels ({{ materiels.count }})</h5>
+            <h5 class="card-title mb-0">Tous les matériels (<span id="materiel-count">{{ materiels.count }}</span>)</h5>
+            {% if can_manage and materiels %}
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small" id="selection-count">0 sélectionné</span>
+                <button type="submit" form="bulk-delete-form" class="btn btn-danger btn-sm" id="bulk-delete-button" disabled>
+                    <i class="bi bi-trash me-1"></i>Supprimer la sélection
+                </button>
+            </div>
+            {% endif %}
         </div>
         <div class="card-body">
             {% if materiels %}
-            <div class="table-responsive">
+            {% if can_manage %}
+            <form id="bulk-delete-form" method="post" action="{% url 'assets:materiel_bulk_delete' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+            {% endif %}
+            <div class="table-responsive" id="materiel-table-wrapper">
                 <table class="table table-hover">
                     <thead>
                         <tr>
+                            {% if can_manage %}
+                            <th style="width: 36px;">
+                                <input class="form-check-input" type="checkbox" id="select-all" aria-label="Tout sélectionner">
+                            </th>
+                            {% endif %}
                             <th>Asset ID</th>
                             <th>Numéro d'inventaire</th>
+                            <th>Localisation</th>
                             <th>Marque</th>
                             <th>Modèle</th>
                             <th>Numéro de série</th>
@@ -86,38 +112,57 @@
                     </thead>
                     <tbody>
                         {% for materiel in materiels %}
-                        <tr>
+                        <tr data-materiel-id="{{ materiel.pk }}" data-statut="{{ materiel.statut_disponibilite }}" data-etat="{{ materiel.etat_technique }}">
+                            {% if can_manage %}
+                            <td>
+                                <input class="form-check-input materiel-select" type="checkbox" name="materiel_ids" value="{{ materiel.pk }}" aria-label="Sélectionner {{ materiel.asset_id }}">
+                            </td>
+                            {% endif %}
                             <td>
                                 <code>{{ materiel.asset_id }}</code>
                             </td>
                             <td>{{ materiel.numero_inventaire }}</td>
+                            <td>
+                                {% if materiel.location %}
+                                <span class="badge bg-info text-dark">{{ materiel.location }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
                             <td>{{ materiel.marque|default:"-" }}</td>
                             <td>{{ materiel.modele|default:"-" }}</td>
                             <td>{{ materiel.numero_serie|default:"-" }}</td>
                             <td>
-                                <span class="badge {% if materiel.etat_technique == 'FONCTIONNEL' %}bg-success{% elif materiel.etat_technique == 'DEFECTUEUX' %}bg-danger{% else %}bg-warning{% endif %}">
+                                <span
+                                    class="badge {% if materiel.etat_technique == 'FONCTIONNEL' %}bg-success{% elif materiel.etat_technique == 'DEFECTUEUX' %}bg-danger{% else %}bg-warning{% endif %}">
                                     {{ materiel.get_etat_technique_display }}
                                 </span>
                             </td>
                             <td>
-                                <span class="badge {% if materiel.statut_disponibilite == 'DISPONIBLE' %}bg-success{% elif materiel.statut_disponibilite == 'ATTRIBUE' %}bg-warning text-dark{% elif materiel.statut_disponibilite == 'MAINTENANCE' %}bg-info{% else %}bg-secondary{% endif %}">
+                                <span
+                                    class="badge {% if materiel.statut_disponibilite == 'DISPONIBLE' %}bg-success{% elif materiel.statut_disponibilite == 'ATTRIBUE' %}bg-warning text-dark{% elif materiel.statut_disponibilite == 'MAINTENANCE' %}bg-info{% else %}bg-secondary{% endif %}">
                                     {{ materiel.get_statut_disponibilite_display }}
                                 </span>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'assets:materiel_detail' materiel.pk %}" class="btn btn-outline-primary" title="Voir">
+                                    <a href="{% url 'assets:materiel_detail' materiel.pk %}"
+                                        class="btn btn-outline-primary" title="Voir">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <a href="{% url 'assets:materiel_update' materiel.pk %}" class="btn btn-outline-secondary" title="Modifier">
+                                    {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+                                    <a href="{% url 'assets:materiel_update' materiel.pk %}"
+                                        class="btn btn-outline-secondary" title="Modifier">
                                         <i class="bi bi-pencil"></i>
                                     </a>
+                                    {% endif %}
                                     {% if request.profil_utilisateur %}
-                                        {% if request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'SUPER_ADMIN' %}
-                                            <a href="{% url 'assets:materiel_delete' materiel.pk %}" class="btn btn-outline-danger" title="Supprimer">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                        {% endif %}
+                                    {% if request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'SUPER_ADMIN' %}
+                                    <a href="{% url 'assets:materiel_delete' materiel.pk %}"
+                                        class="btn btn-outline-danger" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    {% endif %}
                                     {% endif %}
                                 </div>
                             </td>
@@ -126,8 +171,15 @@
                     </tbody>
                 </table>
             </div>
+            {% if can_manage %}
+            </form>
+            {% endif %}
+            <div class="text-center py-5 d-none" id="materiel-empty-state">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h4 class="text-muted mt-3">Aucun matériel trouvé</h4>
+            </div>
             {% else %}
-            <div class="text-center py-5">
+            <div class="text-center py-5" id="materiel-empty-state">
                 <i class="bi bi-inbox display-1 text-muted"></i>
                 <h4 class="text-muted mt-3">Aucun matériel trouvé</h4>
             </div>
@@ -135,5 +187,260 @@
         </div>
     </div>
 </div>
+
+<!-- Modal pour cloner un matériel -->
+{% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+{% if materiels %}
+<div class="modal fade" id="modalCloner" tabindex="-1" aria-labelledby="modalClonerLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalClonerLabel">
+                    <i class="bi bi-files me-2"></i>Cloner un matériel
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <form method="post" action="{% url 'assets:materiel_clone' materiels.first.pk %}" id="clone-form" data-action-template="{% url 'assets:materiel_clone' 0 %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="materiel_source" class="form-label">Matériel à cloner *</label>
+                        <select class="form-select" id="materiel_source" name="materiel_source" required>
+                            {% for materiel in materiels %}
+                            <option value="{{ materiel.pk }}" {% if forloop.first %}selected{% endif %}>
+                                {{ materiel.asset_id }} - {{ materiel.nom }}
+                                {% if materiel.marque or materiel.modele %}
+                                ({{ materiel.marque|default:"" }} {{ materiel.modele|default:"" }})
+                                {% endif %}
+                                {% if materiel.location %}
+                                - Loc: {{ materiel.location }}
+                                {% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Sélectionnez le matériel à cloner</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nombre_copies" class="form-label">Nombre de copies *</label>
+                        <input type="number" class="form-control" id="nombre_copies" name="nombre_copies" 
+                               value="1" min="1" max="100" required>
+                        <small class="form-text text-muted">Entre 1 et 100 copies</small>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note:</strong> Les copies auront les mêmes caractéristiques que le matériel source, 
+                        mais avec de nouveaux Asset ID et Numéros d'inventaire générés automatiquement. 
+                        Le numéro de série sera laissé vide.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-files me-1"></i>Cloner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    (function () {
+        const form = document.getElementById('bulk-delete-form');
+        if (!form) return;
+
+        const selectAll = document.getElementById('select-all');
+        const deleteButton = document.getElementById('bulk-delete-button');
+        const selectionCount = document.getElementById('selection-count');
+        const totalCountEl = document.getElementById('materiel-count');
+        const statsTotalEl = document.getElementById('stats-total');
+        const statsDispoEl = document.getElementById('stats-disponible');
+        const statsAttribEl = document.getElementById('stats-attribue');
+        const statsMaintenanceEl = document.getElementById('stats-maintenance');
+        const tableWrapper = document.getElementById('materiel-table-wrapper');
+        const emptyState = document.getElementById('materiel-empty-state');
+        const cloneForm = document.getElementById('clone-form');
+        const cloneButton = document.getElementById('clone-button');
+        const cloneSelect = document.getElementById('materiel_source');
+
+        function getCheckboxes() {
+            return Array.from(document.querySelectorAll('.materiel-select'));
+        }
+
+        function updateSelectionUI() {
+            const boxes = getCheckboxes();
+            const selected = boxes.filter(cb => cb.checked);
+            const count = selected.length;
+            if (selectionCount) selectionCount.textContent = `${count} sélectionné(s)`;
+            if (deleteButton) deleteButton.disabled = count === 0;
+            if (selectAll) {
+                selectAll.indeterminate = count > 0 && count < boxes.length;
+                selectAll.checked = boxes.length > 0 && count === boxes.length;
+            }
+        }
+
+        function recomputeStats() {
+            const rows = Array.from(document.querySelectorAll('tr[data-materiel-id]'));
+            const total = rows.length;
+            let disponible = 0;
+            let attribue = 0;
+            let maintenance = 0;
+
+            rows.forEach(row => {
+                const statut = row.dataset.statut;
+                const etat = row.dataset.etat;
+                if (statut === 'DISPONIBLE' && etat === 'FONCTIONNEL') {
+                    disponible += 1;
+                }
+                if (statut === 'ATTRIBUE') {
+                    attribue += 1;
+                }
+                if (statut === 'MAINTENANCE') {
+                    maintenance += 1;
+                }
+            });
+
+            if (totalCountEl) totalCountEl.textContent = total;
+            if (statsTotalEl) statsTotalEl.textContent = total;
+            if (statsDispoEl) statsDispoEl.textContent = disponible;
+            if (statsAttribEl) statsAttribEl.textContent = attribue;
+            if (statsMaintenanceEl) statsMaintenanceEl.textContent = maintenance;
+
+            if (tableWrapper && emptyState) {
+                if (total === 0) {
+                    tableWrapper.classList.add('d-none');
+                    emptyState.classList.remove('d-none');
+                } else {
+                    tableWrapper.classList.remove('d-none');
+                    emptyState.classList.add('d-none');
+                }
+            }
+
+            if (cloneButton) {
+                if (total === 0) {
+                    cloneButton.setAttribute('disabled', 'disabled');
+                    cloneButton.classList.add('disabled');
+                } else {
+                    cloneButton.removeAttribute('disabled');
+                    cloneButton.classList.remove('disabled');
+                }
+            }
+
+            if (cloneForm && cloneForm.dataset.actionTemplate) {
+                const firstRow = rows[0];
+                if (firstRow) {
+                    const firstId = firstRow.dataset.materielId;
+                    if (firstId) {
+                        cloneForm.action = cloneForm.dataset.actionTemplate.replace('/0/', `/${firstId}/`);
+                    }
+                }
+            }
+        }
+
+        function showAlert(type, message) {
+            const container = document.querySelector('.alert-container');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'app-content py-2';
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.setAttribute('role', 'alert');
+            alert.textContent = message;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-close';
+            btn.setAttribute('data-bs-dismiss', 'alert');
+            alert.appendChild(btn);
+            wrapper.appendChild(alert);
+            if (container) {
+                container.prepend(wrapper);
+            } else {
+                document.body.prepend(wrapper);
+            }
+        }
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                const boxes = getCheckboxes();
+                boxes.forEach(cb => {
+                    cb.checked = selectAll.checked;
+                });
+                updateSelectionUI();
+            });
+        }
+
+        document.addEventListener('change', function (event) {
+            if (event.target && event.target.classList.contains('materiel-select')) {
+                updateSelectionUI();
+            }
+        });
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const boxes = getCheckboxes();
+            const selected = boxes.filter(cb => cb.checked);
+            if (!selected.length) {
+                showAlert('warning', 'Aucun matériel sélectionné.');
+                updateSelectionUI();
+                return;
+            }
+
+            const confirmed = window.confirm(`Supprimer ${selected.length} matériel(s) sélectionné(s) ? Cette action est irréversible.`);
+            if (!confirmed) return;
+
+            const formData = new FormData(form);
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (err) {
+                    data = null;
+                }
+
+                if (!response.ok || !data || !data.success) {
+                    const errorMsg = data && data.error ? data.error : 'Une erreur est survenue pendant la suppression.';
+                    showAlert('danger', errorMsg);
+                    return;
+                }
+
+                const deletedIds = data.deleted_ids || [];
+                deletedIds.forEach(id => {
+                    const row = document.querySelector(`tr[data-materiel-id="${id}"]`);
+                    if (row) row.remove();
+                    if (cloneSelect) {
+                        const option = cloneSelect.querySelector(`option[value="${id}"]`);
+                        if (option) option.remove();
+                    }
+                });
+
+                updateSelectionUI();
+                recomputeStats();
+
+                const resultType = data.deleted_count ? 'success' : 'warning';
+                if (data.message) {
+                    showAlert(resultType, data.message);
+                } else {
+                    showAlert(resultType, 'Suppression effectuée.');
+                }
+
+                if (data.skipped_count && data.deleted_count) {
+                    showAlert('warning', `${data.skipped_count} élément(s) n'ont pas été supprimé(s).`);
+                }
+            } catch (error) {
+                showAlert('danger', 'Erreur réseau lors de la suppression.');
+            }
+        });
+
+        updateSelectionUI();
+    })();
+</script>
+{% endblock %}

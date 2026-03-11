@@ -2,16 +2,17 @@
 
 ## 📋 Vue d'Ensemble
 
-Ce guide explique comment héberger RadGestMat sur un PC Windows dans le réseau admin de l'hôtel, permettant l'accès depuis les autres départements (PC et smartphones sur le réseau admin).
+Ce guide explique comment héberger RadGestMat sur un PC Windows dans le réseau admin de l'hôtel, permettant l'accès depuis les autres départements via Ethernet (réseau admin câblé uniquement).
 
 ### Architecture Réseau
 
 ```
 ┌─────────────────────────────────────┐
-│  Réseau Admin (Domaine Windows)     │
+│  Réseau Admin (Ethernet Câblé)      │
+│  IP Fixe: 10.105.42.118              │
 │  ┌──────────┐  ┌──────────┐         │
 │  │ PC Serveur│  │ PC Users │         │
-│  │ (DHCP)   │  │          │         │
+│  │ (Ethernet)│  │(Ethernet)│         │
 │  └────┬─────┘  └──────────┘         │
 │       │                              │
 │  ┌────▼─────┐                        │
@@ -22,11 +23,18 @@ Ce guide explique comment héberger RadGestMat sur un PC Windows dans le réseau
 
 ┌─────────────────────────────────────┐
 │  WiFi Client (HostHospitality)      │
-│  (Séparé - pas d'accès)             │
+│  (Séparé - pas d'accès au réseau)   │
+│  ❌ Smartphones ne peuvent pas       │
+│     accéder à l'application         │
 └─────────────────────────────────────┘
 ```
 
-**Important** : Le WiFi client (HostHospitality) est séparé du réseau admin. Les smartphones connectés au WiFi client ne pourront **pas** accéder à l'application. Seuls les appareils sur le réseau admin peuvent y accéder.
+**Important** : 
+- Le réseau admin est **uniquement Ethernet (câblé)**, il n'y a **pas de WiFi admin**
+- Le WiFi client (HostHospitality) est séparé et ne peut **pas** accéder au réseau admin
+- Seuls les **PC connectés en Ethernet** au réseau admin peuvent accéder à l'application
+- Les **smartphones ne peuvent pas accéder** (pas de WiFi admin disponible)
+- **IP fixe du serveur** : `10.105.42.118`
 
 ---
 
@@ -53,9 +61,7 @@ Ce guide explique comment héberger RadGestMat sur un PC Windows dans le réseau
    .\scripts\start_local_network.ps1
    ```
 
-4. **Noter l'IP affichée** (ex: `192.168.1.100`)
-
-5. **L'application est accessible** sur `http://<IP>:8000`
+4. **L'application est accessible** sur `http://10.105.42.118:8000` (IP fixe)
 
 ### Exemple de Sortie
 
@@ -64,8 +70,8 @@ Ce guide explique comment héberger RadGestMat sur un PC Windows dans le réseau
   RADGESTMAT - HÉBERGEMENT RÉSEAU LOCAL
 ================================================
 
-🔍 1. Détection de l'IP locale...
-   ✅ IP détectée: 192.168.1.100
+🔍 1. Configuration de l'IP...
+   ✅ IP fixe configurée: 10.105.42.118
 
 🔥 2. Configuration du firewall Windows...
    ✅ Règle firewall créée: 'RadGestMat HTTP' (Port 8000)
@@ -78,13 +84,15 @@ Ce guide explique comment héberger RadGestMat sur un PC Windows dans le réseau
 
 📍 Informations d'accès:
    🌐 Depuis ce PC: http://localhost:8000
-   🌐 Depuis autres PC (réseau admin): http://192.168.1.100:8000
-   📱 Depuis smartphone (réseau admin): http://192.168.1.100:8000
+   🌐 Depuis autres PC (réseau admin Ethernet): http://10.105.42.118:8000
+   ⚠️  Smartphones: Accès impossible (réseau admin uniquement Ethernet)
 ```
 
 ---
 
 ## 📱 Accès depuis Autres Appareils
+
+> **📖 Guide Utilisateur Complet** : Pour des instructions détaillées à partager avec les utilisateurs, consultez [`GUIDE_ACCES_UTILISATEURS.md`](GUIDE_ACCES_UTILISATEURS.md)
 
 ### Depuis un PC (Réseau Admin)
 
@@ -97,37 +105,26 @@ Ce guide explique comment héberger RadGestMat sur un PC Windows dans le réseau
 
 3. **Aller à l'adresse**
    ```
-   http://<IP_SERVEUR>:8000
+   http://10.105.42.118:8000
    ```
-   Exemple : `http://192.168.1.100:8000`
+   *(IP fixe du serveur)*
 
 4. **Se connecter**
    - Utiliser vos identifiants Django
    - Si vous n'avez pas de compte, contacter l'administrateur
 
-### Depuis un Smartphone (Réseau Admin)
+### ⚠️ Accès Smartphone
 
-**⚠️ IMPORTANT** : Le smartphone doit être connecté au **WiFi admin** (pas au WiFi client HostHospitality).
+**Le réseau admin est uniquement Ethernet (câblé), il n'y a pas de WiFi admin.**
 
-1. **Se connecter au WiFi admin**
-   - Vérifier que vous êtes sur le réseau admin (pas le WiFi client)
-   - Si vous ne savez pas quel réseau utiliser, demander à l'IT
+**Les smartphones ne peuvent pas accéder à l'application** car :
+- Le réseau admin est uniquement Ethernet (câblé)
+- Le WiFi client (HostHospitality) est séparé et ne peut pas accéder au réseau admin
+- Il n'existe pas de WiFi admin
 
-2. **Ouvrir le navigateur**
-   - Chrome, Safari, ou navigateur par défaut
-
-3. **Aller à l'adresse**
-   ```
-   http://<IP_SERVEUR>:8000
-   ```
-   Exemple : `http://192.168.1.100:8000`
-
-4. **Se connecter**
-   - Utiliser vos identifiants Django
-
-5. **Optionnel : Ajouter à l'écran d'accueil**
-   - **Android** : Menu (⋮) → "Ajouter à l'écran d'accueil"
-   - **iOS** : Partager → "Sur l'écran d'accueil"
+**Solution alternative** : Si un accès smartphone est nécessaire, il faudrait :
+- Configurer un point d'accès WiFi sur le réseau admin (demander à l'IT)
+- Ou utiliser un VPN pour accéder au réseau admin depuis le WiFi client
 
 ---
 
@@ -409,11 +406,12 @@ Créer une tâche planifiée Windows :
 .\scripts\start_local_network.ps1
 ```
 
-**URL d'accès** : `http://<IP>:8000` (IP affichée au démarrage)
+**URL d'accès** : `http://10.105.42.118:8000` (IP fixe)
 
 **Important** : 
-- Les smartphones doivent être sur le réseau **admin** (pas WiFi client)
-- Si l'IP change, redémarrer le script et informer les utilisateurs
+- Accès uniquement depuis **PC connectés en Ethernet** au réseau admin
+- Les **smartphones ne peuvent pas accéder** (pas de WiFi admin)
+- IP fixe : `10.105.42.118` (ne change pas)
 - Le firewall doit être configuré (fait automatiquement si admin)
 
 ---

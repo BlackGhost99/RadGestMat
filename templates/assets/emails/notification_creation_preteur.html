@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation de Pret</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f8;
+            color: #222;
+        }
+        .container {
+            max-width: 640px;
+            margin: 24px auto;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            background: linear-gradient(135deg, #0b5ed7 0%, #003f88 100%);
+            color: #fff;
+            padding: 24px;
+        }
+        .header h1 {
+            margin: 0 0 6px 0;
+            font-size: 22px;
+        }
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 24px;
+        }
+        .block {
+            background: #f9fafb;
+            border-left: 4px solid #0b5ed7;
+            border-radius: 4px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+        .row {
+            display: flex;
+            gap: 12px;
+            margin: 8px 0;
+        }
+        .label {
+            width: 170px;
+            min-width: 170px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .value {
+            flex: 1;
+        }
+        .badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #e8f1ff;
+            color: #0b5ed7;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .footer {
+            border-top: 1px solid #e5e7eb;
+            background: #f9fafb;
+            padding: 16px 24px;
+            color: #6b7280;
+            font-size: 12px;
+            text-align: center;
+        }
+        .footer a {
+            color: #0b5ed7;
+            text-decoration: none;
+        }
+        @media (max-width: 640px) {
+            .row {
+                flex-direction: column;
+                gap: 4px;
+            }
+            .label {
+                width: auto;
+                min-width: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Pret enregistre</h1>
+            <p>Votre operation de check-out a bien ete prise en compte.</p>
+        </div>
+
+        <div class="content">
+            <div class="block">
+                <div class="row">
+                    <div class="label">Materiel</div>
+                    <div class="value">
+                        <strong>{{ materiel.nom }}</strong>
+                        <span class="badge">{{ materiel.asset_id }}</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="label">Numero inventaire</div>
+                    <div class="value">{{ materiel.numero_inventaire }}</div>
+                </div>
+                <div class="row">
+                    <div class="label">Etat technique</div>
+                    <div class="value">{{ materiel.get_etat_technique_display }}</div>
+                </div>
+            </div>
+
+            <div class="block">
+                <div class="row">
+                    <div class="label">Date attribution</div>
+                    <div class="value">{{ attribution.date_attribution|date:"d/m/Y H:i" }}</div>
+                </div>
+                <div class="row">
+                    <div class="label">Retour prevu</div>
+                    <div class="value">
+                        {% if attribution.date_retour_prevue %}
+                        {{ attribution.date_retour_prevue|date:"d/m/Y" }}
+                        {% if attribution.heure_retour_prevue %}a {{ attribution.heure_retour_prevue }}{% endif %}
+                        {% else %}
+                        Non defini
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="label">Duree emprunt</div>
+                    <div class="value">{{ duree_emprunt }}</div>
+                </div>
+            </div>
+
+            <div class="block">
+                <div class="row">
+                    <div class="label">Receveur</div>
+                    <div class="value">
+                        {% if attribution.client %}
+                        {{ attribution.client.nom }}
+                        {% elif attribution.salle %}
+                        Salle: {{ attribution.salle.nom }}
+                        {% else %}
+                        Inconnu
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="label">Departement</div>
+                    <div class="value">{{ attribution.departement.nom }}</div>
+                </div>
+                {% if attribution.motif %}
+                <div class="row">
+                    <div class="label">Motif</div>
+                    <div class="value">{{ attribution.motif }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>RadGestMat - Systeme de gestion de materiel</p>
+            <p><a href="{{ site_url }}">Acceder a l'application</a></p>
+        </div>
+    </div>
+</body>
+</html>

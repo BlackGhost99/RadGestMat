@@ -21,14 +21,12 @@
         <div class="col-12">
             <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link {% if not status or status == 'ACTIF' %}active{% endif %}" 
-                       href="?status=ACTIF">
+                    <a class="nav-link {% if not status or status == 'ACTIF' %}active{% endif %}" href="?status=ACTIF">
                         📤 Attributions Actives
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if status == 'COMPLETED' %}active{% endif %}" 
-                       href="?status=COMPLETED">
+                    <a class="nav-link {% if status == 'COMPLETED' %}active{% endif %}" href="?status=COMPLETED">
                         📥 Retournés
                     </a>
                 </li>
@@ -45,6 +43,7 @@
                         <tr>
                             <th>Matériel</th>
                             <th>Client</th>
+                            <th>Type</th>
                             <th>Date Départ</th>
                             <th>Date Retour Prévue</th>
                             <th>Statut</th>
@@ -58,12 +57,43 @@
                                 <strong>{{ attr.materiel.nom }}</strong><br>
                                 <small class="text-muted">{{ attr.materiel.asset_id }}</small>
                             </td>
-                            <td>{{ attr.client.nom }}</td>
+                            <td>
+                                {% if attr.client %}
+                                    {{ attr.client.nom }}
+                                    {% if attr.materiel.location %}
+                                        <br><small class="text-info">Localisation: {{ attr.materiel.location }}</small>
+                                    {% endif %}
+                                {% elif attr.salle %}
+                                    Salle: {{ attr.salle.nom }}
+                                    {% if attr.materiel.location %}
+                                        <br><small class="text-info">Localisation: {{ attr.materiel.location }}</small>
+                                    {% endif %}
+                                {% elif attr.materiel.location %}
+                                    {{ attr.materiel.location }}
+                                {% else %}
+                                    <span class="text-muted">Non renseigné</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if attr.is_synthetic %}
+                                    <span class="text-muted">Statut matériel</span>
+                                {% else %}
+                                    {{ attr.get_type_attribution_display }}
+                                {% endif %}
+                            </td>
                             <td>{{ attr.date_attribution|date:"d/m/Y" }}</td>
                             <td>
-                                {{ attr.date_retour_prevue|date:"d/m/Y" }}
-                                {% if attr.date_retour_prevue|date:"U"|add:"0" < now|date:"U"|add:"0" %}
-                                    <span class="badge bg-danger">⚠️ Retard!</span>
+                                {% if attr.is_synthetic %}
+                                    -
+                                {% elif attr.type_attribution == "TEMPORAIRE" %}
+                                    {{ attr.date_retour_prevue|date:"d/m/Y" }}
+                                    {% if attr.is_overdue %}
+                                        <span class="badge bg-danger">Retard!</span>
+                                    {% endif %}
+                                {% elif attr.type_attribution == "INDEFINIE" %}
+                                    Indefinie
+                                {% else %}
+                                    Usage unique
                                 {% endif %}
                             </td>
                             <td>
@@ -71,15 +101,21 @@
                                     <span class="badge bg-info">📥 Retourné le {{ attr.date_retour_effective|date:"d/m/Y" }}</span>
                                 {% else %}
                                     <span class="badge bg-success">📤 Attribué</span>
-                                    {% if attr.date_retour_prevue|date:"U"|add:"0" < now|date:"U"|add:"0" %}
+                                    {% if attr.is_overdue %}
                                         <span class="badge bg-danger">⚠️ Retard!</span>
                                     {% endif %}
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'assets:attribution_update' attr.pk %}" class="btn btn-sm btn-warning">
-                                    ✏ Modifier
-                                </a>
+                                {% if attr.pk %}
+                                    <a href="{% url 'assets:attribution_update' attr.pk %}" class="btn btn-sm btn-warning">
+                                        ✏ Modifier
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'assets:materiel_update' attr.materiel.pk %}" class="btn btn-sm btn-warning">
+                                        ✏ Modifier matériel
+                                    </a>
+                                {% endif %}
                                 {% if not attr.date_retour_effective %}
                                     <a href="{% url 'assets:materiel_checkin' attr.materiel.asset_id %}" class="btn btn-sm btn-success">
                                         📱 Retourner
@@ -89,7 +125,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 Aucune attribution trouvée
                             </td>
                         </tr>

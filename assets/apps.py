@@ -1,4 +1,6 @@
 from django.apps import AppConfig
+import os
+import sys
 
 
 class AssetsConfig(AppConfig):
@@ -6,6 +8,12 @@ class AssetsConfig(AppConfig):
     name = 'assets'
     
     def ready(self):
+        # Skip signal imports during migrations
+        if 'migrate' in sys.argv or 'makemigrations' in sys.argv:
+            return
+        if os.environ.get('DISABLE_SIGNALS', '0') == '1':
+            return
+            
         import assets.signals  # Enregistrer les signaux
         # Signaux d'audit séparés
         try:

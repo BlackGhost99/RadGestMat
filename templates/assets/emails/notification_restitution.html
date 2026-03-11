@@ -157,15 +157,20 @@
                         <span class="info-label">Durée totale:</span>
                         <span class="info-value">{{ duree_emprunt }}</span>
                     </div>
-                    {% if attribution.date_retour_prevue <= attribution.date_retour_effective %}
+                    {% if attribution.date_retour_prevue and attribution.date_retour_prevue <= attribution.date_retour_effective %}
                     <div class="info-row">
                         <span class="info-label">Statut:</span>
-                        <span class="info-value" style="color: #1b5e20; font-weight: 600;">✓ Retour à l'heure</span>
+                        <span class="info-value" style="color: #1b5e20; font-weight: 600;">? Retour à l'heure</span>
+                    </div>
+                    {% elif attribution.date_retour_prevue %}
+                    <div class="info-row">
+                        <span class="info-label">Statut:</span>
+                        <span class="info-value" style="color: #ff9800;">? Retour avec légère avance</span>
                     </div>
                     {% else %}
                     <div class="info-row">
                         <span class="info-label">Statut:</span>
-                        <span class="info-value" style="color: #ff9800;">⚠ Retour avec légère avance</span>
+                        <span class="info-value" style="color: #607d8b;">Retour sans date prévue</span>
                     </div>
                     {% endif %}
                 </div>

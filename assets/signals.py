@@ -1,56 +1,136 @@
 # assets/signals.py
 """
-Signaux Django pour les alertes et notifications d'attribution
-
-Ce module gère l'envoi automatique de notifications lors de:
-- Création d'une attribution → Notification de création
-- Retour de matériel → Confirmation de restitution
-- Alertes critiques → Email d'alerte
+Signaux Django pour alertes et notifications d'attribution.
 """
+
 import logging
+import os
+from types import SimpleNamespace
+
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from .models import Alerte, Attribution, NotificationPreferences
+
 from .email_service import EmailAlerteService, NotificationEmailService
+from .models import Alerte, Attribution, NotificationLog, NotificationPreferences
 from .whatsapp_service import WhatsAppNotificationService
 
 logger = logging.getLogger(__name__)
+
+# Disable signals globally when requested by environment.
+SIGNALS_DISABLED = os.environ.get("DISABLE_SIGNALS", "0") == "1"
+
+
+def _default_preferences():
+    return SimpleNamespace(
+        notifications_email=True,
+        notifications_whatsapp=False,
+        phone_number=None,
+    )
+
+
+def _get_client_preferences(client):
+    if not client:
+        return _default_preferences()
+
+    try:
+        preferences, _ = NotificationPreferences.objects.get_or_create(client=client)
+        return preferences
+    except Exception as exc:
+        logger.error(
+            "Impossible de recuperer les preferences notifications du client %s: %s",
+            client,
+            exc,
+            exc_info=True,
+        )
+        return _default_preferences()
+
+
+def _send_email_notification(attribution, notification_type, recipient_email, recipient_role=None):
+    if not recipient_email:
+        return
+
+    try:
+        log = NotificationLog.objects.create(
+            attribution=attribution,
+            type_notification=notification_type,
+            canal=NotificationLog.CANAL_EMAIL,
+            duree_emprunt=attribution.duree_emprunt,
+            destinataire=recipient_email,
+            statut=NotificationLog.STATUT_EN_ATTENTE,
+        )
+        NotificationEmailService.send_notification(log, recipient_role=recipient_role)
+    except Exception as exc:
+        logger.error(
+            "Erreur envoi email notification attribution=%s recipient=%s: %s",
+            attribution.pk,
+            recipient_email,
+            exc,
+            exc_info=True,
+        )
+
+
+def _send_whatsapp_notification(attribution, notification_type, phone_number):
+    if not phone_number:
+        return
+
+    try:
+        log = NotificationLog.objects.create(
+            attribution=attribution,
+            type_notification=notification_type,
+            canal=NotificationLog.CANAL_WHATSAPP,
+            duree_emprunt=attribution.duree_emprunt,
+            destinataire=phone_number,
+            statut=NotificationLog.STATUT_EN_ATTENTE,
+        )
+        WhatsAppNotificationService.send_notification(log)
+    except Exception as exc:
+        logger.error(
+            "Erreur envoi WhatsApp attribution=%s recipient=%s: %s",
+            attribution.pk,
+            phone_number,
+            exc,
+            exc_info=True,
+        )
 
 
 # ============================================================================
 # SIGNAUX POUR LES ALERTES CRITIQUES
 # ============================================================================
 
+
 @receiver(post_save, sender=Alerte)
 def envoyer_email_alerte_critique(sender, instance, created, **kwargs):
-    """Envoie un email automatiquement lorsqu'une alerte critique est créée"""
+    """Envoie un email automatiquement lorsqu'une alerte critique est creee."""
+    if SIGNALS_DISABLED:
+        return
+
     if created and instance.severite == Alerte.SEVERITE_CRITICAL:
-        # Envoyer l'email de manière asynchrone (ou synchrone en développement)
         try:
             EmailAlerteService.envoyer_alerte_critique(instance)
-        except Exception as e:
-            # Logger l'erreur mais ne pas bloquer la création de l'alerte
-            logger.error(f"Erreur lors de l'envoi de l'email d'alerte: {e}", exc_info=True)
+        except Exception as exc:
+            logger.error(
+                "Erreur lors de l'envoi de l'email d'alerte: %s",
+                exc,
+                exc_info=True,
+            )
 
 
 # ============================================================================
 # SIGNAUX POUR LES NOTIFICATIONS D'ATTRIBUTION
 # ============================================================================
 
+
 @receiver(pre_save, sender=Attribution)
 def detecter_retour_materiel(sender, instance, **kwargs):
     """
-    Détecte si le matériel vient d'être retourné (date_retour_effective définie)
-    et marque l'instance pour envoi de notification dans post_save
+    Detecte si le materiel vient d'etre retourne et marque l'instance.
     """
-    if instance.pk:  # L'attribution existe déjà
+    if instance.pk:
         try:
             old_instance = Attribution.objects.get(pk=instance.pk)
-            # Si date_retour_effective vient d'être définie
-            if not old_instance.date_retour_effective and instance.date_retour_effective:
-                instance._notification_restitution_required = True
-            else:
-                instance._notification_restitution_required = False
+            instance._notification_restitution_required = (
+                not old_instance.date_retour_effective and bool(instance.date_retour_effective)
+            )
         except Attribution.DoesNotExist:
             instance._notification_restitution_required = False
     else:
@@ -60,116 +140,81 @@ def detecter_retour_materiel(sender, instance, **kwargs):
 @receiver(post_save, sender=Attribution)
 def envoyer_notifications_attribution(sender, instance, created, **kwargs):
     """
-    Envoie automatiquement les notifications lors de:
-    1. Création d'une attribution → Notification de création
-    2. Retour de matériel → Confirmation de restitution
-    
-    Les notifications sont envoyées selon les préférences de l'utilisateur:
-    - Email (par défaut activé)
-    - WhatsApp (si activé et numéro configuré)
+    Envoi automatique des notifications:
+    1) creation d'attribution
+    2) restitution
     """
-    # Récupérer les préférences du client
-    try:
-        preferences, _ = NotificationPreferences.objects.get_or_create(
-            client=instance.client
-        )
-    except Exception as e:
-        logger.error(f"Impossible de récupérer les préférences pour {instance.client}: {e}")
-        # Créer des préférences par défaut (email activé)
-        preferences = type('obj', (object,), {
-            'notifications_email': True,
-            'notifications_whatsapp': False,
-            'phone_number': None
-        })()
+    if SIGNALS_DISABLED:
+        return
 
-    # ========================================
-    # 1. NOTIFICATION DE CRÉATION
-    # ========================================
+    client_preferences = _get_client_preferences(instance.client)
+
     if created:
-        logger.info(f"📧 Nouvelle attribution créée: {instance.id} - Envoi des notifications...")
-        
-        # Email de création (si activé)
-        if preferences.notifications_email and instance.client.email:
-            try:
-                # Créer le log de notification
-                from .models import NotificationLog
-                log = NotificationLog.objects.create(
-                    attribution=instance,
-                    type_notification=NotificationLog.TYPE_CREATION,
-                    canal='EMAIL',
-                    duree_emprunt=instance.duree_emprunt,
-                    destinataire=instance.client.email,
-                    statut='EN_ATTENTE'
-                )
-                # Envoyer via le service
-                NotificationEmailService.send_notification(log)
-                logger.info(f"✅ Email de création envoyé à {instance.client.email}")
-            except Exception as e:
-                logger.error(f"❌ Erreur email création: {e}", exc_info=True)
-        
-        # WhatsApp de création (si activé)
-        if preferences.notifications_whatsapp and preferences.phone_number:
-            try:
-                # Créer le log de notification
-                from .models import NotificationLog
-                log = NotificationLog.objects.create(
-                    attribution=instance,
-                    type_notification=NotificationLog.TYPE_CREATION,
-                    canal='WHATSAPP',
-                    duree_emprunt=instance.duree_emprunt,
-                    destinataire=preferences.phone_number,
-                    statut='EN_ATTENTE'
-                )
-                # Envoyer via le service
-                WhatsAppNotificationService.send_notification(log)
-                logger.info(f"✅ WhatsApp de création envoyé à {preferences.phone_number}")
-            except Exception as e:
-                logger.error(f"❌ Erreur WhatsApp création: {e}", exc_info=True)
+        logger.info("Nouvelle attribution creee: %s", instance.id)
 
-    # ========================================
-    # 2. CONFIRMATION DE RESTITUTION
-    # ========================================
-    elif hasattr(instance, '_notification_restitution_required') and instance._notification_restitution_required:
-        logger.info(f"📦 Matériel retourné pour attribution {instance.id} - Envoi des confirmations...")
-        
-        # Email de restitution (si activé)
-        if preferences.notifications_email and instance.client.email:
-            try:
-                # Créer le log de notification
-                from .models import NotificationLog
-                log = NotificationLog.objects.create(
-                    attribution=instance,
-                    type_notification=NotificationLog.TYPE_RESTITUTION,
-                    canal='EMAIL',
-                    duree_emprunt=instance.duree_emprunt,
-                    destinataire=instance.client.email,
-                    statut='EN_ATTENTE'
-                )
-                # Envoyer via le service
-                NotificationEmailService.send_notification(log)
-                logger.info(f"✅ Email de restitution envoyé à {instance.client.email}")
-            except Exception as e:
-                logger.error(f"❌ Erreur email restitution: {e}", exc_info=True)
-        
-        # WhatsApp de restitution (si activé)
-        if preferences.notifications_whatsapp and preferences.phone_number:
-            try:
-                # Créer le log de notification
-                from .models import NotificationLog
-                log = NotificationLog.objects.create(
-                    attribution=instance,
-                    type_notification=NotificationLog.TYPE_RESTITUTION,
-                    canal='WHATSAPP',
-                    duree_emprunt=instance.duree_emprunt,
-                    destinataire=preferences.phone_number,
-                    statut='EN_ATTENTE'
-                )
-                # Envoyer via le service
-                WhatsAppNotificationService.send_notification(log)
-                logger.info(f"✅ WhatsApp de restitution envoyé à {preferences.phone_number}")
-            except Exception as e:
-                logger.error(f"❌ Erreur WhatsApp restitution: {e}", exc_info=True)
-        
-        # Nettoyer le flag
-        delattr(instance, '_notification_restitution_required')
+        # Receveur du materiel (client)
+        client_email = ""
+        if instance.client:
+            client_email = (instance.client.email or "").strip()
 
+        if client_preferences.notifications_email and client_email:
+            _send_email_notification(
+                instance,
+                NotificationLog.TYPE_CREATION,
+                client_email,
+                recipient_role="RECEVEUR",
+            )
+        elif instance.client and not client_email:
+            logger.warning(
+                "Aucun email client pour attribution=%s client=%s",
+                instance.pk,
+                instance.client_id,
+            )
+
+        # Employe qui prete le materiel (obligatoire metier)
+        lender_email = (getattr(instance.employe_responsable, "email", "") or "").strip()
+        if lender_email:
+            _send_email_notification(
+                instance,
+                NotificationLog.TYPE_CREATION,
+                lender_email,
+                recipient_role="PRETEUR",
+            )
+        else:
+            logger.error(
+                "Email obligatoire manquant pour le preteur sur attribution=%s user=%s",
+                instance.pk,
+                instance.employe_responsable_id,
+            )
+
+        # WhatsApp creation (client uniquement, selon preferences)
+        if client_preferences.notifications_whatsapp and client_preferences.phone_number:
+            _send_whatsapp_notification(
+                instance,
+                NotificationLog.TYPE_CREATION,
+                client_preferences.phone_number,
+            )
+
+    elif getattr(instance, "_notification_restitution_required", False):
+        logger.info("Materiel retourne pour attribution=%s", instance.id)
+
+        client_email = ""
+        if instance.client:
+            client_email = (instance.client.email or "").strip()
+
+        if client_preferences.notifications_email and client_email:
+            _send_email_notification(
+                instance,
+                NotificationLog.TYPE_RESTITUTION,
+                client_email,
+            )
+
+        if client_preferences.notifications_whatsapp and client_preferences.phone_number:
+            _send_whatsapp_notification(
+                instance,
+                NotificationLog.TYPE_RESTITUTION,
+                client_preferences.phone_number,
+            )
+
+        if hasattr(instance, "_notification_restitution_required"):
+            delattr(instance, "_notification_restitution_required")

@@ -66,8 +66,19 @@
           {% endif %}
         </div>
 
-        <!-- Date retour prévue -->
+        <!-- Type d'attribution -->
         <div class="mb-3">
+          <label for="{{ form.type_attribution.id_for_label }}" class="form-label">
+            <strong>Type d'attribution *</strong>
+          </label>
+          {{ form.type_attribution }}
+          {% if form.type_attribution.errors %}
+            <div class="invalid-feedback d-block">{{ form.type_attribution.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Date retour pr?vue -->
+        <div class="mb-3" id="date_retour_block">
           <label for="{{ form.date_retour_prevue.id_for_label }}" class="form-label">
             <strong>Date retour prévue *</strong>
           </label>
@@ -100,3 +111,24 @@
   </div>
 </div>
 {% endblock %}
+
+
+
+{% block extra_js %}
+<script>
+  function updateReturnDateBlock(){
+    const typeSelect = document.getElementById('{{ form.type_attribution.id_for_label }}');
+    const dateBlock = document.getElementById('date_retour_block');
+    if (!typeSelect || !dateBlock) return;
+    const needsDate = typeSelect.value === 'TEMPORAIRE';
+    dateBlock.style.display = needsDate ? 'block' : 'none';
+  }
+
+  const typeSelect = document.getElementById('{{ form.type_attribution.id_for_label }}');
+  if (typeSelect) {
+    typeSelect.addEventListener('change', updateReturnDateBlock);
+  }
+  updateReturnDateBlock();
+</script>
+{% endblock %}
+
