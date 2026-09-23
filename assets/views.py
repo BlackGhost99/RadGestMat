@@ -2057,7 +2057,8 @@ def materiel_delete(request, pk):
     # Autoriser les superusers Django également
     if not (request.user.is_superuser or (profil and (
             profil.role == 'SUPER_ADMIN' or (
-                profil.role == 'DEPT_MANAGER' and profil.departement_id == materiel.departement_id
+                profil.role in ['DEPT_MANAGER', 'DEPT_USER']
+                and profil.departement_id == materiel.departement_id
             )
         ))):
         raise PermissionDenied("Vous n'avez pas la permission de supprimer ce matériel.")
@@ -2074,7 +2075,7 @@ def materiel_delete(request, pk):
 def materiel_bulk_delete(request):
     """Supprime plusieurs matériels sélectionnés (par lot)."""
     profil = getattr(request, 'profil_utilisateur', None)
-    can_manage = request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER'])
+    can_manage = request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER'])
     if not can_manage:
         raise PermissionDenied("Vous n'avez pas la permission de supprimer ces matériels.")
 
@@ -2098,7 +2099,7 @@ def materiel_bulk_delete(request):
 
     qs = Materiel.objects.filter(pk__in=materiel_ids)
     if not (request.user.is_superuser or (profil and profil.role == 'SUPER_ADMIN')):
-        if profil and profil.role == 'DEPT_MANAGER' and profil.departement_id:
+        if profil and profil.role in ['DEPT_MANAGER', 'DEPT_USER'] and profil.departement_id:
             qs = qs.filter(departement_id=profil.departement_id)
         else:
             qs = qs.none()
@@ -2142,7 +2143,7 @@ def materiel_bulk_delete(request):
 def materiel_group_bulk_delete(request):
     """Supprime plusieurs groupes d'équipements (tous les matériels associés)."""
     profil = getattr(request, 'profil_utilisateur', None)
-    can_manage = request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER'])
+    can_manage = request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER'])
     if not can_manage:
         raise PermissionDenied("Vous n'avez pas la permission de supprimer ces matériels.")
 
@@ -2187,7 +2188,7 @@ def materiel_group_bulk_delete(request):
         return JsonResponse({'success': False, 'error': "Aucun groupe sélectionné."}, status=400)
 
     is_super_admin = request.user.is_superuser or (profil and profil.role == 'SUPER_ADMIN')
-    manager_dept_id = profil.departement_id if (profil and profil.role == 'DEPT_MANAGER') else None
+    manager_dept_id = profil.departement_id if (profil and profil.role in ['DEPT_MANAGER', 'DEPT_USER']) else None
 
     deleted_groups = []
     skipped_groups = []

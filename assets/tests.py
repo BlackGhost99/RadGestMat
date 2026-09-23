@@ -108,6 +108,36 @@ class MaterielViewsTest(TestCase):
         self.materiel.refresh_from_db()
         self.assertEqual(self.materiel.nom, 'Materiel modifie')
 
+    def test_dept_user_can_delete_materiel_in_own_department(self):
+        ProfilUtilisateur.objects.create(
+            user=self.user,
+            departement=self.dept,
+            role='DEPT_USER',
+        )
+        self.client.login(username='test', password='testpass123')
+        response = self.client.post(reverse('assets:materiel_delete', args=[self.materiel.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Materiel.objects.filter(pk=self.materiel.pk).exists())
+
+    def test_dept_user_cannot_delete_materiel_in_another_department(self):
+        other_dept = Departement.objects.create(code='DELETE_OTHER', nom='Other Delete Department')
+        other_materiel = Materiel.objects.create(
+            asset_id='DELETE001',
+            numero_inventaire='INV-DELETE',
+            nom='Other Material',
+            departement=other_dept,
+            etat_technique='FONCTIONNEL',
+            statut_disponibilite='DISPONIBLE',
+        )
+        ProfilUtilisateur.objects.create(
+            user=self.user,
+            departement=self.dept,
+            role='DEPT_USER',
+        )
+        self.client.login(username='test', password='testpass123')
+        response = self.client.post(reverse('assets:materiel_delete', args=[other_materiel.pk]))
+        self.assertEqual(response.status_code, 403)
+
     def test_dept_user_cannot_update_materiel_in_another_department(self):
         other_dept = Departement.objects.create(code='OTHER', nom='Other Department')
         other_materiel = Materiel.objects.create(
