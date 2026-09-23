@@ -21,7 +21,7 @@
                     {% if request.profil_utilisateur.role == 'SUPER_ADMIN' %}
                     <span class="badge fs-6" style="background: rgba(47, 128, 237, 0.2); color: var(--radisson-blue); border: 1px solid rgba(47, 128, 237, 0.3);"><i class="bi bi-globe me-1"></i>Vue Globale</span>
                     {% endif %}
-                    {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+                    {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'DEPT_USER' %}
                     <a href="{% url 'assets:materiel_create' %}" class="btn btn-gradient">
                         <i class="bi bi-plus-lg me-2"></i>Ajouter du matériel
                     </a>

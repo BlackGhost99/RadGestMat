@@ -1991,6 +1991,18 @@ def materiel_update(request, pk):
     """Met à jour un matériel existant."""
     materiel = get_object_or_404(Materiel, pk=pk)
     departement = materiel.departement
+    profil = getattr(request, 'profil_utilisateur', None)
+
+    if not (
+        request.user.is_superuser
+        or (profil and profil.role == 'SUPER_ADMIN')
+        or (
+            profil
+            and profil.role in ['DEPT_MANAGER', 'DEPT_USER']
+            and profil.departement_id == materiel.departement_id
+        )
+    ):
+        raise PermissionDenied("Vous n'avez pas la permission de modifier ce matériel.")
     
     if request.method == 'POST':
         # Vérifier si c'est une demande de génération de QR code
