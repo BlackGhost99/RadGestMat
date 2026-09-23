@@ -1587,9 +1587,10 @@ def api_creer_categorie(request):
 def dashboard(request):
     """Tableau de bord avec données filtrées selon le rôle"""
     profil = getattr(request, 'profil_utilisateur', None)
+    show_all = True
     
     # Super Admin: voir tous les données
-    if profil and profil.role == 'SUPER_ADMIN':
+    if show_all:
         total_materiel = Materiel.objects.count()
         materiel_disponible = Materiel.objects.filter(statut_disponibilite='DISPONIBLE').count()
         materiel_attribue = Materiel.objects.filter(statut_disponibilite='ATTRIBUE').count()
@@ -1630,8 +1631,8 @@ def dashboard(request):
     
     # Récupérer les alertes non réglées (limité à 3 pour le dashboard)
     departement = getattr(request, 'departement', None)
-    alertes_recentes = AlerteService.get_alertes_non_reglementees(departement)[:3]
-    nombre_alertes_critiques = AlerteService.get_nombre_alertes_critiques(departement)
+    alertes_recentes = AlerteService.get_alertes_non_reglementees()[:3]
+    nombre_alertes_critiques = AlerteService.get_nombre_alertes_critiques()
 
     context = {
         'total_materiel': total_materiel,
@@ -1671,7 +1672,7 @@ def materiel_list(request):
     if date_achat_from and date_achat_to and date_achat_from > date_achat_to:
         date_achat_from, date_achat_to = date_achat_to, date_achat_from
 
-    show_all = bool(profil and profil.role == 'SUPER_ADMIN')
+    show_all = True
     if show_all:
         dept_id_param = request.GET.get('departement')
         if dept_id_param:
@@ -1823,19 +1824,14 @@ def materiel_group_detail(request, nom):
     """Affiche tous les matériels d'un groupe (même nom d'équipement)"""
     departement = getattr(request, 'departement', None)
     profil = getattr(request, 'profil_utilisateur', None)
-    can_manage = request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER'])
+    can_clone = request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER'])
     
     if not departement:
         departement, _ = Departement.objects.get_or_create(code='DEF', defaults={'nom': 'Département par défaut'})
 
-    # SUPER_ADMIN can see the group contents regardless of department
-    if profil and profil.role == 'SUPER_ADMIN':
-        materiels = Materiel.objects.filter(nom=nom).select_related('categorie', 'departement').order_by('asset_id')
-    else:
-        materiels = Materiel.objects.filter(
-            nom=nom,
-            departement=departement
-        ).select_related('categorie', 'departement').order_by('asset_id')
+    materiels = Materiel.objects.filter(
+        nom=nom
+    ).select_related('categorie', 'departement').order_by('asset_id')
     
     if not materiels.exists():
         messages.error(request, f'Aucun matériel trouvé avec le nom "{nom}".')
@@ -1858,7 +1854,8 @@ def materiel_group_detail(request, nom):
         'materiels': materiels,
         'stats_groupe': stats_groupe,
         'categorie': categorie,
-        'can_manage': can_manage,
+        'can_manage': can_clone,
+        'can_clone': can_clone,
     }
     
     return render(request, 'assets/materiel_group_detail.html', context)
@@ -1871,7 +1868,7 @@ def materiel_clone(request, pk):
     profil = getattr(request, 'profil_utilisateur', None)
     
     # Vérifier les permissions
-    if not (profil and (profil.role == 'SUPER_ADMIN' or profil.role == 'DEPT_MANAGER')):
+    if not (request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER'])):
         messages.error(request, "Vous n'avez pas les permissions nécessaires pour cloner un matériel.")
         return redirect('assets:materiel_detail', pk=pk)
     
@@ -1879,7 +1876,10 @@ def materiel_clone(request, pk):
         # Récupérer le matériel source sélectionné dans le formulaire
         materiel_source_id = request.POST.get('materiel_source', pk)
         try:
-            materiel_source = Materiel.objects.get(pk=materiel_source_id)
+            source_queryset = Materiel.objects.all()
+            if profil and profil.role == 'DEPT_USER':
+                source_queryset = source_queryset.filter(departement=profil.departement)
+            materiel_source = source_queryset.get(pk=materiel_source_id)
         except Materiel.DoesNotExist:
             messages.error(request, "Matériel source introuvable.")
             return redirect('assets:materiel_group_detail', nom=materiel_par_defaut.nom)
@@ -3032,22 +3032,10 @@ def attribution_list(request):
     """Liste des attributions avec filtrage par departement"""
     profil = getattr(request, 'profil_utilisateur', None)
     departement = getattr(request, 'departement', None)
-    
-    # Super Admin: voir toutes les attributions
-    if profil and profil.role == 'SUPER_ADMIN':
-        attributions_qs = Attribution.objects.select_related(
-            'materiel', 'client', 'departement', 'employe_responsable'
-        ).all()
-    else:
-        # Utilisateur du departement: voir seulement son departement
-        if not departement:
-            departement, _ = Departement.objects.get_or_create(
-                code='DEF',
-                defaults={'nom': 'Departement par defaut'}
-            )
-        attributions_qs = Attribution.objects.select_related(
-            'materiel', 'client', 'departement', 'employe_responsable'
-        ).filter(departement=departement)
+    # Tous les utilisateurs authentifiés voient les attributions de tous les départements.
+    attributions_qs = Attribution.objects.select_related(
+        'materiel', 'client', 'salle', 'departement', 'employe_responsable'
+    ).all()
     
     # Filtrer par statut (actif = date_retour_effective null)
     status = request.GET.get('status', 'ACTIF')
@@ -3063,9 +3051,6 @@ def attribution_list(request):
         materiels_attribues = Materiel.objects.select_related('salle').filter(
             statut_disponibilite=Materiel.STATUT_ATTRIBUE
         )
-        if not (profil and profil.role == 'SUPER_ADMIN'):
-            materiels_attribues = materiels_attribues.filter(departement=departement)
-
         active_by_materiel_id = {attr.materiel_id: attr for attr in active_attributions}
 
         # Si un materiel a ete modifie bien apres son attribution active

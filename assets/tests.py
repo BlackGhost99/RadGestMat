@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from .models import Departement, Categorie, Materiel
 from .models import Client, Attribution, AuditLog
+from users.models import ProfilUtilisateur
 from django.urls import reverse
 from datetime import date, timedelta
 from django.utils import timezone
@@ -69,6 +70,20 @@ class MaterielViewsTest(TestCase):
         self.client.login(username='test', password='testpass123')
         response = self.client.get('/materiel/ajouter/')
         self.assertEqual(response.status_code, 200)
+
+    def test_dept_user_can_clone_materiel(self):
+        ProfilUtilisateur.objects.create(
+            user=self.user,
+            departement=self.dept,
+            role='DEPT_USER',
+        )
+        self.client.login(username='test', password='testpass123')
+        response = self.client.post(
+            reverse('assets:materiel_clone', args=[self.materiel.pk]),
+            data={'materiel_source': self.materiel.pk, 'nombre_copies': 1},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Materiel.objects.filter(nom=self.materiel.nom).count(), 2)
 
     def test_checkout_and_checkin_workflow(self):
         """Test basique du workflow check-out puis check-in"""
