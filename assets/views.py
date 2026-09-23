@@ -3248,8 +3248,8 @@ def alerte_detecter(request):
     """Déclenche manuellement la détection de toutes les alertes"""
     profil = getattr(request, 'profil_utilisateur', None)
     
-    # Seuls les managers et super admins peuvent déclencher la détection
-    if not profil or profil.role not in ['SUPER_ADMIN', 'DEPT_MANAGER']:
+    # Les utilisateurs de département peuvent aussi lancer la détection.
+    if not profil or profil.role not in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER']:
         raise PermissionDenied("Vous n'avez pas les permissions pour cette action.")
     
     resultats = AlerteService.detecter_toutes_alertes()

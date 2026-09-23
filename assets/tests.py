@@ -138,6 +138,16 @@ class MaterielViewsTest(TestCase):
         response = self.client.post(reverse('assets:materiel_delete', args=[other_materiel.pk]))
         self.assertEqual(response.status_code, 403)
 
+    def test_dept_user_can_detect_alerts(self):
+        ProfilUtilisateur.objects.create(
+            user=self.user,
+            departement=self.dept,
+            role='DEPT_USER',
+        )
+        self.client.login(username='test', password='testpass123')
+        response = self.client.get(reverse('assets:alerte_detecter'))
+        self.assertEqual(response.status_code, 302)
+
     def test_dept_user_cannot_update_materiel_in_another_department(self):
         other_dept = Departement.objects.create(code='OTHER', nom='Other Department')
         other_materiel = Materiel.objects.create(
