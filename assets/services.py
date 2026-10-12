@@ -3,7 +3,7 @@
 Service de détection et gestion des alertes
 """
 from django.utils import timezone
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Case, When, IntegerField, Value
 from datetime import timedelta
 from .models import Alerte, Materiel, Attribution, Departement, Categorie
 
@@ -16,6 +16,89 @@ class AlerteService:
     JOURS_AVANT_RAPPEL = 2  # Nombre de jours avant la date de retour pour envoyer un rappel (info)
     JOURS_AVANT_ALERTE_PERDU = 30  # Matériel considéré perdu après 30 jours
     SEUIL_STOCK_CRITIQUE = 2  # Moins de 2 unités disponibles = stock critique (par nom d'équipement)
+
+    @staticmethod
+    def get_attribution_destination_label(attribution):
+        """Retourne un libelle de destination lisible pour une attribution."""
+        if not attribution:
+            return "Sans destination"
+        if attribution.client:
+            return attribution.client.nom
+        if attribution.salle:
+            return f"Salle: {attribution.salle.nom}"
+        return "Sans destination"
+
+    @staticmethod
+    def get_materiel_related_attributions(materiel, limit=None):
+        """Retourne les attributions d'un materiel, actives d'abord puis recentes."""
+        if not materiel:
+            return []
+
+        queryset = Attribution.objects.filter(materiel=materiel).select_related(
+            'client', 'salle', 'departement', 'employe_responsable', 'materiel'
+        ).order_by(
+            Case(
+                When(date_retour_effective__isnull=True, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            '-date_attribution'
+        )
+
+        if limit:
+            queryset = queryset[:limit]
+
+        attributions = list(queryset)
+        for attribution in attributions:
+            attribution.destination_label = AlerteService.get_attribution_destination_label(attribution)
+            attribution.is_active_assignment = attribution.date_retour_effective is None
+        return attributions
+
+    @classmethod
+    def enrich_alerte_with_attributions(cls, alerte, history_limit=5):
+        """Ajoute le contexte d'attribution d'un materiel a une alerte."""
+        if not alerte:
+            return alerte
+
+        related_attributions = []
+        seen_ids = set()
+
+        direct_attribution = getattr(alerte, 'attribution', None) if getattr(alerte, 'attribution_id', None) else None
+        if direct_attribution:
+            direct_attribution.destination_label = cls.get_attribution_destination_label(direct_attribution)
+            direct_attribution.is_active_assignment = direct_attribution.date_retour_effective is None
+            related_attributions.append(direct_attribution)
+            seen_ids.add(direct_attribution.pk)
+
+        if getattr(alerte, 'materiel_id', None):
+            extra_limit = history_limit + (1 if direct_attribution else 0) if history_limit else None
+            for attribution in cls.get_materiel_related_attributions(alerte.materiel, limit=extra_limit):
+                if attribution.pk in seen_ids:
+                    continue
+                related_attributions.append(attribution)
+                seen_ids.add(attribution.pk)
+                if history_limit and len(related_attributions) >= history_limit:
+                    break
+
+        attribution_concernee = direct_attribution
+        if not attribution_concernee and related_attributions:
+            attribution_concernee = next(
+                (item for item in related_attributions if item.date_retour_effective is None),
+                related_attributions[0],
+            )
+
+        alerte.attribution_concernee = attribution_concernee
+        alerte.attributions_materiel = related_attributions
+        alerte.has_related_attributions = bool(related_attributions)
+        alerte.attribution_concernee_is_fallback = bool(
+            attribution_concernee and not getattr(alerte, 'attribution_id', None)
+        )
+        return alerte
+
+    @classmethod
+    def enrich_alertes_with_attributions(cls, alertes, history_limit=3):
+        """Ajoute un contexte d'attribution a une collection d'alertes."""
+        return [cls.enrich_alerte_with_attributions(alerte, history_limit=history_limit) for alerte in alertes]
     
     @staticmethod
     def detecter_retards_retour():
@@ -74,15 +157,27 @@ class AlerteService:
             ).first()
             
             if not alerte_existante:
-                # Pour coller à la règle métier: matériel défectueux doit être traité
-                # comme critique (ex: panne/défaut nécessitant action immédiate).
+                attribution_active = next(
+                    (item for item in AlerteService.get_materiel_related_attributions(materiel, limit=3) if item.date_retour_effective is None),
+                    None,
+                )
+                attribution_hint = ""
+                if attribution_active:
+                    attribution_hint = (
+                        f" Attribution en cours: {AlerteService.get_attribution_destination_label(attribution_active)}"
+                        f" depuis le {attribution_active.date_attribution:%d/%m/%Y %H:%M}."
+                    )
+                # Pour coller a la regle metier: materiel defectueux doit etre traite
+                # comme critique (ex: panne/defaut necessitant action immediate).
                 alerte = Alerte.objects.create(
                     type_alerte=Alerte.TYPE_DEFECTUEUX,
                     severite=Alerte.SEVERITE_CRITICAL,
                     materiel=materiel,
+                    attribution=attribution_active,
                     departement=materiel.departement,
-                    description=f"Matériel défectueux nécessitant intervention: {materiel.nom} "
-                               f"({materiel.asset_id}). Statut: {materiel.get_statut_disponibilite_display()}"
+                    description=f"Materiel defectueux necessitant intervention: {materiel.nom} "
+                               f"({materiel.asset_id}). Statut: {materiel.get_statut_disponibilite_display()}."
+                               f"{attribution_hint}"
                 )
                 alertes_creees.append(alerte)
         
@@ -255,7 +350,8 @@ class AlerteService:
     def get_alertes_non_reglementees(departement=None):
         """Récupère toutes les alertes non réglées, optionnellement filtrées par département"""
         queryset = Alerte.objects.filter(reglementee=False).select_related(
-            'materiel', 'attribution__client', 'departement'
+            'materiel', 'attribution__client', 'attribution__salle',
+            'attribution__employe_responsable', 'attribution__departement', 'departement'
         )
         
         if departement:

@@ -6,12 +6,12 @@ Service d'envoi d'emails pour les alertes et les notifications.
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 from users.models import ProfilUtilisateur
 
+from .mail_transport import send_email
 from .models import Alerte, NotificationLog
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,8 @@ class EmailAlerteService:
         if alerte.severite != Alerte.SEVERITE_CRITICAL:
             return False
 
+        from .services import AlerteService
+
         managers = ProfilUtilisateur.objects.filter(
             departement=alerte.departement,
             role__in=['SUPER_ADMIN', 'DEPT_MANAGER'],
@@ -35,9 +37,13 @@ class EmailAlerteService:
         if not managers.exists():
             return False
 
+        alerte = AlerteService.enrich_alerte_with_attributions(alerte, history_limit=3)
+
         subject = f"[RadGestMat] Alerte Critique: {alerte.get_type_alerte_display()}"
         context = {
             'alerte': alerte,
+            'attribution_concernee': getattr(alerte, 'attribution_concernee', None),
+            'attributions_materiel': getattr(alerte, 'attributions_materiel', []),
             'site_name': 'RadGestMat',
             'site_url': getattr(settings, 'SITE_URL', 'http://localhost:8000'),
         }
@@ -50,13 +56,12 @@ class EmailAlerteService:
             return False
 
         try:
-            send_mail(
+            send_email(
                 subject=subject,
                 message=plain_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=emails,
                 html_message=html_message,
-                fail_silently=False,
             )
             return True
         except Exception as exc:
@@ -118,13 +123,12 @@ class EmailAlerteService:
             return False
 
         try:
-            send_mail(
+            send_email(
                 subject=subject,
                 message=plain_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=emails,
                 html_message=html_message,
-                fail_silently=False,
             )
             return True
         except Exception as exc:
@@ -161,13 +165,12 @@ class NotificationEmailService:
             )
             plain_message = strip_tags(html_message)
 
-            send_mail(
+            send_email(
                 subject=subject,
                 message=plain_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[notification_log.destinataire],
                 html_message=html_message,
-                fail_silently=False,
             )
 
             notification_log.statut = NotificationLog.STATUT_ENVOYEE

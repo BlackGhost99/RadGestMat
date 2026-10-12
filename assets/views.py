@@ -4,9 +4,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Max
 from django.db.models.functions import TruncDate
 from django.db import models
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_http_methods
+from django.urls import reverse
 from .forms import MaterielForm, ClientForm, AttributionForm, CategorieForm
 from .models import Materiel, Departement, Categorie, Attribution, Client, Alerte, Salle
 from .models import AuditLog
@@ -18,6 +19,7 @@ from users.permissions import role_required, can_view_department, can_manage_dep
 from .services import AlerteService
 from types import SimpleNamespace
 import re
+from datetime import timedelta
 
 from django.utils.text import capfirst
 from django.utils.formats import date_format
@@ -1365,6 +1367,9 @@ def materiel_create(request):
 def api_search_suggestions(request):
     scope = (request.GET.get('scope') or 'all').strip().lower()
     raw_query = (request.GET.get('q') or '').strip()
+    profil = getattr(request, 'profil_utilisateur', None)
+    departement = getattr(request, 'departement', None)
+    allow_all = bool(profil and profil.role == 'SUPER_ADMIN')
 
     try:
         limit = int(request.GET.get('limit', 12))
@@ -1404,11 +1409,14 @@ def api_search_suggestions(request):
                 if len(suggestions) >= limit:
                     break
 
-    if scope in {'all', 'materiel', 'materiels'}:
-        profil = getattr(request, 'profil_utilisateur', None)
-        departement = getattr(request, 'departement', None)
-        allow_all = bool(profil and profil.role == 'SUPER_ADMIN')
+    def limit_to_scope(qs, department_field='departement'):
+        if allow_all:
+            return qs
+        if not departement:
+            return qs.none()
+        return qs.filter(**{department_field: departement})
 
+    if scope in {'all', 'dashboard', 'materiel', 'materiels'}:
         materiel_search_fields = [
             'nom',
             'asset_id',
@@ -1435,15 +1443,11 @@ def api_search_suggestions(request):
             'departement__nom',
             'salle__nom',
         ]
-        materiel_qs = Materiel.objects.all()
-        if not allow_all:
-            if not departement:
-                return JsonResponse({'suggestions': []})
-            materiel_qs = materiel_qs.filter(departement=departement)
+        materiel_qs = limit_to_scope(Materiel.objects.all())
         materiel_qs = _apply_multi_term_search(materiel_qs, terms, materiel_search_fields)
         add_suggestions(materiel_qs, materiel_suggest_fields)
 
-    if scope in {'all', 'client', 'clients'} and len(suggestions) < limit:
+    if scope in {'all', 'dashboard', 'client', 'clients'} and len(suggestions) < limit:
         client_search_fields = [
             'nom',
             'email',
@@ -1464,8 +1468,74 @@ def api_search_suggestions(request):
             'salle__nom',
         ]
         client_qs = Client.objects.select_related('departement', 'salle').all()
+        if not allow_all:
+            if not departement:
+                client_qs = client_qs.none()
+            else:
+                client_qs = client_qs.filter(Q(departement=departement) | Q(departement__isnull=True))
         client_qs = _apply_multi_term_search(client_qs, terms, client_search_fields)
         add_suggestions(client_qs, client_suggest_fields)
+
+    if scope in {'all', 'dashboard', 'attribution', 'attributions'} and len(suggestions) < limit:
+        attribution_search_fields = [
+            'materiel__nom',
+            'materiel__asset_id',
+            'materiel__numero_inventaire',
+            'client__nom',
+            'client__email',
+            'salle__nom',
+            'motif',
+            'notes',
+            'departement__nom',
+            'employe_responsable__username',
+        ]
+        attribution_suggest_fields = [
+            'materiel__asset_id',
+            'materiel__nom',
+            'client__nom',
+            'salle__nom',
+            'motif',
+            'departement__nom',
+        ]
+        attribution_qs = limit_to_scope(
+            Attribution.objects.select_related('materiel', 'client', 'salle', 'departement', 'employe_responsable')
+        )
+        attribution_qs = _apply_multi_term_search(attribution_qs, terms, attribution_search_fields)
+        add_suggestions(attribution_qs, attribution_suggest_fields)
+
+    if scope in {'all', 'dashboard', 'alerte', 'alertes'} and len(suggestions) < limit:
+        alerte_search_fields = [
+            'description',
+            'materiel__nom',
+            'materiel__asset_id',
+            'departement__nom',
+            'attribution__client__nom',
+        ]
+        alerte_suggest_fields = [
+            'description',
+            'materiel__asset_id',
+            'materiel__nom',
+            'departement__nom',
+        ]
+        alerte_qs = limit_to_scope(
+            Alerte.objects.select_related('materiel', 'departement', 'attribution', 'attribution__client')
+        )
+        alerte_qs = _apply_multi_term_search(alerte_qs, terms, alerte_search_fields)
+        add_suggestions(alerte_qs, alerte_suggest_fields)
+
+    if scope in {'all', 'dashboard', 'categorie', 'categories'} and len(suggestions) < limit:
+        categorie_search_fields = ['nom', 'description', 'departement__nom']
+        categorie_suggest_fields = ['nom', 'departement__nom']
+        categorie_qs = limit_to_scope(Categorie.objects.select_related('departement'))
+        categorie_qs = _apply_multi_term_search(categorie_qs, terms, categorie_search_fields)
+        add_suggestions(categorie_qs, categorie_suggest_fields)
+
+    if scope in {'all', 'dashboard', 'departement', 'departements'} and len(suggestions) < limit:
+        departement_search_fields = ['nom', 'code', 'description']
+        departement_suggest_fields = ['nom', 'code']
+        departement_qs = Departement.objects.all() if allow_all else Departement.objects.filter(pk=getattr(departement, 'pk', None))
+        departement_qs = _apply_multi_term_search(departement_qs, terms, departement_search_fields)
+        add_suggestions(departement_qs, departement_suggest_fields)
 
     return JsonResponse({'suggestions': suggestions})
 
@@ -1583,65 +1653,507 @@ def api_creer_categorie(request):
     except Exception as e:
         return JsonResponse({'error': f'Erreur lors de la création: {str(e)}'}, status=500)
 
+def _build_dashboard_search_groups(scope, materiels_qs, clients_qs, attributions_qs, alertes_qs):
+    normalized_scope = scope if scope in {'materiel', 'client', 'attribution', 'alerte'} else 'all'
+    groups = []
+    total_results = 0
+
+    if normalized_scope in {'all', 'materiel'}:
+        items = []
+        for materiel in materiels_qs.order_by('-date_modification')[:5]:
+            items.append({
+                'title': materiel.nom,
+                'subtitle': materiel.asset_id or materiel.numero_inventaire or '-',
+                'meta': ' / '.join(filter(None, [
+                    materiel.marque or '',
+                    materiel.modele or '',
+                    materiel.departement.nom if materiel.departement else '',
+                ])),
+                'badge': materiel.get_statut_disponibilite_display(),
+                'url': reverse('assets:materiel_detail', kwargs={'pk': materiel.pk}),
+            })
+        if items:
+            groups.append({
+                'key': 'materiel',
+                'label': 'Materiels',
+                'icon': 'bi-box-seam',
+                'count': materiels_qs.count(),
+                'items': items,
+            })
+            total_results += materiels_qs.count()
+
+    if normalized_scope in {'all', 'client'}:
+        items = []
+        for client in clients_qs.order_by('-date_modification')[:5]:
+            items.append({
+                'title': client.nom,
+                'subtitle': client.get_type_client_display(),
+                'meta': ' / '.join(filter(None, [
+                    client.email or '',
+                    client.telephone or '',
+                    client.departement.nom if client.departement else '',
+                ])),
+                'badge': client.get_type_client_display(),
+                'url': reverse('assets:client_detail', kwargs={'pk': client.pk}),
+            })
+        if items:
+            groups.append({
+                'key': 'client',
+                'label': 'Clients',
+                'icon': 'bi-people',
+                'count': clients_qs.count(),
+                'items': items,
+            })
+            total_results += clients_qs.count()
+
+    if normalized_scope in {'all', 'attribution'}:
+        items = []
+        for attribution in attributions_qs.order_by('-date_attribution')[:5]:
+            destination = attribution.client.nom if attribution.client else (attribution.salle.nom if attribution.salle else 'Sans destination')
+            items.append({
+                'title': getattr(attribution.materiel, 'asset_id', None) or getattr(attribution.materiel, 'nom', 'Attribution'),
+                'subtitle': destination,
+                'meta': ' / '.join(filter(None, [
+                    getattr(attribution.materiel, 'nom', ''),
+                    attribution.departement.nom if attribution.departement else '',
+                    date_format(timezone.localtime(attribution.date_attribution), 'd/m/Y H:i') if attribution.date_attribution else '',
+                ])),
+                'badge': 'Active' if attribution.date_retour_effective is None else 'Cloturee',
+                'url': reverse('assets:attribution_list'),
+            })
+        if items:
+            groups.append({
+                'key': 'attribution',
+                'label': 'Attributions',
+                'icon': 'bi-arrow-left-right',
+                'count': attributions_qs.count(),
+                'items': items,
+            })
+            total_results += attributions_qs.count()
+
+    if normalized_scope in {'all', 'alerte'}:
+        items = []
+        for alerte in alertes_qs.order_by('-date_creation')[:5]:
+            items.append({
+                'title': alerte.get_type_alerte_display(),
+                'subtitle': (alerte.description or '')[:120],
+                'meta': ' / '.join(filter(None, [
+                    getattr(alerte.materiel, 'asset_id', ''),
+                    alerte.departement.nom if alerte.departement else '',
+                    date_format(timezone.localtime(alerte.date_creation), 'd/m/Y H:i') if alerte.date_creation else '',
+                ])),
+                'badge': alerte.get_severite_display(),
+                'url': reverse('assets:alerte_detail', kwargs={'pk': alerte.pk}),
+            })
+        if items:
+            groups.append({
+                'key': 'alerte',
+                'label': 'Alertes',
+                'icon': 'bi-bell',
+                'count': alertes_qs.count(),
+                'items': items,
+            })
+            total_results += alertes_qs.count()
+
+    return groups, total_results
+
+
 @login_required
 def dashboard(request):
-    """Tableau de bord avec données filtrées selon le rôle"""
-    profil = getattr(request, 'profil_utilisateur', None)
-    
-    # Super Admin: voir tous les données
-    if profil and profil.role == 'SUPER_ADMIN':
-        total_materiel = Materiel.objects.count()
-        materiel_disponible = Materiel.objects.filter(statut_disponibilite='DISPONIBLE').count()
-        materiel_attribue = Materiel.objects.filter(statut_disponibilite='ATTRIBUE').count()
-        materiel_defectueux = Materiel.objects.filter(etat_technique='DEFECTUEUX').count()
-        materiel_recent = Materiel.objects.select_related('categorie', 'departement')\
-                            .order_by('-date_creation')[:3]
-        departements_list = Departement.objects.all()
-    else:
-        # Utilisateur du département: voir seulement son département
-        departement = getattr(request, 'departement', None)
-        if not departement:
-            departement, _ = Departement.objects.get_or_create(
-                code='DEF',
-                defaults={'nom': 'Département par défaut'}
-            )
-        
-        total_materiel = Materiel.objects.filter(departement=departement).count()
-        materiel_disponible = Materiel.objects.filter(departement=departement, statut_disponibilite='DISPONIBLE').count()
-        materiel_attribue = Materiel.objects.filter(departement=departement, statut_disponibilite='ATTRIBUE').count()
-        materiel_defectueux = Materiel.objects.filter(departement=departement, etat_technique='DEFECTUEUX').count()
-        materiel_recent = Materiel.objects.filter(departement=departement)\
-                            .select_related('categorie', 'departement')\
-                            .order_by('-date_creation')[:3]
-        departements_list = [departement]
+    """Tableau de bord enrichi avec filtres intelligents et recherche globale."""
+    from django.utils.dateparse import parse_date
 
-    # Statistiques par département
-    departements = []
-    for dept in departements_list:
-        total = Materiel.objects.filter(departement=dept).count()
-        disponible = Materiel.objects.filter(departement=dept, statut_disponibilite='DISPONIBLE').count()
-        attribue = Materiel.objects.filter(departement=dept, statut_disponibilite='ATTRIBUE').count()
-        departements.append({
-            'nom': dept.nom,
-            'total': total,
-            'disponible': disponible,
-            'attribue': attribue,
-        })
-    
-    # Récupérer les alertes non réglées (limité à 3 pour le dashboard)
-    departement = getattr(request, 'departement', None)
-    alertes_recentes = AlerteService.get_alertes_non_reglementees(departement)[:3]
-    nombre_alertes_critiques = AlerteService.get_nombre_alertes_critiques(departement)
+    profil = getattr(request, 'profil_utilisateur', None)
+    current_department = getattr(request, 'departement', None)
+    # Tous les utilisateurs authentifiés ont la même visibilité en lecture.
+    show_all = True
+
+    if not show_all and not current_department:
+        current_department, _ = Departement.objects.get_or_create(
+            code='DEF',
+            defaults={'nom': 'Departement par defaut'}
+        )
+
+    query = (request.GET.get('q') or '').strip()
+    scope = (request.GET.get('scope') or 'all').strip().lower()
+    preset = (request.GET.get('preset') or '').strip().lower()
+    period = (request.GET.get('period') or '30').strip().lower()
+    categorie_filter = (request.GET.get('categorie') or '').strip()
+    statut_filter = (request.GET.get('statut_disponibilite') or '').strip()
+    etat_filter = (request.GET.get('etat_technique') or '').strip()
+    type_client_filter = (request.GET.get('type_client') or '').strip()
+    severite_filter = (request.GET.get('severite') or '').strip()
+    selected_department_id = (request.GET.get('departement') or '').strip()
+    date_from_raw = (request.GET.get('date_from') or '').strip()
+    date_to_raw = (request.GET.get('date_to') or '').strip()
+
+    date_from = parse_date(date_from_raw) if date_from_raw else None
+    date_to = parse_date(date_to_raw) if date_to_raw else None
+    if date_from and date_to and date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    departments_qs = Departement.objects.all().order_by('nom')
+    selected_department = None
+    if show_all and selected_department_id:
+        selected_department = departments_qs.filter(pk=selected_department_id).first()
+    elif not show_all:
+        selected_department = current_department
+
+    categories_qs = Categorie.objects.select_related('departement').all()
+    if selected_department:
+        categories_qs = categories_qs.filter(departement=selected_department)
+
+    materiels_qs = Materiel.objects.select_related('categorie', 'departement', 'salle').all()
+    clients_qs = Client.objects.select_related('departement', 'salle').all()
+    attributions_qs = Attribution.objects.select_related(
+        'materiel', 'client', 'departement', 'salle', 'employe_responsable'
+    ).all()
+    alertes_qs = Alerte.objects.select_related(
+        'materiel', 'departement', 'attribution', 'attribution__client'
+    ).all()
+
+    if selected_department:
+        materiels_qs = materiels_qs.filter(departement=selected_department)
+        clients_qs = clients_qs.filter(Q(departement=selected_department) | Q(departement__isnull=True))
+        attributions_qs = attributions_qs.filter(departement=selected_department)
+        alertes_qs = alertes_qs.filter(departement=selected_department)
+    if date_from:
+        materiels_qs = materiels_qs.filter(date_modification__date__gte=date_from)
+        clients_qs = clients_qs.filter(date_modification__date__gte=date_from)
+        attributions_qs = attributions_qs.filter(date_attribution__date__gte=date_from)
+        alertes_qs = alertes_qs.filter(date_creation__date__gte=date_from)
+    if date_to:
+        materiels_qs = materiels_qs.filter(date_modification__date__lte=date_to)
+        clients_qs = clients_qs.filter(date_modification__date__lte=date_to)
+        attributions_qs = attributions_qs.filter(date_attribution__date__lte=date_to)
+        alertes_qs = alertes_qs.filter(date_creation__date__lte=date_to)
+
+    if query:
+        terms = _split_search_terms(query)
+        materiels_qs = _apply_multi_term_search(materiels_qs, terms, [
+            'nom', 'asset_id', 'numero_inventaire', 'numero_serie', 'modele',
+            'marque', 'location', 'description', 'notes', 'categorie__nom',
+            'departement__nom', 'salle__nom',
+        ])
+        clients_qs = _apply_multi_term_search(clients_qs, terms, [
+            'nom', 'email', 'telephone', 'numero_chambre', 'nom_evenement',
+            'notes', 'departement__nom', 'salle__nom',
+        ])
+        attributions_qs = _apply_multi_term_search(attributions_qs, terms, [
+            'materiel__nom', 'materiel__asset_id', 'materiel__numero_inventaire',
+            'client__nom', 'client__email', 'salle__nom', 'motif', 'notes',
+            'departement__nom', 'employe_responsable__username',
+        ])
+        alertes_qs = _apply_multi_term_search(alertes_qs, terms, [
+            'description', 'materiel__nom', 'materiel__asset_id',
+            'departement__nom', 'attribution__client__nom',
+        ])
+
+    if categorie_filter:
+        materiels_qs = materiels_qs.filter(categorie_id=categorie_filter)
+    if statut_filter:
+        materiels_qs = materiels_qs.filter(statut_disponibilite=statut_filter)
+    if etat_filter:
+        materiels_qs = materiels_qs.filter(etat_technique=etat_filter)
+    if type_client_filter:
+        clients_qs = clients_qs.filter(type_client=type_client_filter)
+    if severite_filter:
+        alertes_qs = alertes_qs.filter(severite=severite_filter)
+
+    today = timezone.localdate()
+    now_time = timezone.localtime().time()
+    active_attributions_qs = attributions_qs.filter(date_retour_effective__isnull=True)
+    overdue_qs = active_attributions_qs.filter(type_attribution=Attribution.TYPE_TEMPORAIRE).filter(
+        Q(date_retour_prevue__lt=today) |
+        Q(date_retour_prevue=today, heure_retour_prevue__isnull=False, heure_retour_prevue__lt=now_time)
+    )
+    unresolved_alerts_qs = alertes_qs.filter(reglementee=False)
+    critical_alerts_qs = unresolved_alerts_qs.filter(severite=Alerte.SEVERITE_CRITICAL)
+    attention_material_ids = unresolved_alerts_qs.exclude(materiel__isnull=True).values_list('materiel_id', flat=True)
+    attention_materials_qs = materiels_qs.filter(
+        Q(pk__in=attention_material_ids) |
+        Q(etat_technique=Materiel.ETAT_DEFECTUEUX) |
+        Q(statut_disponibilite=Materiel.STATUT_MAINTENANCE)
+    ).distinct()
+
+    dashboard_materiels_qs = materiels_qs
+    dashboard_clients_qs = clients_qs
+    dashboard_attributions_qs = attributions_qs
+    dashboard_alertes_qs = unresolved_alerts_qs
+
+    if preset == 'attention':
+        dashboard_materiels_qs = attention_materials_qs
+        dashboard_attributions_qs = overdue_qs
+        dashboard_alertes_qs = unresolved_alerts_qs
+    elif preset == 'disponibles':
+        dashboard_materiels_qs = materiels_qs.filter(statut_disponibilite=Materiel.STATUT_DISPONIBLE)
+    elif preset == 'attribues':
+        dashboard_materiels_qs = materiels_qs.filter(statut_disponibilite=Materiel.STATUT_ATTRIBUE)
+        dashboard_attributions_qs = active_attributions_qs
+    elif preset == 'retards':
+        dashboard_attributions_qs = overdue_qs
+        dashboard_materiels_qs = materiels_qs.filter(pk__in=overdue_qs.values_list('materiel_id', flat=True))
+    elif preset == 'clients':
+        scope = 'client' if scope == 'all' else scope
+    elif preset == 'alertes':
+        scope = 'alerte' if scope == 'all' else scope
+
+    period_map = {'7': 7, '30': 30, '90': 90}
+    period_days = period_map.get(period)
+    activity_since = timezone.now() - timedelta(days=period_days) if period_days else None
+
+    if activity_since:
+        activity_materiels_qs = dashboard_materiels_qs.filter(date_modification__gte=activity_since)
+        activity_clients_qs = dashboard_clients_qs.filter(date_modification__gte=activity_since)
+        activity_attributions_qs = dashboard_attributions_qs.filter(date_attribution__gte=activity_since)
+        activity_alertes_qs = dashboard_alertes_qs.filter(date_creation__gte=activity_since)
+    else:
+        activity_materiels_qs = dashboard_materiels_qs
+        activity_clients_qs = dashboard_clients_qs
+        activity_attributions_qs = dashboard_attributions_qs
+        activity_alertes_qs = dashboard_alertes_qs
+
+    recent_materials = dashboard_materiels_qs.order_by('-date_modification')[:6]
+    recent_clients = dashboard_clients_qs.order_by('-date_modification')[:5]
+    recent_attributions = dashboard_attributions_qs.order_by('-date_attribution')[:5]
+    recent_alerts = dashboard_alertes_qs.order_by('-date_creation')[:5]
+
+    department_breakdown = list(
+        materiels_qs.values('departement__id', 'departement__nom')
+        .annotate(
+            total=Count('id'),
+            available=Count('id', filter=Q(statut_disponibilite=Materiel.STATUT_DISPONIBLE)),
+            defective=Count('id', filter=Q(etat_technique=Materiel.ETAT_DEFECTUEUX)),
+        )
+        .order_by('-total', 'departement__nom')[:6]
+    )
+
+    top_categories = list(
+        materiels_qs.exclude(categorie__isnull=True)
+        .values('categorie__nom')
+        .annotate(total=Count('id'))
+        .order_by('-total', 'categorie__nom')[:6]
+    )
+
+    top_locations = list(
+        materiels_qs.exclude(location__isnull=True).exclude(location='')
+        .values('location')
+        .annotate(total=Count('id'))
+        .order_by('-total', 'location')[:6]
+    )
+
+    client_type_breakdown = list(
+        dashboard_clients_qs.values('type_client')
+        .annotate(total=Count('id'))
+        .order_by('-total', 'type_client')
+    )
+    client_type_labels = dict(Client.TYPE_CHOICES)
+    for row in client_type_breakdown:
+        row['label'] = client_type_labels.get(row['type_client'], row['type_client'] or 'Non classe')
+
+    availability_ratio = round(
+        (materiels_qs.filter(statut_disponibilite=Materiel.STATUT_DISPONIBLE).count() / materiels_qs.count()) * 100, 1
+    ) if materiels_qs.exists() else 0
+    allocation_ratio = round(
+        (materiels_qs.filter(statut_disponibilite=Materiel.STATUT_ATTRIBUE).count() / materiels_qs.count()) * 100, 1
+    ) if materiels_qs.exists() else 0
+
+    preset_options = [
+        {'value': '', 'label': 'Vue globale', 'count': materiels_qs.count(), 'active': not preset},
+        {'value': 'attention', 'label': 'Attention', 'count': attention_materials_qs.count() + overdue_qs.count() + unresolved_alerts_qs.count(), 'active': preset == 'attention'},
+        {'value': 'disponibles', 'label': 'Disponibles', 'count': materiels_qs.filter(statut_disponibilite=Materiel.STATUT_DISPONIBLE).count(), 'active': preset == 'disponibles'},
+        {'value': 'attribues', 'label': 'Attribues', 'count': active_attributions_qs.count(), 'active': preset == 'attribues'},
+        {'value': 'clients', 'label': 'Clients', 'count': clients_qs.count(), 'active': preset == 'clients'},
+        {'value': 'retards', 'label': 'Retards', 'count': overdue_qs.count(), 'active': preset == 'retards'},
+        {'value': 'alertes', 'label': 'Alertes', 'count': unresolved_alerts_qs.count(), 'active': preset == 'alertes'},
+    ]
+
+    period_options = [
+        {'value': '7', 'label': '7 jours', 'active': period == '7'},
+        {'value': '30', 'label': '30 jours', 'active': period == '30'},
+        {'value': '90', 'label': '90 jours', 'active': period == '90'},
+        {'value': 'all', 'label': 'Depuis le debut', 'active': period == 'all'},
+    ]
+
+    scope_options = [
+        {'value': 'all', 'label': 'Tout'},
+        {'value': 'materiel', 'label': 'Materiels'},
+        {'value': 'client', 'label': 'Clients'},
+        {'value': 'attribution', 'label': 'Attributions'},
+        {'value': 'alerte', 'label': 'Alertes'},
+    ]
+
+    focus_mode = bool(
+        query or
+        preset or
+        scope != 'all' or
+        categorie_filter or
+        statut_filter or
+        etat_filter or
+        type_client_filter or
+        severite_filter or
+        date_from or
+        date_to or
+        (show_all and selected_department_id)
+    )
+
+    show_sections = {
+        'materiel': not focus_mode,
+        'client': not focus_mode,
+        'attribution': not focus_mode,
+        'alerte': not focus_mode,
+    }
+
+    if focus_mode:
+        show_sections = {key: False for key in show_sections}
+
+        if scope in show_sections:
+            show_sections[scope] = True
+
+        if categorie_filter or statut_filter or etat_filter:
+            show_sections['materiel'] = True
+        if type_client_filter:
+            show_sections['client'] = True
+        if severite_filter:
+            show_sections['alerte'] = True
+
+        if preset == 'attention':
+            show_sections['materiel'] = True
+            show_sections['attribution'] = True
+            show_sections['alerte'] = True
+        elif preset == 'disponibles':
+            show_sections['materiel'] = True
+        elif preset == 'attribues':
+            show_sections['materiel'] = True
+            show_sections['attribution'] = True
+        elif preset == 'clients':
+            show_sections['client'] = True
+        elif preset == 'retards':
+            show_sections['materiel'] = True
+            show_sections['attribution'] = True
+        elif preset == 'alertes':
+            show_sections['alerte'] = True
+
+        if not query and not any(show_sections.values()):
+            show_sections = {key: True for key in show_sections}
+
+    active_filter_chips = []
+    scope_labels = {item['value']: item['label'] for item in scope_options}
+    preset_labels = {item['value']: item['label'] for item in preset_options if item['value']}
+    statut_labels = dict(Materiel.STATUT_CHOICES)
+    etat_labels = dict(Materiel.ETAT_CHOICES)
+    type_client_labels = dict(Client.TYPE_CHOICES)
+    severite_labels = dict(Alerte.SEVERITE_CHOICES)
+
+    if query:
+        active_filter_chips.append({'label': 'Recherche', 'value': query})
+    if show_all and selected_department:
+        active_filter_chips.append({'label': 'Departement', 'value': selected_department.nom})
+    if scope != 'all':
+        active_filter_chips.append({'label': 'Portee', 'value': scope_labels.get(scope, scope)})
+    if preset:
+        active_filter_chips.append({'label': 'Preset', 'value': preset_labels.get(preset, preset)})
+    if categorie_filter:
+        categorie_name = categories_qs.filter(pk=categorie_filter).values_list('nom', flat=True).first() or categorie_filter
+        active_filter_chips.append({'label': 'Categorie', 'value': categorie_name})
+    if statut_filter:
+        active_filter_chips.append({'label': 'Statut', 'value': statut_labels.get(statut_filter, statut_filter)})
+    if etat_filter:
+        active_filter_chips.append({'label': 'Etat', 'value': etat_labels.get(etat_filter, etat_filter)})
+    if type_client_filter:
+        active_filter_chips.append({'label': 'Client', 'value': type_client_labels.get(type_client_filter, type_client_filter)})
+    if severite_filter:
+        active_filter_chips.append({'label': 'Severite', 'value': severite_labels.get(severite_filter, severite_filter)})
+    if date_from or date_to:
+        period_value = ' - '.join(filter(None, [
+            date_from.strftime('%d/%m/%Y') if date_from else '',
+            date_to.strftime('%d/%m/%Y') if date_to else '',
+        ]))
+        active_filter_chips.append({'label': 'Dates', 'value': period_value})
+
+    focus_title = "Vue d'ensemble"
+    focus_description = "Tous les blocs du tableau de bord sont visibles."
+    if focus_mode:
+        if query:
+            focus_title = "Resultats filtres"
+            focus_description = "Seuls les blocs lies a votre recherche et aux filtres actifs sont affiches."
+        elif scope in show_sections:
+            focus_title = f"Vue {scope_labels.get(scope, scope).lower()}"
+            focus_description = "Le tableau se concentre sur le perimetre selectionne."
+        elif preset:
+            focus_title = f"Preset {preset_labels.get(preset, preset)}"
+            focus_description = "Le tableau affiche uniquement les resultats concernes par le preset choisi."
+        else:
+            focus_title = "Vue ciblee"
+            focus_description = "Les sections non concernees ont ete masquees pour limiter la confusion."
+
+    search_groups, search_total = _build_dashboard_search_groups(
+        scope,
+        dashboard_materiels_qs,
+        dashboard_clients_qs,
+        dashboard_attributions_qs,
+        dashboard_alertes_qs,
+    ) if query else ([], 0)
 
     context = {
-        'total_materiel': total_materiel,
-        'materiel_disponible': materiel_disponible,
-        'materiel_attribue': materiel_attribue,
-        'materiel_defectueux': materiel_defectueux,
-        'materiel_recent': materiel_recent,
-        'departements': departements,
-        'alertes_recentes': alertes_recentes,
-        'nombre_alertes_critiques': nombre_alertes_critiques,
+        'show_all': show_all,
+        'selected_department': selected_department,
+        'departements': departments_qs,
+        'categories': categories_qs.order_by('nom'),
+        'scope_options': scope_options,
+        'preset_options': preset_options,
+        'period_options': period_options,
+        'statut_choices': Materiel.STATUT_CHOICES,
+        'etat_choices': Materiel.ETAT_CHOICES,
+        'type_client_choices': Client.TYPE_CHOICES,
+        'severite_choices': Alerte.SEVERITE_CHOICES,
+        'query': query,
+        'scope': scope,
+        'preset': preset,
+        'period': period,
+        'categorie_filter': categorie_filter,
+        'statut_filter': statut_filter,
+        'etat_filter': etat_filter,
+        'type_client_filter': type_client_filter,
+        'severite_filter': severite_filter,
+        'date_from': date_from.isoformat() if date_from else '',
+        'date_to': date_to.isoformat() if date_to else '',
+        'total_materiel': materiels_qs.count(),
+        'materiel_disponible': materiels_qs.filter(statut_disponibilite=Materiel.STATUT_DISPONIBLE).count(),
+        'materiel_attribue': materiels_qs.filter(statut_disponibilite=Materiel.STATUT_ATTRIBUE).count(),
+        'materiel_defectueux': materiels_qs.filter(etat_technique=Materiel.ETAT_DEFECTUEUX).count(),
+        'total_clients': dashboard_clients_qs.count(),
+        'active_attributions': active_attributions_qs.count(),
+        'overdue_attributions': overdue_qs.count(),
+        'unresolved_alerts': unresolved_alerts_qs.count(),
+        'critical_alerts': critical_alerts_qs.count(),
+        'attention_materials': attention_materials_qs.count(),
+        'availability_ratio': availability_ratio,
+        'allocation_ratio': allocation_ratio,
+        'activity_materials': activity_materiels_qs.count(),
+        'activity_clients': activity_clients_qs.count(),
+        'activity_attributions': activity_attributions_qs.count(),
+        'activity_alerts': activity_alertes_qs.count(),
+        'period_label': next((item['label'] for item in period_options if item['active']), '30 jours'),
+        'recent_materials': recent_materials,
+        'recent_clients': recent_clients,
+        'recent_attributions': recent_attributions,
+        'alertes_recentes': recent_alerts,
+        'department_breakdown': department_breakdown,
+        'top_categories': top_categories,
+        'top_locations': top_locations,
+        'client_type_breakdown': client_type_breakdown,
+        'search_groups': search_groups,
+        'search_total': search_total,
+        'focus_mode': focus_mode,
+        'focus_title': focus_title,
+        'focus_description': focus_description,
+        'active_filter_chips': active_filter_chips,
+        'show_overview': not focus_mode,
+        'show_material_section': show_sections['materiel'],
+        'show_client_section': show_sections['client'],
+        'show_attribution_section': show_sections['attribution'],
+        'show_alerte_section': show_sections['alerte'],
     }
     return render(request, 'assets/dashboard.html', context)
 
@@ -1671,7 +2183,8 @@ def materiel_list(request):
     if date_achat_from and date_achat_to and date_achat_from > date_achat_to:
         date_achat_from, date_achat_to = date_achat_to, date_achat_from
 
-    show_all = bool(profil and profil.role == 'SUPER_ADMIN')
+    # Les filtres et statistiques d'inventaire sont communs à tous les utilisateurs.
+    show_all = True
     if show_all:
         dept_id_param = request.GET.get('departement')
         if dept_id_param:
@@ -1823,19 +2336,14 @@ def materiel_group_detail(request, nom):
     """Affiche tous les matériels d'un groupe (même nom d'équipement)"""
     departement = getattr(request, 'departement', None)
     profil = getattr(request, 'profil_utilisateur', None)
-    can_manage = request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER'])
+    can_clone = request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER'])
     
     if not departement:
         departement, _ = Departement.objects.get_or_create(code='DEF', defaults={'nom': 'Département par défaut'})
 
-    # SUPER_ADMIN can see the group contents regardless of department
-    if profil and profil.role == 'SUPER_ADMIN':
-        materiels = Materiel.objects.filter(nom=nom).select_related('categorie', 'departement').order_by('asset_id')
-    else:
-        materiels = Materiel.objects.filter(
-            nom=nom,
-            departement=departement
-        ).select_related('categorie', 'departement').order_by('asset_id')
+    materiels = Materiel.objects.filter(
+        nom=nom
+    ).select_related('categorie', 'departement').order_by('asset_id')
     
     if not materiels.exists():
         messages.error(request, f'Aucun matériel trouvé avec le nom "{nom}".')
@@ -1858,7 +2366,8 @@ def materiel_group_detail(request, nom):
         'materiels': materiels,
         'stats_groupe': stats_groupe,
         'categorie': categorie,
-        'can_manage': can_manage,
+        'can_manage': can_clone,
+        'can_clone': can_clone,
     }
     
     return render(request, 'assets/materiel_group_detail.html', context)
@@ -1871,7 +2380,7 @@ def materiel_clone(request, pk):
     profil = getattr(request, 'profil_utilisateur', None)
     
     # Vérifier les permissions
-    if not (profil and (profil.role == 'SUPER_ADMIN' or profil.role == 'DEPT_MANAGER')):
+    if not (request.user.is_superuser or (profil and profil.role in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER'])):
         messages.error(request, "Vous n'avez pas les permissions nécessaires pour cloner un matériel.")
         return redirect('assets:materiel_detail', pk=pk)
     
@@ -1879,7 +2388,10 @@ def materiel_clone(request, pk):
         # Récupérer le matériel source sélectionné dans le formulaire
         materiel_source_id = request.POST.get('materiel_source', pk)
         try:
-            materiel_source = Materiel.objects.get(pk=materiel_source_id)
+            source_queryset = Materiel.objects.all()
+            if profil and profil.role == 'DEPT_USER':
+                source_queryset = source_queryset.filter(departement=profil.departement)
+            materiel_source = source_queryset.get(pk=materiel_source_id)
         except Materiel.DoesNotExist:
             messages.error(request, "Matériel source introuvable.")
             return redirect('assets:materiel_group_detail', nom=materiel_par_defaut.nom)
@@ -1991,6 +2503,18 @@ def materiel_update(request, pk):
     """Met à jour un matériel existant."""
     materiel = get_object_or_404(Materiel, pk=pk)
     departement = materiel.departement
+    profil = getattr(request, 'profil_utilisateur', None)
+
+    if not (
+        request.user.is_superuser
+        or (profil and profil.role == 'SUPER_ADMIN')
+        or (
+            profil
+            and profil.role in ['DEPT_MANAGER', 'DEPT_USER']
+            and profil.departement_id == materiel.departement_id
+        )
+    ):
+        raise PermissionDenied("Vous n'avez pas la permission de modifier ce matériel.")
     
     if request.method == 'POST':
         # Vérifier si c'est une demande de génération de QR code
@@ -2879,11 +3403,21 @@ def client_update(request, pk):
 
 @login_required
 def client_delete(request, pk):
-    client = get_object_or_404(Client, pk=pk)
+    try:
+        client = Client.objects.get(pk=pk)
+    except Client.DoesNotExist:
+        raise Http404("Client introuvable.")
+
+    profil = getattr(request, 'profil_utilisateur', None)
+    if not request.user.is_superuser and not (profil and profil.role == 'SUPER_ADMIN'):
+        raise PermissionDenied("Seul un administrateur autorisé peut supprimer un client.")
     if request.method == 'POST':
         client.delete()
         return redirect('assets:client_list')
-    return render(request, 'assets/client_confirm_delete.html', {'client': client})
+    return render(request, 'assets/client_confirm_delete.html', {
+        'client': client,
+        'is_client_admin': True,
+    })
 
 # ========== CATEGORIE VIEWS ==========
 @login_required
@@ -2891,19 +3425,10 @@ def categorie_list(request):
     """Liste des catégories avec filtres par département et recherche"""
     profil = getattr(request, 'profil_utilisateur', None)
     departement = getattr(request, 'departement', None)
-    
-    # Déterminer le scope selon le rôle
-    if profil and profil.role == 'SUPER_ADMIN':
-        categories = Categorie.objects.select_related('departement').all()
-        departements_list = Departement.objects.all()
-    else:
-        if not departement:
-            departement, _ = Departement.objects.get_or_create(
-                code='DEF',
-                defaults={'nom': 'Département par défaut'}
-            )
-        categories = Categorie.objects.filter(departement=departement).select_related('departement')
-        departements_list = [departement]
+
+    # Tous les utilisateurs authentifiés ont la même visibilité en lecture.
+    categories = Categorie.objects.select_related('departement').all()
+    departements_list = Departement.objects.all()
     
     # Filtres de recherche
     search = request.GET.get('search', '')
@@ -2914,7 +3439,7 @@ def categorie_list(request):
             Q(nom__icontains=search) | Q(description__icontains=search)
         )
     
-    if dept_filter and profil and profil.role == 'SUPER_ADMIN':
+    if dept_filter:
         try:
             sel_dept = Departement.objects.get(id=dept_filter)
             categories = categories.filter(departement=sel_dept)
@@ -3033,21 +3558,10 @@ def attribution_list(request):
     profil = getattr(request, 'profil_utilisateur', None)
     departement = getattr(request, 'departement', None)
     
-    # Super Admin: voir toutes les attributions
-    if profil and profil.role == 'SUPER_ADMIN':
-        attributions_qs = Attribution.objects.select_related(
-            'materiel', 'client', 'departement', 'employe_responsable'
-        ).all()
-    else:
-        # Utilisateur du departement: voir seulement son departement
-        if not departement:
-            departement, _ = Departement.objects.get_or_create(
-                code='DEF',
-                defaults={'nom': 'Departement par defaut'}
-            )
-        attributions_qs = Attribution.objects.select_related(
-            'materiel', 'client', 'departement', 'employe_responsable'
-        ).filter(departement=departement)
+    # Tous les utilisateurs authentifiés voient les attributions de tous les départements.
+    attributions_qs = Attribution.objects.select_related(
+        'materiel', 'client', 'salle', 'departement', 'employe_responsable'
+    ).all()
     
     # Filtrer par statut (actif = date_retour_effective null)
     status = request.GET.get('status', 'ACTIF')
@@ -3063,9 +3577,6 @@ def attribution_list(request):
         materiels_attribues = Materiel.objects.select_related('salle').filter(
             statut_disponibilite=Materiel.STATUT_ATTRIBUE
         )
-        if not (profil and profil.role == 'SUPER_ADMIN'):
-            materiels_attribues = materiels_attribues.filter(departement=departement)
-
         active_by_materiel_id = {attr.materiel_id: attr for attr in active_attributions}
 
         # Si un materiel a ete modifie bien apres son attribution active
@@ -3162,14 +3673,8 @@ def attribution_update(request, pk):
 @login_required
 def alerte_list(request):
     """Liste toutes les alertes non réglées"""
-    departement = getattr(request, 'departement', None)
-    profil = getattr(request, 'profil_utilisateur', None)
-    
-    # Super Admin peut voir toutes les alertes
-    if profil and profil.role == 'SUPER_ADMIN':
-        alertes = AlerteService.get_alertes_non_reglementees()
-    else:
-        alertes = AlerteService.get_alertes_non_reglementees(departement)
+    # Tous les utilisateurs authentifiés ont la même visibilité en lecture.
+    alertes = AlerteService.get_alertes_non_reglementees()
     
     # Filtres
     type_filter = request.GET.get('type', '')
@@ -3193,6 +3698,8 @@ def alerte_list(request):
         'perdu': alertes.filter(type_alerte=Alerte.TYPE_PERDU).count(),
     }
     
+    alertes = AlerteService.enrich_alertes_with_attributions(alertes, history_limit=3)
+
     context = {
         'alertes': alertes,
         'stats': stats,
@@ -3207,22 +3714,24 @@ def alerte_list(request):
 
 @login_required
 def alerte_detail(request, pk):
-    """Affiche les détails d'une alerte"""
-    alerte = get_object_or_404(Alerte, pk=pk)
+    """Affiche les details d'une alerte"""
+    alerte = get_object_or_404(
+        Alerte.objects.select_related(
+            'materiel', 'attribution__client', 'attribution__salle',
+            'attribution__departement', 'attribution__employe_responsable', 'departement'
+        ),
+        pk=pk,
+    )
     
-    # Vérifier les permissions
-    departement = getattr(request, 'departement', None)
-    profil = getattr(request, 'profil_utilisateur', None)
-    
-    if profil and profil.role != 'SUPER_ADMIN' and departement and alerte.departement != departement:
-        raise PermissionDenied("Vous n'avez pas accès à cette alerte.")
+    alerte = AlerteService.enrich_alerte_with_attributions(alerte, history_limit=6)
     
     context = {
         'alerte': alerte,
+        'attribution_concernee': getattr(alerte, 'attribution_concernee', None),
+        'attributions_materiel': getattr(alerte, 'attributions_materiel', []),
     }
     
     return render(request, 'assets/alerte_detail.html', context)
-
 
 @login_required
 def alerte_marquer_reglementee(request, pk):

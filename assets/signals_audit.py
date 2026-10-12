@@ -1,4 +1,5 @@
 import os
+from django.db import connection
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
@@ -12,11 +13,22 @@ from .middleware import get_current_user, get_current_request
 SIGNALS_DISABLED = os.environ.get('DISABLE_SIGNALS', '0') == '1'
 
 
+def _audit_log_table_exists():
+    """Avoid opening a transaction before the audit table is migrated."""
+    try:
+        return AuditLog._meta.db_table in connection.introspection.table_names()
+    except Exception:
+        return False
+
+
 def _safe_repr(obj):
     try:
         return str(obj)
     except Exception:
-        return repr(obj)
+        object_id = getattr(obj, 'pk', None)
+        if object_id is not None:
+            return f"<{obj.__class__.__name__}: {object_id}>"
+        return f"<{obj.__class__.__name__}>"
 
 
 def _safe_jsonify(value):
@@ -82,6 +94,8 @@ def audit_post_save(sender, instance, created, **kwargs):
     # Skip AuditLog itself to avoid recursion
     if sender.__name__ == 'AuditLog':
         return
+    if not _audit_log_table_exists():
+        return
 
     try:
         user = get_current_user()
@@ -131,6 +145,8 @@ def audit_post_delete(sender, instance, **kwargs):
     if SIGNALS_DISABLED:
         return
     if sender.__name__ == 'AuditLog':
+        return
+    if not _audit_log_table_exists():
         return
     user = get_current_user()
     request = get_current_request()

@@ -660,6 +660,11 @@ class AttributionForm(forms.ModelForm):
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.initial['destination_type'] = 'salle' if self.instance.salle_id else 'client'
+
 
 
     def clean(self):

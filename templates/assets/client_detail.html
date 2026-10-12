@@ -82,7 +82,9 @@
     </div>
     <div class="col-md-4 text-end">
       <a href="{% url 'assets:client_update' client.pk %}" class="btn btn-sm btn-warning">✏ Modifier</a>
-      <a href="{% url 'assets:client_delete' client.pk %}" class="btn btn-sm btn-danger">🗑 Supprimer</a>
+      {% if user.is_superuser or user_profile.role == 'SUPER_ADMIN' %}
+        <a href="{% url 'assets:client_delete' client.pk %}" class="btn btn-sm btn-danger">🗑 Supprimer</a>
+      {% endif %}
       <a href="{% url 'assets:client_list' %}" class="btn btn-sm btn-secondary">← Retour</a>
     </div>
   </div>

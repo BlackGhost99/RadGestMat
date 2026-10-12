@@ -11,6 +11,13 @@ if (Test-Path .\.venv\Scripts\Activate.ps1) {
     Write-Warning ".venv not found. Activate your environment manually.";
 }
 
+# Keep local development isolated from the production .env and database.
+$env:ENVIRONMENT = "development"
+$env:DJANGO_SETTINGS_MODULE = "radgestmat.settings.development"
+$env:DB_ENGINE = "django.db.backends.sqlite3"
+$env:DB_NAME = Join-Path (Get-Location) "db.dev.sqlite3"
+$env:DEBUG = "True"
+
 Write-Host "-> Applying migrations"
 python manage.py migrate
 

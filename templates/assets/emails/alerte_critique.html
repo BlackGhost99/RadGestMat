@@ -74,12 +74,31 @@
             </p>
             {% endif %}
             
-            {% if alerte.attribution and alerte.attribution.client %}
-            <h3>Client concerné:</h3>
+            {% if attribution_concernee %}
+            <h3>Attribution liee:</h3>
             <p>
-                <strong>Nom:</strong> {{ alerte.attribution.client.nom }}<br>
-                <strong>Date retour prévue:</strong> {{ alerte.attribution.date_retour_prevue|date:"d/m/Y" }}
+                <strong>Destination:</strong> {{ attribution_concernee.destination_label }}<br>
+                <strong>Type:</strong> {{ attribution_concernee.get_type_attribution_display|default:"Attribution" }}<br>
+                <strong>Date attribution:</strong> {{ attribution_concernee.date_attribution|date:"d/m/Y H:i" }}<br>
+                {% if attribution_concernee.date_retour_prevue %}
+                <strong>Date retour prevue:</strong> {{ attribution_concernee.date_retour_prevue|date:"d/m/Y" }}<br>
+                {% endif %}
+                {% if attribution_concernee.employe_responsable %}
+                <strong>Responsable:</strong> {{ attribution_concernee.employe_responsable.get_full_name|default:attribution_concernee.employe_responsable.username }}
+                {% endif %}
             </p>
+            {% endif %}
+
+            {% if attributions_materiel|length > 1 %}
+            <h3>Attributions recentes du materiel:</h3>
+            <ul>
+                {% for item in attributions_materiel %}
+                <li>
+                    {{ item.destination_label }} - {{ item.date_attribution|date:"d/m/Y H:i" }}
+                    {% if item.is_active_assignment %}(active){% endif %}
+                </li>
+                {% endfor %}
+            </ul>
             {% endif %}
             
             <a href="{{ site_url }}{% url 'assets:alerte_detail' pk=alerte.pk %}" class="btn">

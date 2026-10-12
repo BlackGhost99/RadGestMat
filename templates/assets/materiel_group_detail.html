@@ -21,7 +21,7 @@
             </p>
         </div>
         <div class="col-auto">
-            {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+            {% if can_clone %}
             <div class="btn-group">
                 <button type="button" class="btn btn-success" id="clone-button" data-bs-toggle="modal" data-bs-target="#modalCloner">
                     <i class="bi bi-files me-1"></i>Cloner
@@ -150,7 +150,7 @@
                                         class="btn btn-outline-primary" title="Voir">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+                                    {% if user.is_superuser or request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' and request.profil_utilisateur.departement_id == materiel.departement_id or request.profil_utilisateur.role == 'DEPT_USER' and request.profil_utilisateur.departement_id == materiel.departement_id %}
                                     <a href="{% url 'assets:materiel_update' materiel.pk %}"
                                         class="btn btn-outline-secondary" title="Modifier">
                                         <i class="bi bi-pencil"></i>
@@ -189,7 +189,7 @@
 </div>
 
 <!-- Modal pour cloner un matériel -->
-{% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
+{% if can_clone %}
 {% if materiels %}
 <div class="modal fade" id="modalCloner" tabindex="-1" aria-labelledby="modalClonerLabel" aria-hidden="true">
     <div class="modal-dialog">

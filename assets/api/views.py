@@ -100,6 +100,13 @@ class ClientViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(departement=departement)
         return queryset
 
+    def destroy(self, request, *args, **kwargs):
+        profil = getattr(request, 'profil_utilisateur', None)
+        if not request.user.is_superuser and not (profil and profil.role == 'SUPER_ADMIN'):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Seul un administrateur autorisé peut supprimer un client.")
+        return super().destroy(request, *args, **kwargs)
+
 
 class AttributionViewSet(viewsets.ModelViewSet):
     """ViewSet for Attribution"""

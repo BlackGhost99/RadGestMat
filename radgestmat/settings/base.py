@@ -151,12 +151,26 @@ LOGOUT_REDIRECT_URL = 'login'
 
 # Email configuration
 EMAIL_BACKEND = get_config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_DELIVERY_METHOD = get_config('EMAIL_DELIVERY_METHOD', default='smtp')
 EMAIL_HOST = get_config('EMAIL_HOST', default='')
 EMAIL_PORT = get_config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = get_config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = get_config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = get_config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = get_config('DEFAULT_FROM_EMAIL', default='RadGestMat <noreply@radgestmat.local>')
+EMAIL_TIMEOUT = get_config('EMAIL_TIMEOUT', default=30, cast=int)
+DEFAULT_FROM_EMAIL = get_config(
+    'DEFAULT_FROM_EMAIL',
+    default='RadGestMat <helpdesk.libreville@radissonblu.com>',
+)
+MICROSOFT_TENANT_ID = get_config('MICROSOFT_TENANT_ID', default='')
+MICROSOFT_CLIENT_ID = get_config('MICROSOFT_CLIENT_ID', default='')
+MICROSOFT_CLIENT_SECRET = get_config('MICROSOFT_CLIENT_SECRET', default='')
+MICROSOFT_GRAPH_SENDER = get_config('MICROSOFT_GRAPH_SENDER', default='')
+MICROSOFT_GRAPH_SAVE_TO_SENT_ITEMS = get_config(
+    'MICROSOFT_GRAPH_SAVE_TO_SENT_ITEMS',
+    default=True,
+    cast=bool,
+)
 SITE_URL = get_config('SITE_URL', default='http://localhost:8000')
 
 # Security settings

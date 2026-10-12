@@ -33,7 +33,10 @@ env_prod/
 *.pot
 *.pyc
 db.sqlite3
+db.dev.sqlite3
+db.dev.sqlite3.bak-*
 db.sqlite3-journal
+/migration/
 /media
 /staticfiles
 /logs
@@ -75,4 +78,3 @@ out/
 .vs/
 *.slnx
 *.vsidx
-

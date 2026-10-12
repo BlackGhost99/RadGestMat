@@ -99,9 +99,11 @@
                                 <a href="{% url 'assets:client_update' client.pk %}" class="btn btn-sm btn-warning">
                                     ✏ Edit
                                 </a>
-                                <a href="{% url 'assets:client_delete' client.pk %}" class="btn btn-sm btn-danger">
-                                    🗑 Supprimer
-                                </a>
+                                {% if user.is_superuser or user_profile.role == 'SUPER_ADMIN' %}
+                                    <a href="{% url 'assets:client_delete' client.pk %}" class="btn btn-sm btn-danger">
+                                        🗑 Supprimer
+                                    </a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}

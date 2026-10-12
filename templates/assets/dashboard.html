@@ -1,742 +1,1167 @@
-<!-- templates/assets/dashboard.html -->
 {% extends 'base.html' %}
-{% load static %}
 
 {% block title %}Tableau de bord - RadGestMat{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
 
 {% block content %}
-<div class="dashboard-wrapper dashboard-radisson">
-    <div class="row g-2">
-        <div class="col-12">
-            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+<div class="dashboard-v2">
+    <section class="dashboard-hero card">
+        <div class="dashboard-hero__copy">
+            <span class="dashboard-chip">
+                <i class="bi bi-stars"></i>
+                Pilotage intelligent
+            </span>
+            <h1>Tableau de bord</h1>
+            <p>
+                Recherche globale, filtres intelligents, indicateurs de parc et signaux d'attention
+                dans une seule vue.
+            </p>
+        </div>
+        <div class="dashboard-hero__actions">
+            {% if show_all %}
+            <span class="dashboard-pill dashboard-pill--accent">
+                <i class="bi bi-globe2"></i>
+                Vue multi-departements
+            </span>
+            {% elif selected_department %}
+            <span class="dashboard-pill">
+                <i class="bi bi-building"></i>
+                {{ selected_department.nom }}
+            </span>
+            {% endif %}
+            {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'DEPT_USER' %}
+            <a href="{% url 'assets:materiel_create' %}" class="btn btn-gradient">
+                <i class="bi bi-plus-lg me-2"></i>Nouveau materiel
+            </a>
+            {% endif %}
+            <a href="{% url 'assets:attribution_list' %}" class="btn btn-soft">
+                <i class="bi bi-arrow-left-right me-2"></i>Attributions
+            </a>
+        </div>
+    </section>
+
+    <section class="card dashboard-search-card">
+        <div class="card-body">
+            <form method="get" class="dashboard-form" id="dashboard-search-form">
+                <div class="dashboard-form__search">
+                    <label for="dashboard-search" class="form-label">Recherche globale</label>
+                    <div class="dashboard-search-input">
+                        <i class="bi bi-search"></i>
+                        <input
+                            type="text"
+                            id="dashboard-search"
+                            name="q"
+                            class="form-control"
+                            value="{{ query }}"
+                            placeholder="Materiel, client, attribution, alerte, categorie..."
+                            list="dashboard-suggestions"
+                            autocomplete="off"
+                        >
+                        <datalist id="dashboard-suggestions"></datalist>
+                    </div>
+                    <small class="text-body-secondary">
+                        Recherche insensible a la casse, multi-termes, avec suggestions.
+                    </small>
+                </div>
+
+                <div class="dashboard-form__grid">
+                    {% if show_all %}
+                    <div>
+                        <label for="departement" class="form-label">Departement</label>
+                        <select id="departement" name="departement" class="form-select">
+                            <option value="">Tous les departements</option>
+                            {% for dept in departements %}
+                            <option value="{{ dept.id }}" {% if selected_department and selected_department.id == dept.id %}selected{% endif %}>
+                                {{ dept.nom }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <label for="scope" class="form-label">Portee</label>
+                        <select id="scope" name="scope" class="form-select">
+                            {% for option in scope_options %}
+                            <option value="{{ option.value }}" {% if scope == option.value %}selected{% endif %}>{{ option.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="period" class="form-label">Periode</label>
+                        <select id="period" name="period" class="form-select">
+                            {% for option in period_options %}
+                            <option value="{{ option.value }}" {% if option.active %}selected{% endif %}>{{ option.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="categorie" class="form-label">Categorie</label>
+                        <select id="categorie" name="categorie" class="form-select">
+                            <option value="">Toutes</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if categorie_filter|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="statut_disponibilite" class="form-label">Statut materiel</label>
+                        <select id="statut_disponibilite" name="statut_disponibilite" class="form-select">
+                            <option value="">Tous</option>
+                            {% for value, label in statut_choices %}
+                            <option value="{{ value }}" {% if statut_filter == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="etat_technique" class="form-label">Etat technique</label>
+                        <select id="etat_technique" name="etat_technique" class="form-select">
+                            <option value="">Tous</option>
+                            {% for value, label in etat_choices %}
+                            <option value="{{ value }}" {% if etat_filter == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="type_client" class="form-label">Type client</label>
+                        <select id="type_client" name="type_client" class="form-select">
+                            <option value="">Tous</option>
+                            {% for value, label in type_client_choices %}
+                            <option value="{{ value }}" {% if type_client_filter == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="severite" class="form-label">Severite alerte</label>
+                        <select id="severite" name="severite" class="form-select">
+                            <option value="">Toutes</option>
+                            {% for value, label in severite_choices %}
+                            <option value="{{ value }}" {% if severite_filter == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="date_from" class="form-label">Du</label>
+                        <input id="date_from" type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                    </div>
+
+                    <div>
+                        <label for="date_to" class="form-label">Au</label>
+                        <input id="date_to" type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                    </div>
+                </div>
+
+                <div class="dashboard-presets">
+                    {% for option in preset_options %}
+                    <input type="radio" class="btn-check" name="preset" id="preset_{{ forloop.counter }}" value="{{ option.value }}" {% if option.active %}checked{% endif %}>
+                    <label class="btn {% if option.active %}btn-primary{% else %}btn-outline-primary{% endif %}" for="preset_{{ forloop.counter }}">
+                        {{ option.label }}
+                        <span class="dashboard-presets__count">{{ option.count }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <div class="dashboard-form__actions">
+                    <button type="submit" class="btn btn-gradient">
+                        <i class="bi bi-funnel me-2"></i>Appliquer
+                    </button>
+                    <a href="{% url 'assets:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-counterclockwise me-2"></i>Reinitialiser
+                    </a>
+                    {% if query %}
+                    <span class="dashboard-form__meta">{{ search_total }} resultat(s) globaux</span>
+                    {% elif focus_mode %}
+                    <span class="dashboard-form__meta">{{ active_filter_chips|length }} filtre(s) actif(s), vue ciblee</span>
+                    {% else %}
+                    <span class="dashboard-form__meta">Periode active : {{ period_label }}</span>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </section>
+
+    {% if focus_mode %}
+    <section class="card dashboard-focus-card">
+        <div class="card-body">
+            <div class="dashboard-focus-card__header">
                 <div>
-                    <span class="badge-soft info mb-2">
-                        <i class="bi bi-activity"></i>
-                        Vue d'ensemble
+                    <span class="dashboard-chip">
+                        <i class="bi bi-funnel"></i>
+                        {{ focus_title }}
                     </span>
-                    <h1 class="display-6 fw-semibold mb-1 dashboard-title">Tableau de bord</h1>
-                    <p class="text-body-secondary mb-0 dashboard-subtitle">Supervisez la santé de votre parc matériel en un coup d'œil.</p>
+                    <h2>{{ focus_title }}</h2>
+                    <p>{{ focus_description }}</p>
                 </div>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    {% if request.profil_utilisateur.role == 'SUPER_ADMIN' %}
-                    <span class="badge fs-6" style="background: rgba(47, 128, 237, 0.2); color: var(--radisson-blue); border: 1px solid rgba(47, 128, 237, 0.3);"><i class="bi bi-globe me-1"></i>Vue Globale</span>
-                    {% endif %}
-                    {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
-                    <a href="{% url 'assets:materiel_create' %}" class="btn btn-gradient">
-                        <i class="bi bi-plus-lg me-2"></i>Ajouter du matériel
+                {% if active_filter_chips %}
+                <div class="dashboard-focus-card__chips">
+                    {% for chip in active_filter_chips %}
+                    <span class="dashboard-pill">
+                        <strong>{{ chip.label }}:</strong> {{ chip.value }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if show_overview %}
+    <section class="dashboard-kpis">
+        <article class="card dashboard-kpi">
+            <div class="dashboard-kpi__icon info"><i class="bi bi-grid"></i></div>
+            <div>
+                <span>Total materiel</span>
+                <strong>{{ total_materiel }}</strong>
+                <small>{{ availability_ratio }}% immediatement disponibles</small>
+            </div>
+        </article>
+        <article class="card dashboard-kpi">
+            <div class="dashboard-kpi__icon success"><i class="bi bi-check2-circle"></i></div>
+            <div>
+                <span>Disponibles</span>
+                <strong>{{ materiel_disponible }}</strong>
+                <small>Stock mobilisable rapidement</small>
+            </div>
+        </article>
+        <article class="card dashboard-kpi">
+            <div class="dashboard-kpi__icon warning"><i class="bi bi-arrow-left-right"></i></div>
+            <div>
+                <span>Attribues</span>
+                <strong>{{ materiel_attribue }}</strong>
+                <small>{{ allocation_ratio }}% du parc en circulation</small>
+            </div>
+        </article>
+        <article class="card dashboard-kpi">
+            <div class="dashboard-kpi__icon danger"><i class="bi bi-tools"></i></div>
+            <div>
+                <span>Defectueux</span>
+                <strong>{{ materiel_defectueux }}</strong>
+                <small>{{ attention_materials }} materiel(s) a surveiller</small>
+            </div>
+        </article>
+        <article class="card dashboard-kpi">
+            <div class="dashboard-kpi__icon accent"><i class="bi bi-people"></i></div>
+            <div>
+                <span>Clients</span>
+                <strong>{{ total_clients }}</strong>
+                <small>Base client exploitable</small>
+            </div>
+        </article>
+        <article class="card dashboard-kpi">
+            <div class="dashboard-kpi__icon neutral"><i class="bi bi-bell"></i></div>
+            <div>
+                <span>Alertes ouvertes</span>
+                <strong>{{ unresolved_alerts }}</strong>
+                <small>{{ critical_alerts }} critique(s), {{ overdue_attributions }} retard(s)</small>
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-activity">
+        <article class="card">
+            <span>Activite materiels</span>
+            <strong>{{ activity_materials }}</strong>
+            <small>Mises a jour dans {{ period_label|lower }}</small>
+        </article>
+        <article class="card">
+            <span>Activite clients</span>
+            <strong>{{ activity_clients }}</strong>
+            <small>Clients touches sur la periode</small>
+        </article>
+        <article class="card">
+            <span>Flux d'attribution</span>
+            <strong>{{ activity_attributions }}</strong>
+            <small>Attributions filtrables et actives</small>
+        </article>
+        <article class="card">
+            <span>Signal alertes</span>
+            <strong>{{ activity_alerts }}</strong>
+            <small>Alertes ouvertes dans la periode</small>
+        </article>
+    </section>
+    {% endif %}
+
+    {% if query %}
+    <section class="card dashboard-search-results">
+        <div class="card-header">
+            <div>
+                <h2>Resultats globaux</h2>
+                <small>{{ search_total }} correspondance(s) pour "{{ query }}"</small>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if search_groups %}
+            <div class="dashboard-search-groups{% if focus_mode %} is-focused{% endif %}">
+                {% for group in search_groups %}
+                <article class="dashboard-search-group">
+                    <header>
+                        <div>
+                            <span class="dashboard-chip">
+                                <i class="bi {{ group.icon }}"></i>
+                                {{ group.label }}
+                            </span>
+                        </div>
+                        <strong>{{ group.count }}</strong>
+                    </header>
+                    <div class="dashboard-result-list">
+                        {% for item in group.items %}
+                        <a href="{{ item.url }}" class="dashboard-result-item">
+                            <div>
+                                <strong>{{ item.title }}</strong>
+                                <p>{{ item.subtitle }}</p>
+                                {% if item.meta %}
+                                <small>{{ item.meta }}</small>
+                                {% endif %}
+                            </div>
+                            <span class="dashboard-pill">{{ item.badge }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="dashboard-empty">
+                <i class="bi bi-search"></i>
+                <p>Aucun resultat pour cette recherche et ces filtres.</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if show_overview %}
+    <section class="dashboard-grid dashboard-grid--triple">
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Repartition departements</h2>
+                    <small>Vision charge / disponibilite par perimetre</small>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if department_breakdown %}
+                <div class="dashboard-stacked-list">
+                    {% for row in department_breakdown %}
+                    <div class="dashboard-stacked-item">
+                        <div>
+                            <strong>{{ row.departement__nom|default:"Sans departement" }}</strong>
+                            <small>{{ row.available }} dispo / {{ row.defective }} defectueux</small>
+                        </div>
+                        <span>{{ row.total }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="dashboard-empty compact">
+                    <p>Aucune donnee departementale a afficher.</p>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Top categories</h2>
+                    <small>Materiels les plus presents dans le parc</small>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if top_categories %}
+                <div class="dashboard-stacked-list">
+                    {% for row in top_categories %}
+                    <div class="dashboard-stacked-item">
+                        <div>
+                            <strong>{{ row.categorie__nom }}</strong>
+                            <small>Volume suivi dans la vue active</small>
+                        </div>
+                        <span>{{ row.total }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="dashboard-empty compact">
+                    <p>Aucune categorie disponible.</p>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Top localisations</h2>
+                    <small>Points de concentration du materiel</small>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if top_locations %}
+                <div class="dashboard-stacked-list">
+                    {% for row in top_locations %}
+                    <div class="dashboard-stacked-item">
+                        <div>
+                            <strong>{{ row.location }}</strong>
+                            <small>Emplacement recurrent</small>
+                        </div>
+                        <span>{{ row.total }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="dashboard-empty compact">
+                    <p>Aucune localisation renseignee.</p>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+    </section>
+    {% endif %}
+
+    {% if show_material_section or show_attribution_section %}
+    <section class="dashboard-grid dashboard-grid--dual">
+        {% if show_material_section %}
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Materiels cibles</h2>
+                    <small>Selection recente selon vos filtres et presets</small>
+                </div>
+                <a href="{% url 'assets:materiel_list' %}" class="btn btn-link">Voir tout</a>
+            </div>
+            <div class="card-body">
+                {% if recent_materials %}
+                <div class="table-responsive">
+                    <table class="table dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Asset</th>
+                                <th>Materiel</th>
+                                <th>Etat</th>
+                                <th>Statut</th>
+                                <th>Categorie</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in recent_materials %}
+                            <tr>
+                                <td><a href="{% url 'assets:materiel_detail' item.pk %}">{{ item.asset_id|default:"-" }}</a></td>
+                                <td>
+                                    <strong>{{ item.nom }}</strong>
+                                    <small>{{ item.marque|default:"" }} {{ item.modele|default:"" }}</small>
+                                </td>
+                                <td>{{ item.get_etat_technique_display }}</td>
+                                <td>{{ item.get_statut_disponibilite_display }}</td>
+                                <td>{{ item.categorie.nom|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="dashboard-empty compact">
+                    <p>Aucun materiel pour les filtres actifs.</p>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+        {% endif %}
+
+        {% if show_attribution_section %}
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Attributions a suivre</h2>
+                    <small>Activite recente, retards et flux du parc</small>
+                </div>
+                <a href="{% url 'assets:attribution_list' %}" class="btn btn-link">Voir tout</a>
+            </div>
+            <div class="card-body">
+                {% if recent_attributions %}
+                <div class="dashboard-list">
+                    {% for item in recent_attributions %}
+                    <a href="{% url 'assets:attribution_list' %}" class="dashboard-list-item">
+                        <div>
+                            <strong>{{ item.materiel.asset_id|default:item.materiel.nom }}</strong>
+                            <p>
+                                {% if item.client %}
+                                {{ item.client.nom }}
+                                {% elif item.salle %}
+                                Salle {{ item.salle.nom }}
+                                {% else %}
+                                Sans destination
+                                {% endif %}
+                            </p>
+                            <small>{{ item.date_attribution|date:"d/m/Y H:i" }}</small>
+                        </div>
+                        <span class="dashboard-pill {% if item.date_retour_effective %}is-neutral{% else %}is-warning{% endif %}">
+                            {% if item.date_retour_effective %}Cloturee{% else %}Active{% endif %}
+                        </span>
                     </a>
-                    {% endif %}
-                    <a href="{% url 'assets:attribution_list' %}" class="btn btn-soft">
-                        <i class="bi bi-arrow-left-right me-2"></i>Nouvelle attribution
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="dashboard-empty compact">
+                    <p>Aucune attribution visible.</p>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if show_alerte_section or show_client_section %}
+    <section class="dashboard-grid dashboard-grid--dual">
+        {% if show_alerte_section %}
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Alertes ouvertes</h2>
+                    <small>Actions prioritaires dans le perimetre courant</small>
+                </div>
+                <a href="{% url 'assets:alerte_list' %}" class="btn btn-link">Voir tout</a>
+            </div>
+            <div class="card-body">
+                {% if alertes_recentes %}
+                <div class="dashboard-list">
+                    {% for item in alertes_recentes %}
+                    <a href="{% url 'assets:alerte_detail' item.pk %}" class="dashboard-list-item">
+                        <div>
+                            <strong>{{ item.get_type_alerte_display }}</strong>
+                            <p>{{ item.description|truncatechars:110 }}</p>
+                            <small>
+                                {% if item.materiel %}{{ item.materiel.asset_id }}{% endif %}
+                                {% if item.departement %} / {{ item.departement.nom }}{% endif %}
+                            </small>
+                        </div>
+                        <span class="dashboard-pill {% if item.severite == 'CRITICAL' %}is-danger{% elif item.severite == 'WARNING' %}is-warning{% else %}is-info{% endif %}">
+                            {{ item.get_severite_display }}
+                        </span>
                     </a>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <div class="dashboard-empty compact">
+                    <p>Aucune alerte ouverte.</p>
+                </div>
+                {% endif %}
             </div>
-        </div>
+        </article>
+        {% endif %}
 
-        <!-- KPI Cards -->
-        <div class="col-12">
-            <div class="row g-3">
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card card-kpi h-100">
-                        <div class="card-body d-flex flex-column justify-content-between">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <div class="kpi-icon info">
-                                    <i class="bi bi-grid"></i>
-                                </div>
-                                <div class="text-end">
-                                    <p class="stat-value mb-0">{{ total_materiel|default:"0" }}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <p class="stat-label mb-1 fw-semibold">Total matériel</p>
-                                <small class="text-body-secondary d-block">Inventaire global enregistré</small>
-                            </div>
-                        </div>
-                    </div>
+        {% if show_client_section %}
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Clients recents</h2>
+                    <small>Segments clients visibles dans la vue active</small>
                 </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card card-kpi h-100">
-                        <div class="card-body d-flex flex-column justify-content-between">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <div class="kpi-icon success">
-                                    <i class="bi bi-bag-check"></i>
-                                </div>
-                                <div class="text-end">
-                                    <p class="stat-value mb-0">{{ materiel_disponible|default:"0" }}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <p class="stat-label mb-1 fw-semibold">Disponible</p>
-                                <small class="text-body-secondary d-block">Équipements prêts à l'emploi</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card card-kpi h-100">
-                        <div class="card-body d-flex flex-column justify-content-between">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <div class="kpi-icon warning">
-                                    <i class="bi bi-people"></i>
-                                </div>
-                                <div class="text-end">
-                                    <p class="stat-value mb-0">{{ materiel_attribue|default:"0" }}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <p class="stat-label mb-1 fw-semibold">Attribué</p>
-                                <small class="text-body-secondary d-block">Matériel en circulation</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card card-kpi h-100">
-                        <div class="card-body d-flex flex-column justify-content-between">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <div class="kpi-icon danger">
-                                    <i class="bi bi-tools"></i>
-                                </div>
-                                <div class="text-end">
-                                    <p class="stat-value mb-0">{{ materiel_defectueux|default:"0" }}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <p class="stat-label mb-1 fw-semibold">Défectueux</p>
-                                <small class="text-body-secondary d-block">Interventions planifiées</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <a href="{% url 'assets:client_list' %}" class="btn btn-link">Voir tout</a>
             </div>
-        </div>
-
-        <!-- Action Buttons - Empty, now in sidebar -->
-
-        <!-- Two Column Section: Materials & Alerts -->
-        <div class="col-12">
-            <div class="sections-side-by-side">
-                <!-- Recent Materials -->
-                <div class="section-item">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h2 class="h5 fw-semibold mb-0">Matériels récents</h2>
-                                    <small class="text-body-secondary">3 derniers équipements ajoutés ou mis à
-                                        jour</small>
-                                </div>
-                                <a href="{% url 'assets:materiel_list' %}"
-                                    class="btn btn-link text-decoration-none text-primary p-0">
-                                    Voir tout
-                                </a>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            {% if materiel_recent %}
-                            <div class="table-responsive">
-                                <table class="table-modern">
-                                    <thead>
-                                        <tr>
-                                            <th>Asset ID</th>
-                                            <th>Nom</th>
-                                            <th>Marque/Modèle</th>
-                                            <th>État</th>
-                                            <th>Statut</th>
-                                            <th>Catégorie</th>
-                                            <th class="text-end">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for m in materiel_recent %}
-                                        <tr>
-                                            <td class="text-nowrap"><small class="text-muted">{{ m.asset_id|default:"-"
-                                                    }}</small></td>
-                                            <td class="fw-semibold">{{ m.nom }}</td>
-                                            <td>
-                                                {% if m.marque or m.modele %}
-                                                <small>{{ m.marque|default:"" }} {{ m.modele|default:"" }}</small>
-                                                {% else %}
-                                                <small class="text-muted">-</small>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if m.etat_technique == 'FONCTIONNEL' %}
-                                                <span class="badge-soft success"><i
-                                                        class="bi bi-check-circle"></i>Fonctionnel</span>
-                                                {% elif m.etat_technique == 'DEFECTUEUX' %}
-                                                <span class="badge-soft danger"><i
-                                                        class="bi bi-exclamation-triangle"></i>Défectueux</span>
-                                                {% else %}
-                                                <span class="badge-soft info"><i
-                                                        class="bi bi-tools"></i>Maintenance</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if m.statut_disponibilite == 'DISPONIBLE' %}
-                                                <span class="badge-soft success"><i
-                                                        class="bi bi-lightning-charge"></i>Disponible</span>
-                                                {% elif m.statut_disponibilite == 'ATTRIBUE' %}
-                                                <span class="badge-soft warning"><i
-                                                        class="bi bi-arrow-left-right"></i>Attribué</span>
-                                                {% else %}
-                                                <span class="badge-soft"><i class="bi bi-clock-history"></i>{{
-                                                    m.statut_disponibilite }}</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if m.categorie %}
-                                                <small class="text-muted">{{ m.categorie.nom }}</small>
-                                                {% else %}
-                                                <small class="text-muted">-</small>
-                                                {% endif %}
-                                            </td>
-                                            <td class="text-end">
-                                                <div class="d-inline-flex gap-1">
-                                                    <a href="{% url 'assets:materiel_detail' m.pk %}"
-                                                        class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip"
-                                                        title="Consulter la fiche">
-                                                        <i class="bi bi-eye"></i>
-                                                    </a>
-                                                    {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' %}
-                                                    <a href="{% url 'assets:materiel_update' m.pk %}"
-                                                        class="btn btn-sm btn-outline-secondary"
-                                                        data-bs-toggle="tooltip" title="Modifier le matériel">
-                                                        <i class="bi bi-pencil-square"></i>
-                                                    </a>
-                                                    {% endif %}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {% else %}
-                            <div class="placeholder-card">
-                                <i class="bi bi-box"></i>
-                                <p class="mb-0">Ajoutez votre premier matériel pour suivre son historique ici.</p>
-                            </div>
-                            {% endif %}
-                        </div>
+            <div class="card-body">
+                {% if client_type_breakdown %}
+                <div class="dashboard-segments">
+                    {% for row in client_type_breakdown %}
+                    <div class="dashboard-segment">
+                        <span>{{ row.label }}</span>
+                        <strong>{{ row.total }}</strong>
                     </div>
+                    {% endfor %}
                 </div>
+                {% endif %}
 
-                <!-- Recent Alerts -->
-                <div class="section-item">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h2 class="h5 fw-semibold mb-0">
-                                        <i class="bi bi-bell-fill me-2 text-warning"></i>Alertes récentes
-                                    </h2>
-                                    <small class="text-body-secondary">Dernières alertes nécessitant attention</small>
-                                </div>
-                                <a href="{% url 'assets:alerte_list' %}"
-                                    class="btn btn-link text-decoration-none text-primary p-0">
-                                    Voir tout
-                                </a>
-                            </div>
+                {% if recent_clients %}
+                <div class="dashboard-list">
+                    {% for item in recent_clients %}
+                    <a href="{% url 'assets:client_detail' item.pk %}" class="dashboard-list-item">
+                        <div>
+                            <strong>{{ item.nom }}</strong>
+                            <p>{{ item.get_type_client_display }}</p>
+                            <small>
+                                {{ item.email|default:"Pas d'email" }}
+                                {% if item.telephone %} / {{ item.telephone }}{% endif %}
+                            </small>
                         </div>
-                        <div class="card-body">
-                            {% if alertes_recentes %}
-                            <div class="list-group list-group-flush">
-                                {% for alerte in alertes_recentes %}
-                                <a href="{% url 'assets:alerte_detail' pk=alerte.pk %}"
-                                    class="list-group-item list-group-item-action border-0 px-0">
-                                    <div class="d-flex align-items-start gap-2">
-                                        <div class="flex-shrink-0">
-                                            {% if alerte.severite == 'CRITICAL' %}
-                                            <span
-                                                class="badge bg-danger rounded-pill d-flex align-items-center justify-content-center"
-                                                style="width: 32px; height: 32px;">
-                                                <i class="bi bi-exclamation-triangle-fill"></i>
-                                            </span>
-                                            {% elif alerte.severite == 'WARNING' %}
-                                            <span
-                                                class="badge bg-warning rounded-pill d-flex align-items-center justify-content-center"
-                                                style="width: 32px; height: 32px;">
-                                                <i class="bi bi-exclamation-circle-fill"></i>
-                                            </span>
-                                            {% else %}
-                                            <span
-                                                class="badge bg-info rounded-pill d-flex align-items-center justify-content-center"
-                                                style="width: 32px; height: 32px;">
-                                                <i class="bi bi-info-circle-fill"></i>
-                                            </span>
-                                            {% endif %}
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                                <h6 class="mb-0 fw-semibold">{{ alerte.get_type_alerte_display }}</h6>
-                                                <small class="text-body-secondary text-nowrap ms-2">{{
-                                                    alerte.date_creation|date:"d/m/Y H:i" }}</small>
-                                            </div>
-                                            <p class="text-body-secondary mb-1">{{ alerte.description|truncatewords:20
-                                                }}</p>
-                                            <div class="d-flex flex-wrap gap-2 align-items-center">
-                                                {% if alerte.materiel %}
-                                                <small class="text-muted">
-                                                    <i class="bi bi-box-seam me-1"></i>{{ alerte.materiel.asset_id }} -
-                                                    {{ alerte.materiel.nom }}
-                                                </small>
-                                                {% endif %}
-                                                {% if alerte.departement %}
-                                                <small class="text-muted">
-                                                    <i class="bi bi-building me-1"></i>{{ alerte.departement.nom }}
-                                                </small>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                                {% endfor %}
-                            </div>
-                            {% else %}
-                            <div class="placeholder-card">
-                                <i class="bi bi-check-circle-fill text-success"></i>
-                                <p class="mb-0">Aucune alerte en attente. Tout est à jour !</p>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
+                        <span class="dashboard-pill is-neutral">{{ item.get_type_client_display }}</span>
+                    </a>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <div class="dashboard-empty compact">
+                    <p>Aucun client visible avec ces filtres.</p>
+                </div>
+                {% endif %}
             </div>
-        </div>
-    </div>
+        </article>
+        {% endif %}
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <style>
-    /* Dashboard page styling - optimized for screen real estate */
-    body.dashboard-page {
-        overflow-y: auto;
-        min-height: 100vh;
-        background: var(--surface-base);
-    }
-
-    body.dashboard-page .app-main {
-        min-height: 100vh;
-        background: var(--surface-base);
-    }
-
-    body.dashboard-page .app-content {
-        width: 100%;
-        max-width: 100%;
-        min-height: auto;
-        padding: 0.75rem 1rem;
-        background: var(--surface-base);
-    }
-
-    [data-bs-theme="dark"] body.dashboard-page {
-        background: var(--radisson-dark);
-    }
-
-    [data-bs-theme="dark"] body.dashboard-page .app-main {
-        background: var(--radisson-dark);
-    }
-
-    [data-bs-theme="dark"] body.dashboard-page .app-content {
-        background: var(--radisson-dark);
-    }
-
-    .dashboard-title {
-        color: var(--text-primary);
-    }
-
-    .dashboard-subtitle {
-        color: var(--text-secondary);
-    }
-
-    [data-bs-theme="dark"] .dashboard-title {
-        color: var(--radisson-text-light);
-    }
-
-    [data-bs-theme="dark"] .dashboard-subtitle {
-        color: var(--radisson-text-muted);
-    }
-
-    /* Container principal du dashboard - flex layout with responsive columns */
-    .dashboard-wrapper {
-        width: 100%;
-        max-width: 100%;
-        margin: 0 auto;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .dashboard-wrapper .row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin: 0;
-    }
-
-    .dashboard-wrapper .col-12,
-    .dashboard-wrapper .col-sm-6,
-    .dashboard-wrapper .col-xl-3,
-    .dashboard-wrapper .col-xl-6 {
-        padding: 0;
-    }
-
-    .dashboard-wrapper .col-12 {
-        width: 100%;
-    }
-
-    .dashboard-wrapper .col-sm-6 {
-        flex: 1 1 calc(50% - 0.375rem);
-        min-width: 200px;
-    }
-
-    .dashboard-wrapper .col-xl-3 {
-        flex: 1 1 calc(25% - 0.5625rem);
-        min-width: 180px;
-    }
-
-    .dashboard-wrapper .col-xl-6 {
-        flex: 1 1 calc(50% - 0.375rem);
-        min-width: 250px;
-    }
-
-    /* KPI cards responsive alignment */
-    .dashboard-wrapper .col-12:nth-child(2) .row {
-        gap: 0.75rem;
-    }
-
-    .dashboard-wrapper .card {
-        margin-bottom: 0;
-        height: auto;
-        display: flex;
-        flex-direction: column;
-        min-height: auto;
-    }
-
-    .dashboard-wrapper .card-body {
-        padding: 0.875rem;
-        flex: 1;
-        overflow-y: auto;
-        max-height: none;
-    }
-
-    .dashboard-wrapper .card-header {
-        padding: 0.875rem 0.875rem 0.75rem;
-        flex-shrink: 0;
-    }
-
-    /* KPI Cards styling - compact */
-    .dashboard-wrapper .card-kpi {
-        min-height: auto;
-        height: auto;
-    }
-
-    .dashboard-wrapper .card-kpi .card-body {
-        padding: 0.875rem;
-        max-height: none;
-    }
-
-    .dashboard-wrapper .kpi-icon {
-        width: 3rem;
-        height: 3rem;
-        font-size: 1.5rem;
-    }
-
-    .dashboard-wrapper .stat-value {
-        font-size: 2rem;
-        margin-bottom: 0.25rem;
-        font-weight: 700;
-        line-height: 1;
-    }
-
-    .dashboard-wrapper .stat-label {
-        font-size: 0.85rem;
-        margin-bottom: 0.3rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .dashboard-wrapper .card-kpi small {
-        font-size: 0.8rem;
-        line-height: 1.3;
-    }
-
-    /* Titles sizing - compact */
-    .dashboard-wrapper h1 {
-        font-size: 1.75rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .dashboard-wrapper h2 {
-        font-size: 1rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .dashboard-wrapper .display-6 {
-        font-size: 1.75rem;
-    }
-
-    .dashboard-wrapper .col-12:first-child p {
-        font-size: 0.9rem;
-        margin-bottom: 0;
-        line-height: 1.3;
-    }
-
-    /* Tables and lists - optimized */
-    .dashboard-wrapper .table-modern {
-        font-size: 0.9rem;
-        margin-bottom: 0;
-    }
-
-    .dashboard-wrapper .table-modern th,
-    .dashboard-wrapper .table-modern td {
-        padding: 0.6rem;
-        line-height: 1.2;
-    }
-
-    .dashboard-wrapper .list-group-item {
-        padding: 0.75rem 0.5rem;
-    }
-
-    .dashboard-wrapper .list-group-item h6 {
-        font-size: 0.9rem;
-        margin-bottom: 0.2rem;
-    }
-
-    .dashboard-wrapper .list-group-item p {
-        font-size: 0.8rem;
-        margin-bottom: 0.15rem;
-        line-height: 1.3;
-    }
-
-    .dashboard-wrapper .list-group-item small {
-        font-size: 0.75rem;
-        line-height: 1.2;
-    }
-
-    /* Badges and buttons - compact */
-    .dashboard-wrapper .badge-soft {
-        font-size: 0.75rem;
-        padding: 0.3rem 0.5rem;
-    }
-
-    .dashboard-wrapper .btn {
-        font-size: 0.85rem;
-        padding: 0.4rem 0.75rem;
-    }
-
-    /* Section compacte header */
-    .dashboard-wrapper .col-12:first-child {
-        flex: 0 0 auto;
-        margin-bottom: 0;
-    }
-
-    .dashboard-wrapper .col-12:first-child .d-flex {
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
-    .dashboard-wrapper .col-12:first-child .badge-soft {
-        font-size: 0.8rem;
-        margin-bottom: 0;
-    }
-
-    /* KPI row - compact */
-    .dashboard-wrapper .col-12:nth-child(2) {
-        flex: 0 0 auto;
-    }
-
-    .dashboard-wrapper .col-12:nth-child(2) .row {
-        gap: 0.75rem;
-    }
-
-    /* Actions rapides - compact */
-    .dashboard-wrapper .col-12:nth-child(3) {
-        flex: 0 0 auto;
-    }
-
-    .dashboard-wrapper .col-12:nth-child(3) .card-body {
-        padding: 0.875rem;
-        max-height: none;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .dashboard-wrapper .col-12:nth-child(3) .d-flex {
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    /* Matériels et Alertes - aligned side by side - Simple flexbox */
-    .sections-side-by-side {
-        display: flex;
-        flex-direction: row;
-        gap: 0.75rem;
-        width: 100%;
-    }
-
-    .sections-side-by-side .section-item {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .sections-side-by-side .section-item .card {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .sections-side-by-side .section-item .card-body {
-        flex: 1;
-    }
-
-    @media (max-width: 991px) {
-        .sections-side-by-side {
-            flex-direction: column;
-        }
-    }
-
-    /* Tables compacts */
-    .dashboard-wrapper .table-responsive {
-        overflow: hidden;
-    }
-
-    .dashboard-wrapper .table-modern {
-        min-width: 100%;
-        width: 100%;
-    }
-
-    /* Lists compacts */
-    .dashboard-wrapper .list-group {
-        width: 100%;
-    }
-
-    /* Small text sizing */
-    .dashboard-wrapper small {
-        font-size: 0.75rem;
-    }
-
-    .dashboard-wrapper .card-header small {
-        font-size: 0.75rem;
-        line-height: 1.2;
-    }
-
-    /* Remove unnecessary margins */
-    .dashboard-wrapper .card-body>*:first-child {
-        margin-top: 0;
-    }
-
-    .dashboard-wrapper .card-body>*:last-child {
-        margin-bottom: 0;
-    }
-
-    /* Placeholder cards */
-    .placeholder-card {
-        padding: 1.5rem 1rem;
-        text-align: center;
-    }
-
-    .placeholder-card i {
-        font-size: 1.5rem;
-        margin-bottom: 0.3rem;
-    }
-
-    /* Responsive adjustments for tablets */
-    @media (max-width: 1199px) {
-        .dashboard-wrapper .stat-value {
-            font-size: 1.75rem;
-        }
-
-        .dashboard-wrapper .col-sm-6,
-        .dashboard-wrapper .col-xl-3,
-        .dashboard-wrapper .col-xl-6 {
-            flex: 1 1 100%;
-        }
-    }
-
-    @media (max-width: 767px) {
-        body.dashboard-page .app-content {
-            padding: 0.75rem;
-        }
-
-        .dashboard-wrapper {
-            gap: 0.5rem;
-        }
-
-        .dashboard-wrapper .row {
-            gap: 0.5rem;
-        }
-
-        .dashboard-wrapper .stat-value {
-            font-size: 1.5rem;
-        }
-
-        .dashboard-wrapper .kpi-icon {
-            width: 2.5rem;
-            height: 2.5rem;
-            font-size: 1.25rem;
-        }
-
-        .dashboard-wrapper .card-body {
-            padding: 0.75rem;
-        }
-
-        .dashboard-wrapper .table-modern {
-            font-size: 0.85rem;
-        }
-
-        .dashboard-wrapper .table-modern th,
-        .dashboard-wrapper .table-modern td {
-            padding: 0.5rem;
-            font-size: 0.8rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        body.dashboard-page .app-content {
-            padding: 0.5rem;
-        }
-
-        .dashboard-wrapper h1 {
-            font-size: 1.5rem;
-        }
-
-        .dashboard-wrapper h2 {
-            font-size: 0.9rem;
-        }
-
-        .dashboard-wrapper .stat-value {
-            font-size: 1.25rem;
-        }
-
-        .dashboard-wrapper .card-body {
-            padding: 0.6rem;
-        }
-    }
-
-    /* Prevent horizontal scroll */
-    .dashboard-wrapper {
-        box-sizing: border-box;
-        overflow-x: hidden;
-    }
-
-    .dashboard-wrapper * {
-        box-sizing: border-box;
-    }
+.dashboard-v2 {
+  --dashboard-surface: rgba(255, 255, 255, 0.88);
+  --dashboard-border: rgba(15, 23, 42, 0.08);
+  --dashboard-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+  --dashboard-accent: linear-gradient(135deg, #0f6fec 0%, #16a3ff 100%);
+  display: grid;
+  gap: 1.25rem;
+}
+
+.dashboard-v2 .card {
+  border: 1px solid var(--dashboard-border);
+  box-shadow: var(--dashboard-shadow);
+  overflow: hidden;
+}
+
+.dashboard-hero {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 0;
+  background:
+    radial-gradient(circle at top left, rgba(22, 163, 255, 0.16), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(15, 111, 236, 0.18), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 247, 255, 0.92));
+}
+
+.dashboard-hero__copy h1 {
+  margin: 0.65rem 0 0.35rem;
+  font-size: clamp(1.85rem, 3vw, 2.5rem);
+  font-weight: 700;
+}
+
+.dashboard-hero__copy p {
+  max-width: 48rem;
+  margin: 0;
+  color: var(--bs-secondary-color);
+}
+
+.dashboard-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.dashboard-chip,
+.dashboard-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0.48rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-chip {
+  background: rgba(15, 111, 236, 0.08);
+  color: #0f6fec;
+}
+
+.dashboard-pill {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--bs-body-color);
+}
+
+.dashboard-pill--accent,
+.dashboard-pill.is-info {
+  background: rgba(15, 111, 236, 0.1);
+  color: #0f6fec;
+}
+
+.dashboard-pill.is-warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.dashboard-pill.is-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #c2410c;
+}
+
+.dashboard-pill.is-neutral {
+  background: rgba(100, 116, 139, 0.14);
+  color: #475569;
+}
+
+.dashboard-search-card .card-body {
+  padding: 1.25rem;
+}
+
+.dashboard-focus-card .card-body {
+  padding: 1.1rem 1.25rem;
+}
+
+.dashboard-focus-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dashboard-focus-card__header h2 {
+  margin: 0.65rem 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.dashboard-focus-card__header p {
+  margin: 0;
+  color: var(--bs-secondary-color);
+}
+
+.dashboard-focus-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.dashboard-focus-card__chips .dashboard-pill strong {
+  font-size: 0.78rem;
+}
+
+.dashboard-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-form__search {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.dashboard-search-input {
+  position: relative;
+}
+
+.dashboard-search-input i {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  color: var(--bs-secondary-color);
+  pointer-events: none;
+}
+
+.dashboard-search-input .form-control {
+  min-height: 3.25rem;
+  padding-left: 2.85rem;
+  border-radius: 1rem;
+}
+
+.dashboard-form__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.dashboard-form__grid > div,
+.dashboard-form__grid > label {
+  min-width: 0;
+}
+
+.dashboard-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.dashboard-presets .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding-inline: 1rem;
+}
+
+.dashboard-presets__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.78rem;
+}
+
+.dashboard-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.dashboard-form__meta {
+  color: var(--bs-secondary-color);
+  font-size: 0.92rem;
+}
+
+.dashboard-kpis,
+.dashboard-activity,
+.dashboard-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-kpis {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.dashboard-kpi {
+  display: flex;
+  gap: 0.95rem;
+  align-items: flex-start;
+  padding: 1.15rem;
+}
+
+.dashboard-kpi__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  font-size: 1.2rem;
+}
+
+.dashboard-kpi__icon.info { background: rgba(59, 130, 246, 0.14); color: #1d4ed8; }
+.dashboard-kpi__icon.success { background: rgba(16, 185, 129, 0.14); color: #047857; }
+.dashboard-kpi__icon.warning { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+.dashboard-kpi__icon.danger { background: rgba(239, 68, 68, 0.14); color: #c2410c; }
+.dashboard-kpi__icon.accent { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
+.dashboard-kpi__icon.neutral { background: rgba(100, 116, 139, 0.14); color: #475569; }
+
+.dashboard-kpi span,
+.dashboard-activity span {
+  display: block;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+}
+
+.dashboard-kpi strong,
+.dashboard-activity strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.9rem;
+  line-height: 1.1;
+}
+
+.dashboard-kpi small,
+.dashboard-activity small {
+  color: var(--bs-secondary-color);
+}
+
+.dashboard-activity {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-activity .card {
+  padding: 1.1rem 1.2rem;
+}
+
+.dashboard-grid--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboard-grid--dual {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-search-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.dashboard-search-groups.is-focused {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dashboard-search-group {
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(248, 250, 252, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.dashboard-search-group header,
+.dashboard-v2 .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dashboard-v2 .card-header h2 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.dashboard-v2 .card-header small {
+  color: var(--bs-secondary-color);
+}
+
+.dashboard-result-list,
+.dashboard-list,
+.dashboard-stacked-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dashboard-result-item,
+.dashboard-list-item,
+.dashboard-stacked-item,
+.dashboard-segment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.dashboard-result-item:hover,
+.dashboard-list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+  border-color: rgba(15, 111, 236, 0.18);
+}
+
+.dashboard-result-item strong,
+.dashboard-list-item strong,
+.dashboard-stacked-item strong {
+  display: block;
+}
+
+.dashboard-result-item p,
+.dashboard-list-item p,
+.dashboard-empty p {
+  margin: 0;
+}
+
+.dashboard-result-item small,
+.dashboard-list-item small,
+.dashboard-stacked-item small {
+  color: var(--bs-secondary-color);
+}
+
+.dashboard-stacked-item span,
+.dashboard-segment strong {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.dashboard-segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.dashboard-segment {
+  padding-block: 0.8rem;
+}
+
+.dashboard-segment span {
+  color: var(--bs-secondary-color);
+  font-size: 0.84rem;
+}
+
+.dashboard-table {
+  margin-bottom: 0;
+  vertical-align: middle;
+}
+
+.dashboard-table small {
+  display: block;
+  color: var(--bs-secondary-color);
+}
+
+.dashboard-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--bs-secondary-color);
+}
+
+.dashboard-empty.compact {
+  padding: 1rem 0.5rem;
+}
+
+.dashboard-empty i {
+  font-size: 1.6rem;
+}
+
+@media (max-width: 1399.98px) {
+  .dashboard-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .dashboard-form__grid,
+  .dashboard-grid--triple,
+  .dashboard-search-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-activity {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 991.98px) {
+  .dashboard-kpis,
+  .dashboard-grid--dual {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .dashboard-hero,
+  .dashboard-search-card .card-body,
+  .dashboard-focus-card .card-body,
+  .dashboard-kpi,
+  .dashboard-activity .card {
+    padding: 1rem;
+  }
+
+  .dashboard-form__grid,
+  .dashboard-kpis,
+  .dashboard-activity,
+  .dashboard-grid--triple,
+  .dashboard-grid--dual,
+  .dashboard-search-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-form__actions,
+  .dashboard-hero__actions,
+  .dashboard-focus-card__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-focus-card__chips {
+    justify-content: flex-start;
+  }
+
+  .dashboard-form__actions .btn,
+  .dashboard-hero__actions .btn,
+  .dashboard-presets .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-result-item,
+  .dashboard-list-item,
+  .dashboard-stacked-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 </style>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Ajouter une classe au body pour le dashboard
-        const path = window.location.pathname;
-        if (path === '/' || path === '/dashboard/' || path.match(/^\/dashboard\/?$/)) {
-            document.body.classList.add('dashboard-page');
-        }
+(function () {
+  const form = document.getElementById('dashboard-search-form');
+  const input = document.getElementById('dashboard-search');
+  const list = document.getElementById('dashboard-suggestions');
+  const scope = document.getElementById('scope');
+  const autoSubmitIds = ['scope', 'period', 'departement'];
+  const presetInputs = Array.from(document.querySelectorAll('input[name=\"preset\"]'));
+  const endpoint = "{% url 'assets:api_search_suggestions' %}";
+  let timer = null;
+  let activeController = null;
+
+  if (!form || !input || !list) return;
+
+  function clearOptions() {
+    list.innerHTML = '';
+  }
+
+  function populate(items) {
+    clearOptions();
+    if (!Array.isArray(items)) return;
+    items.forEach((item) => {
+      if (!item) return;
+      const option = document.createElement('option');
+      option.value = item;
+      list.appendChild(option);
     });
+  }
+
+  function fetchSuggestions() {
+    const value = input.value.trim();
+    if (value.length < 1) {
+      clearOptions();
+      return;
+    }
+
+    if (activeController) activeController.abort();
+    activeController = new AbortController();
+
+    const url = new URL(endpoint, window.location.origin);
+    url.searchParams.set('scope', scope ? scope.value : 'all');
+    url.searchParams.set('q', value);
+    url.searchParams.set('limit', '14');
+
+    fetch(url.toString(), {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      signal: activeController.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => populate(data && data.suggestions ? data.suggestions : []))
+      .catch((err) => {
+        if (err && err.name === 'AbortError') return;
+        clearOptions();
+      });
+  }
+
+  input.addEventListener('input', () => {
+    if (timer) window.clearTimeout(timer);
+    timer = window.setTimeout(fetchSuggestions, 180);
+  });
+
+  if (scope) {
+    scope.addEventListener('change', () => {
+      clearOptions();
+      if (input.value.trim()) fetchSuggestions();
+    });
+  }
+
+  autoSubmitIds.forEach((id) => {
+    const field = document.getElementById(id);
+    if (!field) return;
+    field.addEventListener('change', () => form.submit());
+  });
+
+  presetInputs.forEach((radio) => {
+    radio.addEventListener('change', () => form.submit());
+  });
+})();
 </script>
 {% endblock %}

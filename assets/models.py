@@ -227,7 +227,7 @@ class Attribution(models.Model):
     
     # Champs existants
     materiel = models.ForeignKey(Materiel, on_delete=models.CASCADE, related_name='attributions')
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='attributions', null=True, blank=True)
+    client = models.ForeignKey(Client, on_delete=models.SET_NULL, related_name='attributions', null=True, blank=True)
     employe_responsable = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='attributions_creees')
     departement = models.ForeignKey(Departement, on_delete=models.CASCADE, related_name='attributions')
     date_attribution = models.DateTimeField(auto_now_add=True)

@@ -62,13 +62,26 @@ CSRF_TRUSTED_ORIGINS = [
 # ====================
 # EMAIL CONFIGURATION
 # ====================
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_DELIVERY_METHOD = os.environ.get('EMAIL_DELIVERY_METHOD', 'smtp')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.office365.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = True
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in {'1', 'true', 'yes', 'on'}
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'RadGestMat <noreply@LBVH.rezidor.com>')
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '30'))
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DEFAULT_FROM_EMAIL',
+    'RadGestMat <helpdesk.libreville@radissonblu.com>',
+)
+MICROSOFT_TENANT_ID = os.environ.get('MICROSOFT_TENANT_ID', '')
+MICROSOFT_CLIENT_ID = os.environ.get('MICROSOFT_CLIENT_ID', '')
+MICROSOFT_CLIENT_SECRET = os.environ.get('MICROSOFT_CLIENT_SECRET', '')
+MICROSOFT_GRAPH_SENDER = os.environ.get('MICROSOFT_GRAPH_SENDER', '')
+MICROSOFT_GRAPH_SAVE_TO_SENT_ITEMS = (
+    os.environ.get('MICROSOFT_GRAPH_SAVE_TO_SENT_ITEMS', 'True').lower()
+    in {'1', 'true', 'yes', 'on'}
+)
 
 # ====================
 # SENTRY - Error tracking (optional)

@@ -127,7 +127,7 @@
                         <th style="width: 40px;"></th>
                         <th>Type</th>
                         <th>Matériel</th>
-                        <th>Client</th>
+                        <th>Attribution</th>
                         <th>Département</th>
                         <th>Sévérité</th>
                         <th>Date</th>
@@ -161,10 +161,21 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if alerte.attribution and alerte.attribution.client %}
-                            {{ alerte.attribution.client.nom }}
+                            {% if alerte.attribution_concernee %}
+                            <div class="fw-semibold">{{ alerte.attribution_concernee.destination_label }}</div>
+                            <small class="text-body-secondary">
+                                {{ alerte.attribution_concernee.get_type_attribution_display|default:"Attribution" }}
+                                {% if alerte.attribution_concernee.is_active_assignment %}
+                                • Active
+                                {% elif alerte.attribution_concernee.date_retour_effective %}
+                                • Cloturee
+                                {% endif %}
+                            </small>
+                            {% if alerte.attribution_concernee.date_retour_prevue %}
+                            <div><small class="text-body-secondary">Retour prevu: {{ alerte.attribution_concernee.date_retour_prevue|date:"d/m/Y" }}</small></div>
+                            {% endif %}
                             {% else %}
-                            <span class="text-body-secondary">-</span>
+                            <span class="text-body-secondary">Aucune attribution liee</span>
                             {% endif %}
                         </td>
                         <td>{{ alerte.departement.nom }}</td>

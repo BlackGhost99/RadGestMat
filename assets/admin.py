@@ -149,6 +149,10 @@ class ClientAdmin(admin.ModelAdmin):
     list_filter = ('type_client', 'date_creation')
     search_fields = ('nom', 'email', 'telephone')
     readonly_fields = ('date_creation', 'date_modification')
+
+    def has_delete_permission(self, request, obj=None):
+        profil = getattr(request, 'profil_utilisateur', None)
+        return request.user.is_superuser or (profil and profil.role == 'SUPER_ADMIN')
     
     fieldsets = (
         ('Informations générales', {

@@ -1,11 +1,16 @@
 from django.test import TestCase, Client as DjangoTestClient
+from django.test import SimpleTestCase, override_settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
-from .models import Departement, Categorie, Materiel
+from .models import Departement, Categorie, Materiel, Salle
 from .models import Client, Attribution, AuditLog
+from users.models import ProfilUtilisateur
 from django.urls import reverse
 from datetime import date, timedelta
 from django.utils import timezone
+from unittest.mock import patch
+
+from .mail_transport import send_email
 
 class MaterielViewsTest(TestCase):
     """Tests des vues de gestion du matériel"""
@@ -69,6 +74,78 @@ class MaterielViewsTest(TestCase):
         self.client.login(username='test', password='testpass123')
         response = self.client.get('/materiel/ajouter/')
         self.assertEqual(response.status_code, 200)
+
+    def test_dept_user_can_clone_materiel(self):
+        """Un utilisateur de département peut cloner un matériel de son département."""
+        ProfilUtilisateur.objects.create(
+            user=self.user,
+            departement=self.dept,
+            role='DEPT_USER',
+        )
+        self.client.login(username='test', password='testpass123')
+
+        response = self.client.post(
+            reverse('assets:materiel_clone', args=[self.materiel.pk]),
+            data={'materiel_source': self.materiel.pk, 'nombre_copies': 1},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Materiel.objects.filter(nom=self.materiel.nom).count(), 2)
+
+    def test_dept_user_can_update_materiel_in_own_department(self):
+        """Un utilisateur de département peut modifier le matériel de son département."""
+        ProfilUtilisateur.objects.create(
+            user=self.user,
+            departement=self.dept,
+            role='DEPT_USER',
+        )
+        self.client.login(username='test', password='testpass123')
+
+        response = self.client.post(
+            reverse('assets:materiel_update', args=[self.materiel.pk]),
+            data={
+                'asset_id': self.materiel.asset_id,
+                'numero_inventaire': self.materiel.numero_inventaire,
+                'nom_materiel': 'Materiel modifie',
+                'categorie': self.category.pk,
+                'description': '',
+                'marque': '',
+                'modele': '',
+                'numero_serie': '',
+                'etat_technique': 'FONCTIONNEL',
+                'statut_disponibilite': 'DISPONIBLE',
+                'date_achat': '',
+                'prix': '',
+                'location': '',
+                'salle': '',
+                'notes': '',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.materiel.refresh_from_db()
+        self.assertEqual(self.materiel.nom, 'Materiel modifie')
+
+    def test_dept_user_cannot_update_materiel_in_another_department(self):
+        """La modification reste limitée au département du DEPT_USER."""
+        other_dept = Departement.objects.create(code='OTHER', nom='Other Department')
+        self.materiel.departement = other_dept
+        self.materiel.save(update_fields=['departement'])
+        ProfilUtilisateur.objects.create(
+            user=self.user,
+            departement=self.dept,
+            role='DEPT_USER',
+        )
+        self.client.login(username='test', password='testpass123')
+
+        response = self.client.post(
+            reverse('assets:materiel_update', args=[self.materiel.pk]),
+            data={'nom_materiel': 'Modification interdite'},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.materiel.refresh_from_db()
+        self.assertEqual(self.materiel.nom, 'Test Material')
 
     def test_checkout_and_checkin_workflow(self):
         """Test basique du workflow check-out puis check-in"""
@@ -228,3 +305,127 @@ class MaterielViewsTest(TestCase):
         self.assertEqual(response.context['attribution_returned_count'], 0)
         self.assertEqual(len(response.context['attributions_period']), 1)
 
+    def test_checkout_persists_conference_room_destination(self):
+        self.client.login(username='test', password='testpass123')
+        room = Salle.objects.create(nom='Salle Test', departement=self.dept)
+        response = self.client.post(
+            reverse('assets:materiel_checkout', args=[self.materiel.asset_id]),
+            data={
+                'materiel': self.materiel.pk,
+                'destination_type': 'salle',
+                'salle': room.pk,
+                'type_attribution': Attribution.TYPE_TEMPORAIRE,
+                'date_retour_prevue': date.today() + timedelta(days=1),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        attribution = Attribution.objects.get(materiel=self.materiel)
+        self.assertIsNone(attribution.client)
+        self.assertEqual(attribution.salle, room)
+
+    def test_checkout_persists_indefinite_internal_attribution(self):
+        self.client.login(username='test', password='testpass123')
+        internal = Client.objects.create(
+            nom='Service interne',
+            type_client=Client.TYPE_INTERNE,
+            departement=self.dept,
+        )
+        response = self.client.post(
+            reverse('assets:materiel_checkout', args=[self.materiel.asset_id]),
+            data={
+                'materiel': self.materiel.pk,
+                'destination_type': 'client',
+                'client': internal.pk,
+                'type_attribution': Attribution.TYPE_INDEFINIE,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        attribution = Attribution.objects.get(materiel=self.materiel)
+        self.assertEqual(attribution.client, internal)
+        self.assertEqual(attribution.type_attribution, Attribution.TYPE_INDEFINIE)
+        self.assertIsNone(attribution.date_retour_prevue)
+
+    def test_client_delete_requires_super_admin_and_preserves_attribution(self):
+        client = Client.objects.create(nom='Client historique', departement=self.dept)
+        attribution = Attribution.objects.create(
+            materiel=self.materiel,
+            client=client,
+            employe_responsable=self.user,
+            departement=self.dept,
+            type_attribution=Attribution.TYPE_INDEFINIE,
+        )
+        self.client.login(username='test', password='testpass123')
+        delete_url = reverse('assets:client_delete', args=[client.pk])
+        self.assertEqual(self.client.post(delete_url).status_code, 403)
+        self.assertTrue(Client.objects.filter(pk=client.pk).exists())
+
+        ProfilUtilisateur.objects.create(
+            user=self.user,
+            departement=self.dept,
+            role='SUPER_ADMIN',
+        )
+        self.assertEqual(self.client.post(delete_url).status_code, 302)
+        attribution.refresh_from_db()
+        self.assertIsNone(attribution.client)
+
+    def test_client_delete_missing_client_returns_404(self):
+        self.user.is_superuser = True
+        self.user.is_staff = True
+        self.user.save()
+        self.client.login(username='test', password='testpass123')
+
+        response = self.client.post(reverse('assets:client_delete', args=[999999]))
+
+        self.assertEqual(response.status_code, 404)
+
+
+class MailTransportTest(SimpleTestCase):
+    @override_settings(EMAIL_DELIVERY_METHOD='smtp')
+    @patch('assets.mail_transport.django_send_mail')
+    def test_smtp_delivery_uses_django_backend(self, mock_send_mail):
+        mock_send_mail.return_value = 1
+
+        result = send_email(
+            subject='Sujet',
+            message='Message',
+            recipient_list=['dest@example.com'],
+            from_email='RadGestMat <noreply@example.com>',
+        )
+
+        self.assertEqual(result, 1)
+        mock_send_mail.assert_called_once()
+
+    @override_settings(
+        EMAIL_DELIVERY_METHOD='auto',
+        MICROSOFT_TENANT_ID='tenant-id',
+        MICROSOFT_CLIENT_ID='client-id',
+        MICROSOFT_CLIENT_SECRET='client-secret',
+    )
+    @patch('assets.mail_transport._send_via_microsoft_graph')
+    @patch('assets.mail_transport._send_via_smtp')
+    def test_auto_prefers_graph_when_configured(self, mock_smtp, mock_graph):
+        mock_graph.return_value = 1
+
+        result = send_email(
+            subject='Sujet',
+            message='Message',
+            recipient_list=['dest@example.com'],
+        )
+
+        self.assertEqual(result, 1)
+        mock_graph.assert_called_once()
+        mock_smtp.assert_not_called()
+
+    @override_settings(
+        EMAIL_DELIVERY_METHOD='microsoft_graph',
+        MICROSOFT_TENANT_ID='',
+        MICROSOFT_CLIENT_ID='',
+        MICROSOFT_CLIENT_SECRET='',
+    )
+    def test_graph_delivery_requires_credentials(self):
+        with self.assertRaisesMessage(Exception, 'Configuration Microsoft Graph incomplete'):
+            send_email(
+                subject='Sujet',
+                message='Message',
+                recipient_list=['dest@example.com'],
+            )
