@@ -43,7 +43,7 @@
                 <button class="btn btn-secondary" disabled>Non disponible</button>
                 {% endif %}
 
-                {% if request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'SUPER_ADMIN' %}
+                {% if request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'DEPT_USER' or request.profil_utilisateur.role == 'SUPER_ADMIN' %}
                 <a href="{% url 'assets:materiel_delete' materiel.pk %}" class="btn btn-outline-danger">
                     <i class="bi bi-trash me-1"></i>Supprimer
                 </a>

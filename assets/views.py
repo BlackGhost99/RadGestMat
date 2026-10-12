@@ -2564,12 +2564,13 @@ def materiel_update(request, pk):
 def materiel_delete(request, pk):
     """Supprime un matériel."""
     materiel = get_object_or_404(Materiel, pk=pk)
-    # Vérifier les permissions: seul le SUPER_ADMIN ou le manager du département peut supprimer
+    # Vérifier les permissions du rôle et du département.
     profil = getattr(request, 'profil_utilisateur', None)
     # Autoriser les superusers Django également
     if not (request.user.is_superuser or (profil and (
             profil.role == 'SUPER_ADMIN' or (
-                profil.role == 'DEPT_MANAGER' and profil.departement_id == materiel.departement_id
+                profil.role in ['DEPT_MANAGER', 'DEPT_USER']
+                and profil.departement_id == materiel.departement_id
             )
         ))):
         raise PermissionDenied("Vous n'avez pas la permission de supprimer ce matériel.")
@@ -3759,8 +3760,8 @@ def alerte_detecter(request):
     """Déclenche manuellement la détection de toutes les alertes"""
     profil = getattr(request, 'profil_utilisateur', None)
     
-    # Seuls les managers et super admins peuvent déclencher la détection
-    if not profil or profil.role not in ['SUPER_ADMIN', 'DEPT_MANAGER']:
+    # Les utilisateurs de département peuvent aussi lancer la détection.
+    if not profil or profil.role not in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER']:
         raise PermissionDenied("Vous n'avez pas les permissions pour cette action.")
     
     resultats = AlerteService.detecter_toutes_alertes()
