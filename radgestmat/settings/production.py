@@ -141,6 +141,58 @@ QR_DOMAIN = os.environ.get('QR_DOMAIN', 'http://LBVH.rezidor.com')
 SITE_URL = os.environ.get('SITE_URL', QR_DOMAIN)
 
 # ====================
+# RENDER (https://render.com)
+# ====================
+# Render définit automatiquement RENDER=true et RENDER_EXTERNAL_HOSTNAME.
+# Ce bloc ne s'applique donc pas au déploiement interne (Docker / Nginx).
+ON_RENDER = os.environ.get('RENDER', '').lower() == 'true'
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '')
+
+if ON_RENDER:
+    # Base PostgreSQL fournie par Render via DATABASE_URL
+    DATABASE_URL = os.environ.get('DATABASE_URL', '')
+    if DATABASE_URL:
+        import dj_database_url
+        DATABASES = {
+            'default': dj_database_url.parse(
+                DATABASE_URL,
+                conn_max_age=int(os.environ.get('DB_CONN_MAX_AGE', '600')),
+                conn_health_checks=True,
+            )
+        }
+
+    # Domaine public Render (xxx.onrender.com) + domaines perso éventuels
+    if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS if h not in ('localhost', '127.0.0.1')]
+
+    # Render termine le HTTPS devant l'application
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # Redis seulement si un service Redis est branché, sinon sessions en base
+    if not os.environ.get('REDIS_URL'):
+        CACHES = {
+            'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}
+        }
+        SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+    # Fichiers statiques servis directement par l'application (WhiteNoise)
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index('django.middleware.security.SecurityMiddleware') + 1,
+        'whitenoise.middleware.WhiteNoiseMiddleware',
+    )
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
+
+    QR_DOMAIN = os.environ.get('QR_DOMAIN', f'https://{RENDER_EXTERNAL_HOSTNAME}')
+    SITE_URL = os.environ.get('SITE_URL', QR_DOMAIN)
+
+# ====================
 # LOGGING
 # ====================
 LOGGING['root']['level'] = 'INFO'
@@ -155,3 +207,11 @@ if 'file' in LOGGING['handlers']:
 GUNICORN_WORKERS = int(os.environ.get('GUNICORN_WORKERS', '3'))
 GUNICORN_TIMEOUT = int(os.environ.get('GUNICORN_TIMEOUT', '120'))
 
+
+# Sur Render le disque est éphémère : les logs vont uniquement dans la console (onglet Logs)
+if ON_RENDER:
+    for _name in ('file', 'error_file'):
+        LOGGING['handlers'].pop(_name, None)
+    LOGGING['root']['handlers'] = ['console']
+    for _logger in LOGGING['loggers'].values():
+        _logger['handlers'] = ['console']
