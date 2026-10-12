@@ -1,0 +1,73 @@
+# Blueprint Render pour RadGestMat
+# - radgestmat          : production, déployée depuis la branche main
+# - radgestmat-staging  : tests, déployée depuis la branche staging
+# Chaque environnement a sa propre base PostgreSQL.
+
+services:
+  - type: web
+    name: radgestmat
+    runtime: python
+    plan: starter
+    branch: main
+    buildCommand: ./build.sh
+    preDeployCommand: python manage.py migrate --noinput && python manage.py ensure_admin
+    startCommand: gunicorn radgestmat.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120 --access-logfile - --error-logfile -
+    healthCheckPath: /login/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: ENVIRONMENT
+        value: production
+      - key: DJANGO_SETTINGS_MODULE
+        value: radgestmat.settings
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: radgestmat-db
+          property: connectionString
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+
+  - type: web
+    name: radgestmat-staging
+    runtime: python
+    plan: free
+    branch: staging
+    buildCommand: ./build.sh && python manage.py migrate --noinput && python manage.py ensure_admin
+    startCommand: gunicorn radgestmat.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile -
+    healthCheckPath: /login/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: ENVIRONMENT
+        value: staging
+      - key: DJANGO_SETTINGS_MODULE
+        value: radgestmat.settings
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: radgestmat-staging-db
+          property: connectionString
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+
+databases:
+  - name: radgestmat-db
+    plan: basic-256mb
+    databaseName: radgestmat
+    user: radgestmat
+
+  - name: radgestmat-staging-db
+    plan: free
+    databaseName: radgestmat_staging
+    user: radgestmat

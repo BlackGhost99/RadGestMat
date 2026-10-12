@@ -14,10 +14,15 @@ except ImportError:
 # Allow more hosts in staging
 try:
     from decouple import config, Csv
-    ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+    ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 except ImportError:
     import os
     ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
+
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+if ON_RENDER:
+    CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS if h not in ('localhost', '127.0.0.1')]
 
 # Security settings - Can be relaxed slightly for staging
 try:
