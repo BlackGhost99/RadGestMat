@@ -14,50 +14,45 @@ from .base import *
 DEBUG = False
 
 # Secret key from environment or generate
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-me-in-production')
+SECRET_KEY = os.environ['SECRET_KEY']
 
 # Server configuration
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', os.environ.get('RENDER_EXTERNAL_HOSTNAME', '')).split(',') if host.strip()]
 
 # ====================
-# BASE DE DONNÉES - configurable via variables d'environnement (ex: Postgres)
-# Reads DB_ENGINE, DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT from environment
+# BASE DE DONNÉES - Render / Supabase PostgreSQL
+# DATABASE_URL is required for hosted production to prevent accidental SQLite use.
+import dj_database_url
+
+if not os.environ.get('DATABASE_URL'):
+    raise RuntimeError('DATABASE_URL must be configured for production')
+
 DATABASES = {
-    'default': {
-        'ENGINE': get_config('DB_ENGINE', default='django.db.backends.sqlite3'),
-        'NAME': get_config('DB_NAME', default=str(BASE_DIR / 'db.sqlite3')),
-        'USER': get_config('DB_USER', default=''),
-        'PASSWORD': get_config('DB_PASSWORD', default=''),
-        'HOST': get_config('DB_HOST', default=''),
-        'PORT': get_config('DB_PORT', default=''),
-        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '600')),
-    }
+    'default': dj_database_url.config(
+        env='DATABASE_URL',
+        conn_max_age=0,  # Session pooler: do not retain Django connections
+        ssl_require=True,
+    )
 }
 
 # ====================
-# SÉCURITÉ - HTTP sur réseau interne
-# ====================
-# Réseau interne d'hôtel sans HTTPS - pas de redirection SSL
-SECURE_SSL_REDIRECT = False
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-
-# Headers de sécurité standard
-SECURE_BROWSER_XSS_FILTER = True
+# SÉCURITÉ - HTTPS sur Render
+# Render terminates HTTPS at its reverse proxy.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_REFERRER_POLICY = 'same-origin'
 
-# CSRF trusted origins - IP et domaine du serveur
+# Set ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS for the actual Render domain.
 CSRF_TRUSTED_ORIGINS = [
-    'http://10.105.42.118',
-    'http://LBVH.rezidor.com',
-    'http://localhost',
-    'http://127.0.0.1',
+    origin.strip() for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
 ]
+if not CSRF_TRUSTED_ORIGINS and os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    CSRF_TRUSTED_ORIGINS = ['https://' + os.environ['RENDER_EXTERNAL_HOSTNAME']]
 
 # ====================
 # EMAIL CONFIGURATION
@@ -103,29 +98,14 @@ if SENTRY_DSN:
         )
 
 # ====================
-# CACHE & SESSIONS - Redis
-# ====================
-# Redis pour cache et sessions (meilleur que BD pour performance)
-try:
-    REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/1')
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-            'TIMEOUT': 3600,  # 1 heure
-        }
+# CACHE & SESSIONS - database-backed sessions work without Redis
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'radgestmat-render-cache',
     }
-    # Use cache for sessions (performant sur réseau WiFi)
-    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-    SESSION_CACHE_ALIAS = 'default'
-except Exception:
-    # Fallback to database cache if Redis unavailable
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-            'LOCATION': 'django_cache_table',
-        }
-    }
+}
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # ====================
 # OPTIMIZATION - Mobile & WiFi
@@ -133,20 +113,31 @@ except Exception:
 # Compression pour réduire bandwidth (important sur WiFi hôtelier)
 MIDDLEWARE.insert(0, 'django.middleware.gzip.GZipMiddleware')
 
-# Cache static files agressively
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+# Serve CSS/JS with WhiteNoise (no Redis or Nginx required)
+if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
+    MIDDLEWARE.insert(MIDDLEWARE.index('django.middleware.security.SecurityMiddleware') + 1,
+                      'whitenoise.middleware.WhiteNoiseMiddleware')
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
-# CDN URL pour QR codes
-QR_DOMAIN = os.environ.get('QR_DOMAIN', 'http://LBVH.rezidor.com')
+# QR Code domain configuration
+QR_DOMAIN = os.environ.get('QR_DOMAIN', os.environ.get('SITE_URL', ''))
 SITE_URL = os.environ.get('SITE_URL', QR_DOMAIN)
 
 # ====================
-# LOGGING
-# ====================
+# LOGGING - Render captures stdout/stderr; no log files needed.
+LOGGING['handlers'] = {
+    'console': {
+        'class': 'logging.StreamHandler',
+        'formatter': 'verbose',
+    },
+}
+LOGGING['root']['handlers'] = ['console']
 LOGGING['root']['level'] = 'INFO'
-LOGGING['loggers']['django']['level'] = 'INFO'
-if 'file' in LOGGING['handlers']:
-    LOGGING['handlers']['file']['formatter'] = 'json'
+for logger in LOGGING['loggers'].values():
+    logger['handlers'] = ['console']
 
 # ====================
 # GUNICORN CONFIGURATION
