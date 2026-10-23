@@ -5,9 +5,9 @@
 
 {% block content_wrapper %}
 <div class="inventory-container w-100 h-100 d-flex flex-column">
-  <div class="w-100 py-3 py-md-4 flex-grow-1 d-flex flex-column" style="min-height: 0;">
+  <div class="w-100 py-3 py-lg-2 flex-grow-1 d-flex flex-column" style="min-height: 0;">
     {% block content %}
-    <div class="row mb-4">
+    <div class="row mb-3 mb-lg-2">
       <div class="col">
         <h1 class="h2">
           <i class="bi bi-box-seam me-2"></i>Inventaire
@@ -23,10 +23,10 @@
       {% endif %}
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="row g-3 g-lg-2 mb-3 mb-lg-2">
       <div class="col-xl-2 col-md-4 col-6">
         <div class="card stat-card h-100">
-          <div class="card-body text-center">
+          <div class="card-body text-center py-lg-2">
             <h3 class="fw-bold text-primary" id="stats-total">{{ stats.total }}</h3>
             <small class="text-muted">Total</small>
           </div>
@@ -34,7 +34,7 @@
       </div>
       <div class="col-xl-2 col-md-4 col-6">
         <div class="card stat-card disponible h-100">
-          <div class="card-body text-center">
+          <div class="card-body text-center py-lg-2">
             <h3 class="fw-bold text-success" id="stats-disponible">{{ stats.disponible }}</h3>
             <small class="text-muted">Disponible</small>
           </div>
@@ -42,7 +42,7 @@
       </div>
       <div class="col-xl-2 col-md-4 col-6">
         <div class="card stat-card attribue h-100">
-          <div class="card-body text-center">
+          <div class="card-body text-center py-lg-2">
             <h3 class="fw-bold text-warning" id="stats-attribue">{{ stats.attribue }}</h3>
             <small class="text-muted">Attribue</small>
           </div>
@@ -50,7 +50,7 @@
       </div>
       <div class="col-xl-2 col-md-4 col-6">
         <div class="card stat-card maintenance h-100">
-          <div class="card-body text-center">
+          <div class="card-body text-center py-lg-2">
             <h3 class="fw-bold text-info" id="stats-maintenance">{{ stats.maintenance }}</h3>
             <small class="text-muted">Maintenance</small>
           </div>
@@ -58,9 +58,9 @@
       </div>
     </div>
 
-    <div class="card mb-4">
-      <div class="card-body">
-        <form method="get" class="row g-3">
+    <div class="card mb-3 mb-lg-2">
+      <div class="card-body py-lg-2">
+        <form method="get" class="row g-3 g-lg-2">
           <div class="col-md-3">
             <label for="q" class="form-label">Recherche</label>
             <input type="text" class="form-control" id="q" name="q" value="{{ query }}" placeholder="Nom d'equipement, modele..." list="materiel-suggestions" autocomplete="off">
