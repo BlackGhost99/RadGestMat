@@ -15,8 +15,8 @@ admin.site.app_index = custom_app_index
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    # API routes (uncomment when rest_framework is installed)
-    # path('api/v1/', include('assets.api.urls')),
+    # Mobile API: deliberately expose only the read-only, permission-scoped endpoints.
+    path('api/v1/mobile/', include('assets.api.mobile_urls')),
     
     # Application routes
     path('', include('assets.urls')),

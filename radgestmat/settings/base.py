@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Third-party apps (optional)
-    # 'rest_framework',  # Uncomment when installed
+    'rest_framework',  # API Django REST Framework
     # 'corsheaders',  # Uncomment when installed
     # Local apps
     'users',
