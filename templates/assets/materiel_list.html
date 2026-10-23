@@ -2,25 +2,26 @@
 {% load static %}
 
 {% block title %}Inventaire - RadGestMat{% endblock %}
+{% block body_class %}inventory-page{% endblock %}
 
 {% block content_wrapper %}
 <style>
-/* Inventory desktop: reclaim the unused gap below the fixed navigation. */
+/* Inventaire: corrections ciblées sans dépendre de :has() ni du CSS statique mis en cache. */
 @media (min-width: 992px) {
-  body:has(.inventory-container) .app-main {
+  body.inventory-page .app-main {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
-  .inventory-container {
-    margin-top: -24px;
-    height: calc(100% + 24px) !important;
+  body.inventory-page .inventory-container {
+    margin-top: -36px !important;
+    height: calc(100% + 36px) !important;
     max-height: none;
   }
-  .inventory-container > div {
+  body.inventory-page .inventory-container > div {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
-  .inventory-container .stat-card .card-body {
+  body.inventory-page .inventory-container .stat-card .card-body {
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
@@ -40,7 +41,7 @@
     <div class="row mb-3 mb-lg-2">
       <div class="col">
         <h1 class="h2">
-          <i class="bi bi-box-seam me-2"></i>Inventaire
+          <i class="bi bi-box-seam me-2"></i>Inventaire<small class="ms-2 fw-normal text-muted" style="font-size:.65rem;vertical-align:middle" title="Version de disposition">Vue compacte V3</small>
         </h1>
         <p class="text-muted">Materiel groupe par equipement avec filtres avances</p>
       </div>
