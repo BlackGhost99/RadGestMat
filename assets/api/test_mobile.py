@@ -19,15 +19,15 @@ class MobileInventoryApiTests(TestCase):
             actif=True,
         )
         self.asset = Materiel.objects.create(
-            asset_id="MOBILE-001",
-            numero_inventaire="MOB-INV-001",
+            asset_id="OKP-900001",
+            numero_inventaire="RAD-900001",
             nom="Scanner test",
             departement=self.department,
             statut_disponibilite=Materiel.STATUT_DISPONIBLE,
         )
         self.other_asset = Materiel.objects.create(
-            asset_id="OTHER-001",
-            numero_inventaire="OTH-INV-001",
+            asset_id="OKP-900002",
+            numero_inventaire="RAD-900002",
             nom="Autre département",
             departement=self.other_department,
             statut_disponibilite=Materiel.STATUT_DISPONIBLE,
