@@ -4,6 +4,36 @@
 {% block title %}Inventaire - RadGestMat{% endblock %}
 
 {% block content_wrapper %}
+<style>
+/* Inventory desktop: reclaim the unused gap below the fixed navigation. */
+@media (min-width: 992px) {
+  body:has(.inventory-container) .app-main {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .inventory-container {
+    margin-top: -24px;
+    height: calc(100% + 24px) !important;
+    max-height: none;
+  }
+  .inventory-container > div {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  .inventory-container .stat-card .card-body {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+}
+.inventory-container .table-responsive table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.inventory-container .table-responsive table thead th {
+  background-color: var(--surface-card, #fff);
+}
+</style>
 <div class="inventory-container w-100 h-100 d-flex flex-column">
   <div class="w-100 py-3 py-lg-2 flex-grow-1 d-flex flex-column" style="min-height: 0;">
     {% block content %}
@@ -266,35 +296,6 @@
 </div>
 {% endblock %}
 
-<style>
-  .inventory-container {
-    height: 100%;
-    max-height: 100%;
-    overflow: hidden;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .inventory-container > div {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .table-responsive table thead {
-    position: sticky;
-    top: 0;
-    background-color: #f8f9fa;
-    z-index: 10;
-  }
-
-  .table-responsive table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-  }
-</style>
 
 {% block extra_js %}
 <script>
