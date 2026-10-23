@@ -20,7 +20,7 @@ Branche de travail : `feature/android-offline-app`. La branche `main` et le dép
 
 1. Auditer les modèles, vues de scan/check-in/check-out, authentification et permissions.
 2. Définir les contrats API et tests d'autorisation/idempotence/conflits.
-3. Implémenter les API Django sans casser les routes HTML existantes.
+3. **En cours :** première tranche API Django en lecture seule ajoutée (`/api/v1/mobile/assets/` et `/api/v1/mobile/assets/<asset_id>/`), avec contrôle de profil/département, pagination, synchronisation différentielle et tests. Les opérations d'écriture restent à implémenter après sécurisation de l'idempotence et des conflits.
 4. Ajouter l'application Android, caméra QR et stockage local.
 5. Implémenter la synchronisation résiliente et les tests sans réseau.
 6. Générer et tester un APK de développement signé pour les essais, puis préparer la signature de distribution.
