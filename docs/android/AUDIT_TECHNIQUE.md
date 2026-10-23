@@ -36,4 +36,4 @@ Analyse statique du dépôt sur `feature/android-offline-app`. Aucun test d'exé
 - Tests caméra/QR, cache local, déconnexion, restauration réseau et conflits.
 - Audit des informations personnelles conservées hors ligne, chiffrement local et effacement à la déconnexion.
 
-**Statut : audit initial effectué, API et APK non implémentés. Aucune modification de la base de données ou du déploiement de production.**
+**Mise à jour du 23 octobre 2026 :** une première API mobile en lecture seule est implémentée sur la branche de travail : `GET /api/v1/mobile/assets/` (pagination et `updated_since`) et `GET /api/v1/mobile/assets/<asset_id>/` (recherche par identifiant QR). Elle exige une authentification et un profil actif, et limite les résultats au département de l'utilisateur sauf `SUPER_ADMIN`. Des tests automatisés ont été ajoutés, mais ils n'ont pas encore été exécutés dans un environnement Django. Les opérations check-out/check-in hors ligne, l'authentification par jeton mobile et l'APK restent à faire. Aucune migration, modification de base de données ou modification du déploiement de production n'a été effectuée.
