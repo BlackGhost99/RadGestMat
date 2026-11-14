@@ -136,3 +136,16 @@ def revoke_device(request):
     if token and len(token) <= 256:
         ReminderDevice.objects.filter(user=request.user, token_hash=_digest(token)).delete()
     return JsonResponse({"revoked": True})
+
+
+from django.middleware.csrf import get_token
+
+@require_GET
+@never_cache
+def device_session(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "authentication_required"}, status=401)
+    profile = getattr(request, "profil_utilisateur", None)
+    if not profile or not profile.actif:
+        return JsonResponse({"error": "forbidden"}, status=403)
+    return JsonResponse({"user_id": request.user.pk, "csrf": get_token(request)})
