@@ -2454,23 +2454,6 @@ def materiel_detail(request, pk):
     # Phase 2: implémenter les permissions par département
     materiel = get_object_or_404(Materiel, pk=pk)
 
-    qr_missing = False
-    if materiel.qr_code:
-        try:
-            if not materiel.qr_code.storage.exists(materiel.qr_code.name):
-                qr_missing = True
-                materiel.qr_code = None
-                materiel.save(update_fields=['qr_code'])
-        except Exception:
-            pass
-
-    if qr_missing:
-        ok, err = _generate_materiel_qr_code(materiel)
-        if ok:
-            messages.info(request, 'QR Code r?g?n?r? automatiquement.')
-        else:
-            messages.warning(request, f'QR Code indisponible: {err}')
-    
     # Attribution active
     attribution_active = Attribution.objects.filter(
         materiel=materiel, 
@@ -2496,6 +2479,27 @@ def materiel_detail(request, pk):
     }
     
     return render(request, 'assets/materiel_detail.html', context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def materiel_qr(request, pk):
+    """Serve a QR PNG without relying on ephemeral media storage."""
+    import io
+    import qrcode
+    from django.utils.http import content_disposition_header
+
+    materiel = get_object_or_404(Materiel, pk=pk)
+    target = request.build_absolute_uri(reverse('assets:scan_result', args=[materiel.asset_id]))
+    image = qrcode.make(target)
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    response = HttpResponse(buffer.getvalue(), content_type='image/png')
+    response['Content-Disposition'] = content_disposition_header(
+        request.GET.get('download') == '1', f'qr_{materiel.asset_id}.png'
+    )
+    response['Cache-Control'] = 'private, no-store'
+    return response
 
 
 @login_required
