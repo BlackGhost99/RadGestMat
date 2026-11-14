@@ -14,6 +14,8 @@ def personal_reminders(request):
     profil = getattr(request, "profil_utilisateur", None)
     if not profil or not profil.actif:
         return JsonResponse({"error": "profile_required"}, status=403)
+    if not _device_authorized(request):
+        return JsonResponse({"error": "primary_device_required"}, status=403)
     qs = Attribution.objects.filter(
         employe_responsable=request.user,
         type_attribution=Attribution.TYPE_TEMPORAIRE,
@@ -88,3 +90,49 @@ def transfer_reminder(request, pk):
             notes=f"Transfert de suivi : responsable {previous} vers {target.user_id}",
         )
     return JsonResponse({"id": loan.pk, "responsable_id": target.user_id})
+
+
+# One revocable device credential per user.
+import secrets
+import hashlib
+from django.utils.crypto import constant_time_compare
+from .reminder_devices import ReminderDevice
+
+
+def _digest(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _device_authorized(request):
+    token = request.headers.get("X-Reminder-Device", "")
+    if not token or len(token) > 256:
+        return False
+    device = ReminderDevice.objects.filter(user=request.user).first()
+    return bool(device and constant_time_compare(device.token_hash, _digest(token)))
+
+
+@require_POST
+@never_cache
+@transaction.atomic
+def register_device(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "authentication_required"}, status=401)
+    profile = getattr(request, "profil_utilisateur", None)
+    if not profile or not profile.actif:
+        return JsonResponse({"error": "forbidden"}, status=403)
+    ProfilUtilisateur.objects.select_for_update().get(pk=profile.pk)
+    token = secrets.token_urlsafe(48)
+    ReminderDevice.objects.update_or_create(user=request.user, defaults={"token_hash": _digest(token)})
+    return JsonResponse({"device_token": token, "user_id": request.user.pk})
+
+
+@require_POST
+@never_cache
+@transaction.atomic
+def revoke_device(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "authentication_required"}, status=401)
+    token = request.headers.get("X-Reminder-Device", "")
+    if token and len(token) <= 256:
+        ReminderDevice.objects.filter(user=request.user, token_hash=_digest(token)).delete()
+    return JsonResponse({"revoked": True})
