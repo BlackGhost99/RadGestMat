@@ -12,7 +12,7 @@ def personal_reminders(request):
     if not request.user.is_authenticated:
         return JsonResponse({"error": "authentication_required"}, status=401)
     profil = getattr(request, "profil_utilisateur", None)
-    if not profil:
+    if not profil or not profil.actif:
         return JsonResponse({"error": "profile_required"}, status=403)
     qs = Attribution.objects.filter(
         employe_responsable=request.user,
@@ -38,3 +38,53 @@ def personal_reminders(request):
         "server_time": timezone.now().isoformat(),
         "reminders": reminders,
     })
+
+
+from django.db import transaction
+from django.views.decorators.http import require_POST
+from users.models import ProfilUtilisateur
+from .models import HistoriqueAttribution
+
+
+@require_POST
+@never_cache
+@transaction.atomic
+def transfer_reminder(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "authentication_required"}, status=401)
+    profile = getattr(request, "profil_utilisateur", None)
+    if not profile or not profile.actif or profile.role not in ("SUPER_ADMIN", "DEPT_MANAGER", "DEPT_USER"):
+        return JsonResponse({"error": "forbidden"}, status=403)
+    loans = Attribution.objects.select_for_update().filter(pk=pk)
+    if profile.role != "SUPER_ADMIN":
+        loans = loans.filter(departement_id=profile.departement_id)
+    loan = loans.first()
+    if not loan:
+        return JsonResponse({"error": "not_found"}, status=404)
+    if profile.role == "DEPT_USER" and loan.employe_responsable_id != request.user.pk:
+        return JsonResponse({"error": "forbidden"}, status=403)
+    if loan.date_retour_effective or not loan.retour_echeance():
+        return JsonResponse({"error": "not_active"}, status=409)
+    try:
+        target_id = int(request.POST.get("user_id", ""))
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "invalid_user"}, status=400)
+    target = ProfilUtilisateur.objects.filter(
+        user_id=target_id, departement_id=loan.departement_id,
+        actif=True, user__is_active=True,
+        role__in=("DEPT_USER", "DEPT_MANAGER", "SUPER_ADMIN"),
+    ).select_related("user").first()
+    if not target:
+        return JsonResponse({"error": "invalid_target"}, status=400)
+    previous = loan.employe_responsable_id
+    if previous != target.user_id:
+        loan.employe_responsable_id = target.user_id
+        loan.save(update_fields=["employe_responsable"])
+        HistoriqueAttribution.objects.create(
+            attribution=loan, utilisateur=request.user,
+            action=HistoriqueAttribution.ACTION_MODIFICATION,
+            etat_avant=str(previous or ""),
+            etat_apres=str(target.user_id),
+            notes=f"Transfert de suivi : responsable {previous} vers {target.user_id}",
+        )
+    return JsonResponse({"id": loan.pk, "responsable_id": target.user_id})
