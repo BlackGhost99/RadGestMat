@@ -1,6 +1,6 @@
 # assets/urls.py
 from django.urls import path
-from . import views
+from . import views, reminder_views
 
 app_name = 'assets'
 
@@ -57,6 +57,8 @@ urlpatterns = [
     path('alertes/<int:pk>/regler/', views.alerte_marquer_reglementee, name='alerte_marquer_reglementee'),
     path('alertes/detecter/', views.alerte_detecter, name='alerte_detecter'),
     
+    path('api/reminders/personal/', reminder_views.personal_reminders, name='personal_reminders'),
+
     # Notifications (Phase 6)
     path('notifications/dashboard/', views.notifications_dashboard, name='notifications_dashboard'),
     path('notifications/preferences/', views.notification_preferences, name='notification_preferences'),
