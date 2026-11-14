@@ -605,3 +605,6 @@ class WhatsAppConfig(models.Model):
 
 
 
+
+
+from .reminder_devices import ReminderDevice
