@@ -1,0 +1,32 @@
+/* RadGestMat Android shell v1 - mobile only */
+.mobile-bottom-nav { display:none; }
+@media (max-width: 991.98px) {
+  .sidebar-actions { display:none !important; }
+  body.app-body { padding-bottom:calc(74px + env(safe-area-inset-bottom, 0px)); overflow-x:hidden; }
+  .app-main { min-width:0; width:100%; margin-left:0 !important; padding-left:0 !important; }
+  .app-content { width:100%; max-width:100%; min-width:0; }
+  .app-header .navbar { min-height:58px; }
+  .app-header .container-fluid { padding-left:14px !important; padding-right:14px !important; }
+  .app-header .navbar-brand { max-width:calc(100% - 64px); }
+  .app-header .navbar-brand small { display:none !important; }
+  .mobile-bottom-nav {
+    display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr));
+    position:fixed; left:0; right:0; bottom:0; z-index:1050;
+    min-height:66px; padding:7px 4px calc(7px + env(safe-area-inset-bottom, 0px));
+    background:var(--bs-body-bg,#fff); border-top:1px solid var(--bs-border-color,#ddd);
+    box-shadow:0 -5px 18px rgba(0,0,0,.09);
+  }
+  .mobile-bottom-nav a,.mobile-bottom-nav button {
+    min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; padding:5px 1px; border:0; background:transparent;
+    color:var(--bs-secondary-color,#64748b); text-decoration:none; font-size:10px;
+    line-height:1.2; font-weight:600;
+  }
+  .mobile-bottom-nav i { font-size:22px; line-height:1.2; }
+  .mobile-bottom-nav .mobile-nav-active { color:var(--bs-primary,#0d6efd); }
+  .mobile-bottom-nav .mobile-nav-scan i { color:var(--bs-primary,#0d6efd); }
+  .offcanvas#navbarOffcanvas { width:min(88vw,360px) !important; background:var(--bs-body-bg,#fff) !important; opacity:1 !important; }
+  .offcanvas#navbarOffcanvas .offcanvas-body { background:var(--bs-body-bg,#fff); }
+  .app-footer { display:none; }
+  .table-responsive { max-width:100%; }
+}
