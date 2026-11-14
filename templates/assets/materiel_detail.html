@@ -5,9 +5,9 @@
 {% block title %}{{ materiel.nom }} - RadGestMat{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid py-2 materiel-detail">
     <!-- En-tête -->
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
@@ -33,11 +33,11 @@
 
                 {% if attribution_active %}
                 <a href="{% url 'assets:materiel_checkin' materiel.asset_id %}" class="btn btn-success">
-                    <i class="bi bi-box-arrow-in-down me-1"></i>Check-in
+                    <i class="bi bi-box-arrow-in-down me-1"></i>Restituer
                 </a>
                 {% elif materiel.statut_disponibilite == 'DISPONIBLE' %}
                 <a href="{% url 'assets:materiel_checkout' materiel.asset_id %}" class="btn btn-primary">
-                    <i class="bi bi-box-arrow-up-right me-1"></i>Check-out
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Attribuer
                 </a>
                 {% else %}
                 <button class="btn btn-secondary" disabled>Non disponible</button>
@@ -52,10 +52,10 @@
         </div>
     </div>
 
-    <div class="row g-4">
+    <div class="row g-3">
         <!-- Informations principales -->
         <div class="col-lg-8">
-            <div class="row g-4">
+            <div class="row g-3">
                 <!-- Carte d'information -->
                 <div class="col-md-6">
                     <div class="card">
@@ -104,7 +104,7 @@
                                     <th style="color: var(--text-primary);">Marque/Modèle:</th>
                                     <td style="color: var(--text-primary);">
                                         {% if materiel.marque or materiel.modele %}
-                                        {{ materiel.marque }} {{ materiel.modele }}
+                                        {{ materiel.marque|default_if_none:'' }} {{ materiel.modele|default_if_none:'' }}
                                         {% else %}
                                         <span class="text-muted">-</span>
                                         {% endif %}
@@ -137,15 +137,15 @@
                             <div class="mb-3">
                                 <strong>État technique:</strong><br>
                                 <span
-                                    class="badge {% if materiel.etat == 'FONCTIONNEL' %}bg-success{% elif materiel.etat == 'DEFECTUEUX' %}bg-danger{% else %}bg-info{% endif %} fs-6">
-                                    {{ materiel.get_etat_display }}
+                                    class="badge {% if materiel.etat_technique == 'FONCTIONNEL' %}bg-success{% elif materiel.etat_technique == 'DEFECTUEUX' %}bg-danger{% else %}bg-info{% endif %} fs-6">
+                                    {{ materiel.get_etat_technique_display }}
                                 </span>
                             </div>
                             <div class="mb-3">
                                 <strong>Statut:</strong><br>
                                 <span
-                                    class="badge {% if materiel.statut == 'DISPONIBLE' %}bg-success{% elif materiel.statut == 'ATTRIBUE' %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6">
-                                    {{ materiel.get_statut_display }}
+                                    class="badge {% if materiel.statut_disponibilite == 'DISPONIBLE' %}bg-success{% elif materiel.statut_disponibilite == 'ATTRIBUE' %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6">
+                                    {{ materiel.get_statut_disponibilite_display }}
                                 </span>
                             </div>
                             {% if materiel.date_achat %}
@@ -177,13 +177,12 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-md-6">
-                                    <strong>Date attribution:</strong> {{
-                                    attribution_active.date_attribution|date:"d/m/Y H:i" }}<br>
+                                    <strong>Date attribution:</strong> {{ attribution_active.date_attribution|date:"d/m/Y H:i" }}<br>
                                     <strong>Attribution:</strong> {{ attribution_active.get_type_attribution_display }}<br>
                                     {% if attribution_active.type_attribution == "TEMPORAIRE" and attribution_active.date_retour_prevue %}
-                                    <strong>Retour pr?vu:</strong> {{ attribution_active.date_retour_prevue|date:"d/m/Y" }}<br>
+                                    <strong>Retour prévu:</strong> {{ attribution_active.date_retour_prevue|date:"d/m/Y" }}<br>
                                     {% elif attribution_active.type_attribution == "INDEFINIE" %}
-                                    <strong>Retour:</strong> Indefinie<br>
+                                    <strong>Retour:</strong> Indéfinie<br>
                                     {% endif %}
                                     {% if attribution_active.is_overdue %}
                                     <span class="badge bg-danger mt-2">EN RETARD</span>
@@ -228,22 +227,11 @@
                     </h5>
                 </div>
                 <div class="card-body text-center">
-                    {% if materiel.qr_code %}
-                    <img src="{{ materiel.qr_code.url }}" alt="QR Code {{ materiel.asset_id }}" class="img-fluid mb-3"
-                        style="max-width: 200px;">
+                    <img src="{% url 'assets:materiel_qr' materiel.pk %}" alt="QR Code {{ materiel.asset_id }}" class="img-fluid mb-3" style="max-width: 200px;">
                     <br>
-                    <a href="{{ materiel.qr_code.url }}" download class="btn btn-sm btn-outline-primary">
+                    <a href="{% url 'assets:materiel_qr' materiel.pk %}?download=1" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-download me-1"></i>Télécharger
                     </a>
-                    {% else %}
-                    <p class="text-muted">QR Code non généré</p>
-                    <form method="post" action="{% url 'assets:materiel_update' materiel.pk %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-primary" name="generate_qr">
-                            <i class="bi bi-qr-code me-1"></i>Générer QR Code
-                        </button>
-                    </form>
-                    {% endif %}
                 </div>
             </div>
 
