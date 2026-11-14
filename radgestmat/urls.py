@@ -8,7 +8,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.contrib.auth import views as auth_views
 from users.views import logout_view
 from assets.api.mobile_sync import bootstrap as mobile_bootstrap
-from assets.api import mobile_auth
+from assets.api import mobile_auth, mobile_write
 from radgestmat.admin_debug_views import custom_app_index
 
 # Override app_index for assets app to add debugging
@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/mobile/v1/auth/session/', mobile_auth.session_status, name='mobile_session'),
     path('api/mobile/v1/auth/login/', mobile_auth.sign_in, name='mobile_login'),
     path('api/mobile/v1/auth/logout/', mobile_auth.sign_out, name='mobile_logout'),
+    path('api/mobile/v1/material/update/', mobile_write.update_material, name='mobile_material_update'),
     path('api/mobile/v1/bootstrap/', mobile_bootstrap, name='mobile_bootstrap'),
     
     # API routes (uncomment when rest_framework is installed)
