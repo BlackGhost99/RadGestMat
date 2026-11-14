@@ -90,7 +90,7 @@
     <div class="col-lg-8">
       <div class="card">
         <div class="card-header">
-          <strong>Journaux d'audit (max 200)</strong>
+          <strong>Journaux d'audit — {{ audit_total }} événements</strong>
         </div>
         <div class="table-responsive">
           <table class="table table-sm table-striped mb-0">
@@ -118,6 +118,11 @@
             </tbody>
           </table>
         </div>
+        <nav class="card-footer d-flex flex-wrap align-items-center justify-content-between gap-2" aria-label="Pagination des audits">
+          {% if reports.has_previous %}<a class="btn btn-sm btn-outline-primary" href="?{{ audit_query }}&amp;page={{ reports.previous_page_number }}">Précédent</a>{% endif %}
+          <span>Page {{ reports.number }} / {{ reports.paginator.num_pages }}</span>
+          {% if reports.has_next %}<a class="btn btn-sm btn-outline-primary" href="?{{ audit_query }}&amp;page={{ reports.next_page_number }}">Suivant</a>{% endif %}
+        </nav>
       </div>
     </div>
 
