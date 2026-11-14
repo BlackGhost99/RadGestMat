@@ -34,14 +34,51 @@
 .inventory-container .table-responsive table thead th {
   background-color: var(--surface-card, #fff);
 }
+
+.inventory-mobile-tools {display:none}
+@media(max-width:991.98px){
+body.inventory-page {height:auto!important;min-height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important}
+body.inventory-page .app-main {height:auto!important;max-height:none!important;overflow:visible!important;padding:0 10px 12px!important;flex:1 0 auto!important}
+body.inventory-page .inventory-container,body.inventory-page .inventory-container > div {height:auto!important;max-height:none!important;overflow:visible!important;min-height:0!important}
+body.inventory-page .inventory-container > div {padding-top:8px!important}
+.inventory-heading {align-items:center;margin-bottom:6px!important;flex-wrap:nowrap}
+.inventory-heading h1 {font-size:20px;margin:0}
+.inventory-heading h1 small,.inventory-heading p {display:none}
+.inventory-heading .btn {font-size:11px;padding:6px}
+.inventory-stats {--bs-gutter-x:5px;--bs-gutter-y:5px;margin-bottom:8px!important}
+.inventory-stats > div {width:25%!important}
+.inventory-stats .card-body {padding:5px 1px!important}
+.inventory-stats h3 {font-size:19px;margin:0}
+.inventory-stats small {font-size:10px}
+.inventory-filters {margin-bottom:8px!important}
+.inventory-filters .card-body {padding:8px!important}
+.inventory-filter-form {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 8px;margin:0!important}
+.inventory-filter-form > div {width:auto!important;max-width:none!important;min-width:0;margin:0!important;padding:0!important}
+.inventory-filter-form .inventory-search,.inventory-filter-form .inventory-mobile-tools,.inventory-filter-form .inventory-submit {grid-column:1/-1}
+.inventory-filter-form .form-label {font-size:11px;margin:0 0 2px}
+.inventory-filter-form .form-control,.inventory-filter-form .form-select {font-size:12px;min-height:34px;height:34px;padding-block:4px;min-width:0}
+.inventory-filter-form .form-select {padding-inline-start:7px;padding-inline-end:23px;background-position:right 6px center;background-size:12px}
+.inventory-filter-form .inventory-advanced {display:none}
+.inventory-filter-form.show-advanced .inventory-advanced {display:block}
+.inventory-mobile-tools {display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+.inventory-mobile-tools .btn,.inventory-submit .btn {font-size:12px;min-height:34px;padding:4px 6px}
+.inventory-list {flex:0 0 auto!important;min-width:0;overflow:visible!important}
+.inventory-list .card-header {flex-wrap:wrap;gap:5px;padding:8px!important}
+.inventory-list .card-header h5 {font-size:15px}
+.inventory-list .card-header > div {flex-wrap:wrap;max-width:100%}
+.inventory-list #group-table-wrapper {height:auto!important;max-height:none!important;overflow-x:auto!important;overflow-y:visible!important;flex:0 0 auto!important}
+.inventory-list table {font-size:12px}
+.inventory-list th,.inventory-list td {padding:7px!important;vertical-align:middle}
+.inventory-list thead {position:static!important}
+}
 </style>
 <div class="inventory-container w-100 h-100 d-flex flex-column">
   <div class="w-100 py-3 py-lg-2 flex-grow-1 d-flex flex-column" style="min-height: 0;">
     {% block content %}
-    <div class="row mb-3 mb-lg-2">
+    <div class="row mb-3 mb-lg-2 inventory-heading">
       <div class="col">
         <h1 class="h2">
-          <i class="bi bi-box-seam me-2"></i>Inventaire<small class="ms-2 fw-normal text-muted" style="font-size:.65rem;vertical-align:middle" title="Version de disposition">Vue compacte V3</small>
+          <i class="bi bi-box-seam me-2"></i>Inventaire<small class="ms-2 fw-normal text-muted" style="font-size:.65rem;vertical-align:middle" title="Version de disposition">Vue compacte V4</small>
         </h1>
         <p class="text-muted">Materiel groupe par equipement avec filtres avances</p>
       </div>
@@ -54,7 +91,7 @@
       {% endif %}
     </div>
 
-    <div class="row g-3 g-lg-2 mb-3 mb-lg-2">
+    <div class="row g-3 g-lg-2 mb-3 mb-lg-2 inventory-stats">
       <div class="col-xl-2 col-md-4 col-6">
         <div class="card stat-card h-100">
           <div class="card-body text-center py-lg-2">
@@ -89,10 +126,10 @@
       </div>
     </div>
 
-    <div class="card mb-3 mb-lg-2">
+    <div class="card mb-3 mb-lg-2 inventory-filters">
       <div class="card-body py-lg-2">
-        <form method="get" class="row g-3 g-lg-2">
-          <div class="col-md-3">
+        <form method="get" class="row g-3 g-lg-2 inventory-filter-form">
+          <div class="col-md-3 inventory-search">
             <label for="q" class="form-label">Recherche</label>
             <input type="text" class="form-control" id="q" name="q" value="{{ query }}" placeholder="Nom d'equipement, modele..." list="materiel-suggestions" autocomplete="off">
             <datalist id="materiel-suggestions"></datalist>
@@ -142,17 +179,17 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 inventory-advanced">
             <label for="date_achat_from" class="form-label">Achat du</label>
             <input type="date" class="form-control" id="date_achat_from" name="date_achat_from" value="{{ date_achat_from }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 inventory-advanced">
             <label for="date_achat_to" class="form-label">Achat au</label>
             <input type="date" class="form-control" id="date_achat_to" name="date_achat_to" value="{{ date_achat_to }}">
           </div>
 
           {% if user_profile and user_profile.role == 'SUPER_ADMIN' and departements %}
-          <div class="col-md-2">
+          <div class="col-md-2 inventory-advanced">
             <label for="departement" class="form-label">Departement</label>
             <select class="form-select" id="departement" name="departement">
               <option value="">Tous les departements</option>
@@ -163,7 +200,8 @@
           </div>
           {% endif %}
 
-          <div class="col-md-2 d-flex align-items-end">
+          <div class="inventory-mobile-tools"><button type="button" id="inventory-more" class="btn btn-outline-secondary" aria-expanded="false"><i class="bi bi-sliders"></i> Plus de filtres</button><label class="visually-hidden" for="inventory-sort">Tri</label><select id="inventory-sort" class="form-select"><option value="default">Tri : par défaut</option><option value="az">Nom A–Z</option><option value="za">Nom Z–A</option><option value="qty">Quantité décroissante</option></select></div>
+          <div class="col-md-2 d-flex align-items-end inventory-submit">
             <button type="submit" class="btn btn-primary w-100">
               <i class="bi bi-funnel me-1"></i>Filtrer
             </button>
@@ -172,7 +210,7 @@
       </div>
     </div>
 
-    <div class="card flex-grow-1 d-flex flex-column" style="min-height: 0;">
+    <div class="card flex-grow-1 d-flex flex-column inventory-list" style="min-height: 0;">
       <div class="card-header d-flex justify-content-between align-items-center flex-shrink-0">
         <h5 class="card-title mb-0">Liste des equipements</h5>
         <div class="d-flex align-items-center gap-2">
@@ -299,6 +337,9 @@
 
 
 {% block extra_js %}
+<script>
+(function(){const form=document.querySelector(".inventory-filter-form"),more=document.getElementById("inventory-more"),sort=document.getElementById("inventory-sort");if(form&&more){const set=(open)=>{form.classList.toggle("show-advanced",open);more.setAttribute("aria-expanded",String(open));};set(Array.from(form.querySelectorAll(".inventory-advanced input,.inventory-advanced select")).some(el=>el.value));more.addEventListener("click",()=>set(!form.classList.contains("show-advanced")));}if(sort){const tbody=document.querySelector("#group-table-wrapper tbody");if(!tbody)return;const original=Array.from(tbody.rows);sort.addEventListener("change",()=>{const rows=original.filter(r=>r.parentNode===tbody);if(sort.value==="az"||sort.value==="za")rows.sort((a,b)=>a.dataset.nom.localeCompare(b.dataset.nom,"fr")*(sort.value==="az"?1:-1));if(sort.value==="qty")rows.sort((a,b)=>Number(b.dataset.quantite)-Number(a.dataset.quantite));rows.forEach(r=>tbody.appendChild(r));});}})();
+</script>
 <script>
 (function () {
   const input = document.getElementById('q');
