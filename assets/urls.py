@@ -24,6 +24,8 @@ urlpatterns = [
     path('api/creer-nom-materiel/', views.api_creer_nom_materiel, name='api_creer_nom_materiel'),
     path('api/creer-categorie/', views.api_creer_categorie, name='api_creer_categorie'),
 
+    path('materiel/<int:pk>/qr/', views.materiel_qr, name='materiel_qr'),
+
     # Scan
     path('scan/', views.scan_qr, name='scan_qr'),
     path('scan/<str:asset_id>/', views.scan_result, name='scan_result'),
