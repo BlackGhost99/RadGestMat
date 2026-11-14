@@ -4,7 +4,7 @@
 - Sonnerie et vibration Android activées par défaut.
 - Consultation ou effacement de la notification ne clôture pas le suivi.
 - Arrêt des relances après traitement effectif enregistré côté serveur (retour confirmé ou autre résolution autorisée et tracée).
-- Canaux souhaités : Android natif, email, WhatsApp Business.
+- Canal actif pour cette phase : Android natif. Email et WhatsApp reportés.
 - Rappels préventifs proposés : J-1, H-1, à échéance.
 - Échéances exprimées en date et heure, stockage timezone-aware, affichage local.
 - Déduplication par événement, destinataire, canal et créneau ; journal des tentatives et résultats.
@@ -21,6 +21,9 @@ Ce document fixe les exigences validées ; il ne constitue pas une activation te
 - Les rappels email et WhatsApp sont également personnels par défaut. Le bénéficiaire du prêt n'est pas automatiquement destinataire.
 - Enregistrement du responsable et du département de rattachement de l'opération côté serveur ; contrôle des droits côté serveur, y compris API et historique.
 - Tous les membres autorisés du même département consultent un historique commun des attributions, échéances, relances, retards, retours et actions, avec auteur et horodatage. Pas de visibilité interdépartementale sans permission explicite.
-- Proposition à valider : transfert explicite et audité du suivi à un collègue autorisé, avec révocation des rappels de l'ancien responsable ; retour enregistré par un collègue habilité arrête les relances du responsable.
-- Proposition à valider : un seul téléphone principal actif par profil pour les rappels sonores ; gestion du changement de téléphone, révocation des anciens jetons push et de la session lors de la déconnexion.
+- Fonctionnalité validée : transfert explicite et audité du suivi à un collègue autorisé, avec révocation des rappels de l'ancien responsable ; retour enregistré par un collègue habilité arrête les relances du responsable.
+- Fonctionnalité validée : un seul téléphone principal actif par profil pour les rappels sonores ; gestion du changement de téléphone, révocation des anciens jetons push et de la session lors de la déconnexion.
 - Ne pas confondre consultation d'une alerte, résolution du suivi et droits de modification. L'historique reste accessible après résolution.
+
+## Périmètre actuel
+Email et WhatsApp suspendus pour cette phase. Aucun nouvel envoi via ces canaux ne doit être déclenché par le nouveau moteur.
