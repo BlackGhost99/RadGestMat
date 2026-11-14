@@ -1787,8 +1787,8 @@ def dashboard(request):
     date_from_raw = (request.GET.get('date_from') or '').strip()
     date_to_raw = (request.GET.get('date_to') or '').strip()
 
-    date_from = parse_date(date_from_raw) if date_from_raw else None
-    date_to = parse_date(date_to_raw) if date_to_raw else None
+    date_from = valid_date(date_from_raw)
+    date_to = valid_date(date_to_raw)
     if date_from and date_to and date_from > date_to:
         date_from, date_to = date_to, date_from
 
@@ -3049,10 +3049,24 @@ def client_list(request):
     return render(request, 'assets/client_list.html', {'clients': clients})
 
 
+def _require_audit_admin(request):
+    profil = getattr(request, 'profil_utilisateur', None)
+    if not (request.user.is_superuser or getattr(profil, 'role', None) == 'SUPER_ADMIN'):
+        raise PermissionDenied("Les journaux d'audit sont réservés aux administrateurs.")
+
+
 @login_required
 def report_list(request):
     """Liste des rapports d'audit avec filtres sur les attributions de materiel."""
+    _require_audit_admin(request)
     from django.utils.dateparse import parse_date
+    from django.core.paginator import Paginator
+
+    def valid_date(value):
+        try:
+            return parse_date(value) if value else None
+        except ValueError:
+            return None
 
     qs = AuditLog.objects.select_related('user', 'content_type').all()
     action = (request.GET.get('action') or '').strip()
@@ -3098,7 +3112,10 @@ def report_list(request):
             writer.writerow([timezone.localtime(entry.timestamp).isoformat(), safe(entry.user.username if entry.user else 'Système'), safe(entry.get_action_display()), safe(entry.content_type.model if entry.content_type else ''), safe(entry.object_id), safe(entry.object_repr)])
         return response
 
-    reports = qs.order_by('-timestamp')[:200]
+    reports = Paginator(qs.order_by('-timestamp', '-pk'), 50).get_page(request.GET.get('page'))
+    query = request.GET.copy()
+    query.pop('page', None)
+    query.pop('export', None)
 
     # Dataset d'attributions pour compter et organiser les attributions sur la periode.
     attributions_qs = Attribution.objects.select_related(
@@ -3154,6 +3171,7 @@ def report_list(request):
     return render(request, 'assets/report_list.html', {
         'reports': reports,
         'audit_total': audit_total,
+        'audit_query': query.urlencode(),
         'audit_counts': audit_counts,
         'action_choices': AuditLog.ACTION_CHOICES,
         'available_content_types': available_content_types,
@@ -3182,8 +3200,9 @@ def report_attribution_detail(request, pk):
         pk=pk
     )
 
+    _require_audit_admin(request)
     profil = getattr(request, 'profil_utilisateur', None)
-    if not profil or (profil.role != 'SUPER_ADMIN' and profil.departement_id != attribution.departement_id):
+    if not request.user.is_superuser and (not profil or (profil.role != 'SUPER_ADMIN' and profil.departement_id != attribution.departement_id)):
         raise PermissionDenied("Vous n'avez pas accès à cette attribution.")
 
     related_audit_reports = AuditLog.objects.select_related('user').filter(
@@ -3199,6 +3218,7 @@ def report_attribution_detail(request, pk):
 
 @login_required
 def report_detail(request, pk):
+    _require_audit_admin(request)
     report = get_object_or_404(AuditLog, pk=pk)
     # Prepare formatted changes with user permissions (admins see all data)
     formatted_changes = _format_changes_for_display(report, user=request.user)
@@ -3271,6 +3291,7 @@ def report_pdf(request, pk):
 
     Falls back to returning the HTML view with a warning if PDF library isn't present.
     """
+    _require_audit_admin(request)
     report = get_object_or_404(AuditLog, pk=pk)
     # Format changes with user permissions (admins see all data)
     formatted_changes = _format_changes_for_display(report, user=request.user)
