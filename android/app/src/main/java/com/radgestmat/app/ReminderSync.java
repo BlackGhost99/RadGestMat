@@ -19,9 +19,10 @@ public final class ReminderSync {
     public static synchronized void run(Context c) throws Exception {
         new ReminderSync(c).sync();
     }
-    public static synchronized void enroll(Context c, String csrf) throws Exception {
+    public static synchronized void enroll(Context c) throws Exception {
         ReminderSync client = new ReminderSync(c);
-        JSONObject response = client.request("device/register/", "POST", csrf, "");
+        JSONObject session = client.request("device/session/", "GET", "", "");
+        JSONObject response = client.request("device/register/", "POST", session.getString("csrf"), "");
         String token = response.getString("device_token");
         long user = response.getLong("user_id");
         new ReminderEngine(c).clear();
