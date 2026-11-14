@@ -15,3 +15,12 @@
 Auditer les modèles et services existants ; moteur d'échéances durable et planificateur serveur ; centre de notifications ; APK et FCM ; intégrations email et WhatsApp officielles ; tests de retour, doublons, permissions et fonctionnement hors connexion.
 
 Ce document fixe les exigences validées ; il ne constitue pas une activation technique des notifications.
+
+## Responsabilité individuelle et visibilité départementale
+- Le créateur de l'attribution est le responsable initial du suivi. Les rappels sonores et vibrations sont exclusivement destinés à son téléphone authentifié, jamais diffusés à tout le département.
+- Les rappels email et WhatsApp sont également personnels par défaut. Le bénéficiaire du prêt n'est pas automatiquement destinataire.
+- Enregistrement du responsable et du département de rattachement de l'opération côté serveur ; contrôle des droits côté serveur, y compris API et historique.
+- Tous les membres autorisés du même département consultent un historique commun des attributions, échéances, relances, retards, retours et actions, avec auteur et horodatage. Pas de visibilité interdépartementale sans permission explicite.
+- Proposition à valider : transfert explicite et audité du suivi à un collègue autorisé, avec révocation des rappels de l'ancien responsable ; retour enregistré par un collègue habilité arrête les relances du responsable.
+- Proposition à valider : un seul téléphone principal actif par profil pour les rappels sonores ; gestion du changement de téléphone, révocation des anciens jetons push et de la session lors de la déconnexion.
+- Ne pas confondre consultation d'une alerte, résolution du suivi et droits de modification. L'historique reste accessible après résolution.
