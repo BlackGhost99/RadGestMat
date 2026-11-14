@@ -3080,6 +3080,24 @@ def report_list(request):
     if attribution_only:
         qs = qs.filter(content_type__model='attribution')
 
+    audit_total = qs.count()
+    audit_counts = list(qs.values('action').annotate(total=Count('pk')).order_by('action'))
+    if request.GET.get('export') == 'csv':
+        if not (request.user.is_superuser or getattr(getattr(request, 'profil_utilisateur', None), 'role', None) == 'SUPER_ADMIN'):
+            raise PermissionDenied("Export réservé aux administrateurs.")
+        import csv
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="audit_radgestmat.csv"'
+        response.write('\ufeff')
+        writer = csv.writer(response, delimiter=';')
+        writer.writerow(['Date', 'Utilisateur', 'Action', 'Type', 'Identifiant', 'Objet'])
+        def safe(value):
+            value = str(value or '')
+            return "'" + value if value.lstrip().startswith(('=', '+', '-', '@')) or value.startswith(('\t', '\r', '\n')) else value
+        for entry in qs.order_by('-timestamp').iterator():
+            writer.writerow([timezone.localtime(entry.timestamp).isoformat(), safe(entry.user.username if entry.user else 'Système'), safe(entry.get_action_display()), safe(entry.content_type.model if entry.content_type else ''), safe(entry.object_id), safe(entry.object_repr)])
+        return response
+
     reports = qs.order_by('-timestamp')[:200]
 
     # Dataset d'attributions pour compter et organiser les attributions sur la periode.
@@ -3135,6 +3153,8 @@ def report_list(request):
 
     return render(request, 'assets/report_list.html', {
         'reports': reports,
+        'audit_total': audit_total,
+        'audit_counts': audit_counts,
         'action_choices': AuditLog.ACTION_CHOICES,
         'available_content_types': available_content_types,
         'filter_values': {
