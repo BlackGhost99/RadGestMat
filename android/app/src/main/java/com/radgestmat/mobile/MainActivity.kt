@@ -23,6 +23,9 @@ class MainActivity : Activity() {
     private val cookies = CookieManager(null, CookiePolicy.ACCEPT_ORIGINAL_SERVER)
     private lateinit var panel: LinearLayout
     private var pending: JSONObject? = null
+    private var busy = false
+    private var pendingEdit: (() -> Unit)? = null
+    private var pendingSync: Pair<JSONObject, org.json.JSONArray>? = null
     private val alias = "radgestmat-cache-v1"
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -69,7 +72,7 @@ class MainActivity : Activity() {
         button("Ouvrir hors connexion") { unlock(1) }
     }
     private fun encode(value: String) = URLEncoder.encode(value, "UTF-8")
-    private fun request(path: String, body: String? = null, csrf: String? = null): JSONObject {
+    private fun request(path: String, body: String? = null, csrf: String? = null, json: Boolean = false): JSONObject {
         val uri = URI.create(base + path)
         val connection = uri.toURL().openConnection() as HttpURLConnection
         connection.instanceFollowRedirects = false
@@ -79,12 +82,12 @@ class MainActivity : Activity() {
             cookies.get(uri, emptyMap()).forEach { (k,v) -> connection.setRequestProperty(k,v.joinToString("; ")) }
             if (body != null) {
                 connection.requestMethod = "POST"; connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                connection.setRequestProperty("Content-Type", if (json) "application/json" else "application/x-www-form-urlencoded")
                 connection.setRequestProperty("Origin", "https://radgestmat.onrender.com")
                 connection.setRequestProperty("X-CSRFToken", csrf ?: "")
                 connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             }
-            require(connection.responseCode == 200)
+            if (connection.responseCode != 200) throw java.io.IOException("HTTP "+connection.responseCode)
             cookies.put(uri, connection.headerFields.filterKeys { it != null })
             return JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
         } finally { connection.disconnect() }
@@ -97,10 +100,39 @@ class MainActivity : Activity() {
     }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK) { pending = null; return }
+        if (resultCode != RESULT_OK) { pending = null; pendingSync = null; pendingEdit = null; busy = false; return }
+        if (requestCode == 4) { val action = pendingEdit; pendingEdit = null; action?.invoke(); return }
+        if (requestCode == 3) {
+            try {
+                val (original, results) = requireNotNull(pendingSync)
+                val snapshot = JSONObject(original.toString())
+                val queue = snapshot.getJSONArray("outbox")
+                val rows = snapshot.getJSONArray("materiels")
+                for (i in 0 until results.length()) {
+                    val result = results.getJSONObject(i)
+                    for (j in 0 until rows.length()) {
+                        val row = rows.getJSONObject(j)
+                        if (row.getLong("id") == result.getLong("id")) row.put("date_modification",result.getString("date_modification"))
+                    }
+                    queue.remove(0)
+                }
+                save(snapshot); inventory(snapshot)
+                if (queue.length() > 0) label("Opérations restantes conservées : conflit, accès refusé ou réseau indisponible.")
+            } catch (e: Exception) { loginScreen(); label("Les opérations locales sont conservées.") }
+            finally { pendingSync = null; busy = false }
+            return
+        }
         try {
             val snapshot = if (requestCode == 2) {
-                val value = requireNotNull(pending); save(value); pending = null; value
+                val value = requireNotNull(pending)
+                if (filesDir.resolve("inventory.enc").exists()) {
+                    val old = load()
+                    if ((old.optJSONArray("outbox")?.length() ?: 0) > 0) {
+                        require(old.getLong("account_id") == value.getLong("account_id"))
+                        old.put("offline_until", value.getString("offline_until"))
+                        save(old); pending = null; old
+                    } else { save(value); pending = null; value }
+                } else { save(value); pending = null; value }
             } else load()
             require(Instant.now().isBefore(Instant.parse(snapshot.getString("offline_until"))))
             inventory(snapshot)
@@ -133,12 +165,67 @@ class MainActivity : Activity() {
         cipher.init(Cipher.DECRYPT_MODE,key(),GCMParameterSpec(128,bytes.copyOfRange(0,12)))
         return JSONObject(String(cipher.doFinal(bytes.copyOfRange(12,bytes.size)),Charsets.UTF_8))
     }
+    private fun editMaterial(snapshot: JSONObject, row: JSONObject) {
+        val queue = snapshot.getJSONArray("outbox")
+        for (i in 0 until queue.length()) {
+            if (queue.getJSONObject(i).getLong("material_id") == row.getLong("id")) {
+                label("Une modification est déjà en attente pour ce matériel."); return
+            }
+        }
+        val name = EditText(this).apply { setText(row.optString("nom")); hint = "Nom" }
+        android.app.AlertDialog.Builder(this).setTitle("Modifier le matériel").setView(name)
+            .setNegativeButton("Annuler",null).setPositiveButton("Enregistrer") { _,_ ->
+                val value = name.text.toString().trim()
+                if (value.isNotEmpty() && value.length <= 200) {
+                    pendingEdit = {
+                        try {
+                            val copy = JSONObject(snapshot.toString())
+                            val changes = JSONObject().put("nom",value)
+                            copy.getJSONArray("outbox").put(JSONObject()
+                                .put("operation_id",java.util.UUID.randomUUID().toString())
+                                .put("material_id",row.getLong("id"))
+                                .put("base_revision",row.getString("date_modification"))
+                                .put("changes",changes))
+                            val rows = copy.getJSONArray("materiels")
+                            for (i in 0 until rows.length()) {
+                                val item = rows.getJSONObject(i)
+                                if (item.getLong("id") == row.getLong("id")) item.put("nom",value)
+                            }
+                            save(copy); inventory(copy)
+                        } catch (e: Exception) { label("Enregistrement impossible.") }
+                    }
+                    unlock(4)
+                }
+            }.show()
+    }
     private fun inventory(snapshot: JSONObject) {
         layout()
         val rows = snapshot.getJSONArray("materiels")
         label("Inventaire local — "+rows.length()+" matériels")
-        label("Copie locale en lecture seule")
-        button("Verrouiller") { loginScreen() }
+        val queue = snapshot.optJSONArray("outbox") ?: org.json.JSONArray().also { snapshot.put("outbox",it) }
+        label("Opérations en attente : "+queue.length())
+        button("Synchroniser") {
+            if (busy) return@button
+            busy = true
+            Thread {
+                try {
+                    val session = request("auth/session/")
+                    require(session.optBoolean("authenticated") && session.getLong("account_id") == snapshot.getLong("account_id"))
+                    val csrf = session.getString("csrf_token")
+                    // Keep acknowledgements in memory until authenticated local persistence.
+                    val results = org.json.JSONArray()
+                    for (i in 0 until queue.length()) {
+                        try { results.put(request("material/update/",queue.getJSONObject(i).toString(),csrf,true)) }
+                        catch (e: Exception) { break }
+                    }
+                    runOnUiThread {
+                        pendingSync = Pair(snapshot,results)
+                        unlock(3)
+                    }
+                } catch (e: Exception) { runOnUiThread { busy = false; label("Synchronisation impossible. Reconnectez-vous en ligne.") } }
+            }.start()
+        }
+        button("Verrouiller") { if (!busy) loginScreen() }
         val filter = EditText(this).apply { hint = "Rechercher un matériel" }
         panel.addView(filter)
         val results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -148,7 +235,7 @@ class MainActivity : Activity() {
             for (i in 0 until rows.length()) {
                 val row = rows.getJSONObject(i)
                 val value = row.optString("nom")+" — "+row.optString("asset_id")+" — "+row.optString("statut_disponibilite")
-                if (value.contains(query,ignoreCase=true)) results.addView(TextView(this).apply { text=value; textSize=16f; setPadding(0,14,0,14) })
+                if (value.contains(query,ignoreCase=true)) results.addView(TextView(this).apply { text=value; textSize=16f; setPadding(0,14,0,14); setOnClickListener { if (!busy) editMaterial(snapshot,row) } })
             }
         }
         filter.addTextChangedListener(object : android.text.TextWatcher {
