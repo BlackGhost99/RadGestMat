@@ -59,6 +59,8 @@ urlpatterns = [
     
     path('api/reminders/personal/', reminder_views.personal_reminders, name='personal_reminders'),
 
+    path('api/reminders/<int:pk>/transfer/', reminder_views.transfer_reminder, name='transfer_reminder'),
+
     # Notifications (Phase 6)
     path('notifications/dashboard/', views.notifications_dashboard, name='notifications_dashboard'),
     path('notifications/preferences/', views.notification_preferences, name='notification_preferences'),
