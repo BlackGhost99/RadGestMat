@@ -2886,6 +2886,12 @@ def checkin(request, asset_id):
     materiel = get_object_or_404(Materiel, asset_id=asset_id)
     attribution = Attribution.objects.filter(materiel=materiel, date_retour_effective__isnull=True).select_related('client', 'salle').first()
 
+    profil = getattr(request, 'profil_utilisateur', None)
+    if not profil or profil.role not in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER']:
+        raise PermissionDenied("Retour non autorisé.")
+    if profil.role != 'SUPER_ADMIN' and (materiel.departement_id != profil.departement_id or (attribution and attribution.departement_id != profil.departement_id)):
+        raise PermissionDenied("Vous n'avez pas accès à ce département.")
+
     if not attribution:
         messages.error(request, 'Aucune attribution active trouvée pour ce matériel.')
         return redirect('assets:materiel_detail', pk=materiel.pk)
@@ -3151,6 +3157,10 @@ def report_attribution_detail(request, pk):
         Attribution.objects.select_related('materiel', 'client', 'salle', 'employe_responsable', 'departement'),
         pk=pk
     )
+
+    profil = getattr(request, 'profil_utilisateur', None)
+    if not profil or (profil.role != 'SUPER_ADMIN' and profil.departement_id != attribution.departement_id):
+        raise PermissionDenied("Vous n'avez pas accès à cette attribution.")
 
     related_audit_reports = AuditLog.objects.select_related('user').filter(
         content_type__model='attribution',
@@ -3559,11 +3569,16 @@ def attribution_list(request):
     profil = getattr(request, 'profil_utilisateur', None)
     departement = getattr(request, 'departement', None)
     
-    # Tous les utilisateurs authentifiés voient les attributions de tous les départements.
+    # Visibilité commune au département, sauf administrateur transversal.
     attributions_qs = Attribution.objects.select_related(
         'materiel', 'client', 'salle', 'departement', 'employe_responsable'
     ).all()
     
+    if not profil or profil.role != 'SUPER_ADMIN':
+        if not profil or not profil.departement_id:
+            raise PermissionDenied("Département requis.")
+        attributions_qs = attributions_qs.filter(departement_id=profil.departement_id)
+
     # Filtrer par statut (actif = date_retour_effective null)
     status = request.GET.get('status', 'ACTIF')
     attributions = []
@@ -3578,6 +3593,8 @@ def attribution_list(request):
         materiels_attribues = Materiel.objects.select_related('salle').filter(
             statut_disponibilite=Materiel.STATUT_ATTRIBUE
         )
+        if profil.role != 'SUPER_ADMIN':
+            materiels_attribues = materiels_attribues.filter(departement_id=profil.departement_id)
         active_by_materiel_id = {attr.materiel_id: attr for attr in active_attributions}
 
         # Si un materiel a ete modifie bien apres son attribution active
@@ -3793,14 +3810,19 @@ def notifications_dashboard(request):
     
     # Vérifier les permissions
     profil = getattr(request, 'profil_utilisateur', None)
-    if not profil or profil.role not in ['SUPER_ADMIN', 'DEPT_MANAGER']:
-        raise PermissionDenied("Accès réservé aux managers et super admins.")
+    if not profil or profil.role not in ['SUPER_ADMIN', 'DEPT_MANAGER', 'DEPT_USER']:
+        raise PermissionDenied("Accès réservé aux membres autorisés.")
     
-    # Récupérer toutes les notifications
+    # Récupérer les notifications du département
     all_notifications = NotificationLog.objects.select_related(
         'attribution__materiel', 'attribution__client'
     ).order_by('-date_envoi')
     
+    if profil.role != 'SUPER_ADMIN':
+        if not profil.departement_id:
+            raise PermissionDenied("Département requis.")
+        all_notifications = all_notifications.filter(attribution__departement_id=profil.departement_id)
+
     # Statistiques globales
     stats = {
         'total_envoyees': all_notifications.count(),
