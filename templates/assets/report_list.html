@@ -2,7 +2,7 @@
 {% block title %}Rapports - RadGestMat{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <h2>Rapports d'activite (Audit)</h2>
+  <h2>Rapports et audits</h2>
   <p class="text-muted">Filtrez les journaux et les attributions de materiel par date, utilisateur et type.</p>
 
   <form method="get" class="card card-body mb-4">
@@ -44,12 +44,21 @@
         </div>
         <div class="d-grid gap-2">
           <button type="submit" class="btn btn-primary btn-sm">Filtrer</button>
+          {% if user.is_superuser or request.profil_utilisateur.role == 'SUPER_ADMIN' %}
+          <button type="submit" name="export" value="csv" class="btn btn-outline-success btn-sm">Exporter CSV (Excel)</button>
+          {% endif %}
           <a href="{% url 'assets:report_list' %}" class="btn btn-outline-secondary btn-sm">Reinitialiser</a>
         </div>
       </div>
     </div>
   </form>
 
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-4"><div class="card card-body"><div class="small text-muted">Événements d'audit filtrés</div><div class="fs-3 fw-bold">{{ audit_total }}</div></div></div>
+    {% for item in audit_counts %}
+    <div class="col-6 col-md-2"><div class="card card-body"><div class="small text-muted">{% for code, label in action_choices %}{% if code == item.action %}{{ label }}{% endif %}{% endfor %}</div><div class="fs-4 fw-bold">{{ item.total }}</div></div></div>
+    {% endfor %}
+  </div>
   <div class="row g-3 mb-4">
     <div class="col-md-4">
       <div class="card h-100 border-primary">
