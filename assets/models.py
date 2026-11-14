@@ -323,42 +323,24 @@ class Attribution(models.Model):
         else:
             return self.DUREE_LONG_TERME
     
+    def retour_echeance(self):
+        from datetime import datetime, time
+        from django.utils import timezone
+        if self.type_attribution != self.TYPE_TEMPORAIRE or not self.date_retour_prevue:
+            return None
+        naive = datetime.combine(self.date_retour_prevue, self.heure_retour_prevue or time.max)
+        return timezone.make_aware(naive, timezone.get_default_timezone())
+
     def is_overdue(self):
-        """Vérifier si l'attribution est en retard"""
-        if self.date_retour_effective or self.type_attribution != self.TYPE_TEMPORAIRE or not self.date_retour_prevue:
-            return False
-        
         from django.utils import timezone
-        from datetime import datetime, time
-        
-        today = timezone.now().date()
-        
-        if self.duree_emprunt in [self.DUREE_COURT_TERME, self.DUREE_MOYEN_TERME]:
-            # Pour court/moyen terme: vérifier à partir de l'heure
-            if self.heure_retour_prevue:
-                retour_datetime = datetime.combine(self.date_retour_prevue, self.heure_retour_prevue)
-                return timezone.now() > retour_datetime
-        else:
-            # Pour long terme: vérifier la date
-            return today > self.date_retour_prevue
-        
-        return False
-    
+        echeance = self.retour_echeance()
+        return bool(not self.date_retour_effective and echeance and timezone.now() > echeance)
+
     def get_retard_minutes(self):
-        """Retourner le nombre de minutes de retard"""
-        if self.date_retour_effective or self.type_attribution != self.TYPE_TEMPORAIRE or not self.is_overdue():
-            return 0
-        
         from django.utils import timezone
-        from datetime import datetime, time
-        
-        if self.heure_retour_prevue:
-            retour_datetime = datetime.combine(self.date_retour_prevue, self.heure_retour_prevue)
-        else:
-            retour_datetime = datetime.combine(self.date_retour_prevue, time(10, 0))
-        
-        delta = timezone.now() - retour_datetime
-        return int(delta.total_seconds() / 60)
+        if not self.is_overdue():
+            return 0
+        return max(0, int((timezone.now() - self.retour_echeance()).total_seconds() / 60))
 
     def save(self, *args, **kwargs):
         # Auto-calculer la durée d'emprunt
