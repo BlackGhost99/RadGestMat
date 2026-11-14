@@ -71,6 +71,51 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
 .inventory-list th,.inventory-list td {padding:7px!important;vertical-align:middle}
 .inventory-list thead {position:static!important}
 }
+
+.inventory-mobile-dept,.inventory-mobile-status {display:none}
+@media(max-width:991.98px){
+body.app-body.inventory-page {height:100dvh!important;min-height:0!important;max-height:100dvh!important;overflow:hidden!important;padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))!important;box-sizing:border-box}
+body.inventory-page .app-header {flex:0 0 auto!important;position:relative!important;top:auto!important}
+body.inventory-page .app-main {flex:1 1 0!important;height:0!important;min-height:0!important;max-height:none!important;overflow:hidden!important;padding:0 8px 4px!important;display:flex!important;flex-direction:column;margin:0!important}
+body.inventory-page .inventory-container,body.inventory-page .inventory-container > div {flex:1 1 0!important;height:0!important;min-height:0!important;overflow:hidden!important;padding-bottom:0!important}
+.inventory-heading,.inventory-stats,.inventory-filters {flex-shrink:0!important}
+.inventory-heading {margin-bottom:4px!important}
+.inventory-stats .stat-card {min-height:0!important;height:auto!important;border-radius:9px!important;box-shadow:none!important}
+.inventory-stats .card-body {min-height:0!important;padding:3px 1px!important}
+.inventory-stats h3 {font-size:17px!important;line-height:1.1!important;margin:0!important}
+.inventory-stats small {font-size:9px!important}
+.inventory-stats {margin-bottom:5px!important}
+.inventory-filters {margin-bottom:5px!important;position:relative;overflow:visible!important}
+.inventory-filters .card-body {padding:5px!important}
+.inventory-filter-form {grid-template-columns:minmax(0,1fr) auto!important;align-items:center;gap:4px!important}
+.inventory-filter-form .inventory-search {grid-column:1!important}
+.inventory-search .form-label {display:none}
+.inventory-filter-form .inventory-mobile-tools {grid-column:2!important;display:flex!important;gap:3px}
+.inventory-mobile-tools #inventory-sort {width:78px;max-width:78px}
+.inventory-filter-form .inventory-collapsible,.inventory-filter-form .inventory-submit,.inventory-filter-form .inventory-advanced {display:none!important}
+.inventory-filter-form.show-advanced {grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.inventory-filter-form.show-advanced .inventory-collapsible,.inventory-filter-form.show-advanced .inventory-advanced,.inventory-filter-form.show-advanced .inventory-submit {display:block!important}
+.inventory-filter-form.show-advanced .inventory-search,.inventory-filter-form.show-advanced .inventory-mobile-tools {grid-column:1/-1!important}
+.inventory-filter-form.show-advanced .inventory-mobile-tools #inventory-sort {width:auto;max-width:none}
+.inventory-list {flex:1 1 0!important;height:0!important;min-height:0!important;overflow:hidden!important}
+.inventory-list .card-header {padding:5px 7px!important;flex-shrink:0!important}
+.inventory-list .card-header h5 {font-size:13px!important}
+.inventory-list .card-header #selection-count {display:none}
+.inventory-list .card-header #bulk-delete-button:disabled {display:none!important}
+.inventory-list .card-header #group-count {font-size:10px}
+.inventory-list .card-body {flex:1 1 0!important;min-height:0!important;overflow:hidden!important}
+.inventory-list #group-table-wrapper {flex:1 1 0!important;height:0!important;min-height:0!important;overflow:auto!important;overscroll-behavior:contain;touch-action:pan-y;max-height:none!important}
+.inventory-list table {width:100%!important;min-width:0!important;table-layout:auto!important}
+.inventory-list thead {position:sticky!important;top:0;z-index:2}
+.inventory-list th:not(.inventory-name):not(.inventory-quantity):not(:has(#select-all)),.inventory-list td:not(.inventory-name):not(.inventory-quantity):not(:has(.group-select)) {display:none!important}
+.inventory-list th,.inventory-list td {padding:4px 6px!important;font-size:11px!important;white-space:normal!important}
+.inventory-list td.inventory-name {height:43px;overflow-wrap:anywhere}
+.inventory-list td.inventory-name strong {font-size:12px;line-height:1.15}
+.inventory-mobile-dept,.inventory-mobile-status {display:block;font-size:10px;line-height:1.15;color:var(--bs-secondary-color)}
+.inventory-list td.inventory-quantity,.inventory-list th.inventory-quantity {text-align:center;width:49px}
+.inventory-list #group-table-wrapper .group-select {margin:0}
+.inventory-list #group-table-wrapper th:has(#select-all),.inventory-list #group-table-wrapper td:has(.group-select) {width:26px!important}
+}
 </style>
 <div class="inventory-container w-100 h-100 d-flex flex-column">
   <div class="w-100 py-3 py-lg-2 flex-grow-1 d-flex flex-column" style="min-height: 0;">
@@ -78,7 +123,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
     <div class="row mb-3 mb-lg-2 inventory-heading">
       <div class="col">
         <h1 class="h2">
-          <i class="bi bi-box-seam me-2"></i>Inventaire<small class="ms-2 fw-normal text-muted" style="font-size:.65rem;vertical-align:middle" title="Version de disposition">Vue compacte V4</small>
+          <i class="bi bi-box-seam me-2"></i>Inventaire<small class="ms-2 fw-normal text-muted" style="font-size:.65rem;vertical-align:middle" title="Version de disposition">Vue compacte V5</small>
         </h1>
         <p class="text-muted">Materiel groupe par equipement avec filtres avances</p>
       </div>
@@ -134,7 +179,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
             <input type="text" class="form-control" id="q" name="q" value="{{ query }}" placeholder="Nom d'equipement, modele..." list="materiel-suggestions" autocomplete="off">
             <datalist id="materiel-suggestions"></datalist>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 inventory-collapsible">
             <label for="categorie" class="form-label">Categorie</label>
             <select class="form-select" id="categorie" name="categorie">
               <option value="">Toutes les categories</option>
@@ -143,7 +188,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 inventory-collapsible">
             <label for="location" class="form-label">Localisation</label>
             <select class="form-select" id="location" name="location">
               <option value="">Toutes les localisations</option>
@@ -152,7 +197,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 inventory-collapsible">
             <label for="statut_disponibilite" class="form-label">Statut</label>
             <select class="form-select" id="statut_disponibilite" name="statut_disponibilite">
               <option value="">Tous les statuts</option>
@@ -161,7 +206,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 inventory-collapsible">
             <label for="etat_technique" class="form-label">Etat technique</label>
             <select class="form-select" id="etat_technique" name="etat_technique">
               <option value="">Tous les etats</option>
@@ -170,7 +215,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 inventory-collapsible">
             <label for="marque" class="form-label">Marque</label>
             <select class="form-select" id="marque" name="marque">
               <option value="">Toutes les marques</option>
@@ -200,7 +245,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
           </div>
           {% endif %}
 
-          <div class="inventory-mobile-tools"><button type="button" id="inventory-more" class="btn btn-outline-secondary" aria-expanded="false"><i class="bi bi-sliders"></i> Plus de filtres</button><label class="visually-hidden" for="inventory-sort">Tri</label><select id="inventory-sort" class="form-select"><option value="default">Tri : par défaut</option><option value="az">Nom A–Z</option><option value="za">Nom Z–A</option><option value="qty">Quantité décroissante</option></select></div>
+          <div class="inventory-mobile-tools"><button type="button" id="inventory-more" class="btn btn-outline-secondary" aria-expanded="false"><i class="bi bi-sliders"></i> Filtres</button><label class="visually-hidden" for="inventory-sort">Tri</label><select id="inventory-sort" class="form-select"><option value="default">Tri : par défaut</option><option value="az">Nom A–Z</option><option value="za">Nom Z–A</option><option value="qty">Quantité décroissante</option></select></div>
           <div class="col-md-2 d-flex align-items-end inventory-submit">
             <button type="submit" class="btn btn-primary w-100">
               <i class="bi bi-funnel me-1"></i>Filtrer
@@ -243,11 +288,11 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
                     <input class="form-check-input" type="checkbox" id="select-all" aria-label="Tout selectionner" onclick="event.stopPropagation();">
                   </th>
                   {% endif %}
-                  <th>Nom de l'equipement</th>
+                  <th class="inventory-name">Équipement</th>
                   {% if show_all %}
                   <th>Departement</th>
                   {% endif %}
-                  <th>Quantite</th>
+                  <th class="inventory-quantity">Quantité</th>
                   <th>Disponible</th>
                   <th>Attribue</th>
                   <th>Maintenance</th>
@@ -274,7 +319,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
                   </td>
                   {% endif %}
 
-                  <td><strong>{{ groupe.group_display|default:groupe.nom }}</strong></td>
+                  <td class="inventory-name"><strong>{{ groupe.group_display|default:groupe.nom }}</strong>{% if show_all and groupe.departement %}<small class="inventory-mobile-dept">{{ groupe.departement.nom }}</small>{% endif %}<small class="inventory-mobile-status">{{ groupe.disponible }} dispo. · {{ groupe.attribue }} attrib. · {{ groupe.maintenance }} maint. · {{ groupe.hors_service|default:0 }} HS</small></td>
 
                   {% if show_all %}
                   <td>
@@ -286,7 +331,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
                   </td>
                   {% endif %}
 
-                  <td><span class="badge bg-primary">{{ groupe.quantite }}</span></td>
+                  <td class="inventory-quantity"><span class="badge bg-primary">{{ groupe.quantite }}</span></td>
                   <td><span class="badge bg-success">{{ groupe.disponible }}</span></td>
                   <td><span class="badge bg-warning text-dark">{{ groupe.attribue }}</span></td>
                   <td><span class="badge bg-info">{{ groupe.maintenance }}</span></td>
@@ -338,7 +383,7 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
 
 {% block extra_js %}
 <script>
-(function(){const form=document.querySelector(".inventory-filter-form"),more=document.getElementById("inventory-more"),sort=document.getElementById("inventory-sort");if(form&&more){const set=(open)=>{form.classList.toggle("show-advanced",open);more.setAttribute("aria-expanded",String(open));};set(Array.from(form.querySelectorAll(".inventory-advanced input,.inventory-advanced select")).some(el=>el.value));more.addEventListener("click",()=>set(!form.classList.contains("show-advanced")));}if(sort){const tbody=document.querySelector("#group-table-wrapper tbody");if(!tbody)return;const original=Array.from(tbody.rows);sort.addEventListener("change",()=>{const rows=original.filter(r=>r.parentNode===tbody);if(sort.value==="az"||sort.value==="za")rows.sort((a,b)=>a.dataset.nom.localeCompare(b.dataset.nom,"fr")*(sort.value==="az"?1:-1));if(sort.value==="qty")rows.sort((a,b)=>Number(b.dataset.quantite)-Number(a.dataset.quantite));rows.forEach(r=>tbody.appendChild(r));});}})();
+(function(){const form=document.querySelector(".inventory-filter-form"),more=document.getElementById("inventory-more"),sort=document.getElementById("inventory-sort");if(form&&more){const set=(open)=>{form.classList.toggle("show-advanced",open);more.setAttribute("aria-expanded",String(open));};set(false);more.addEventListener("click",()=>set(!form.classList.contains("show-advanced")));const search=form.querySelector("#q");if(search)search.addEventListener("keydown",e=>{if(e.key==="Enter"&&window.matchMedia("(max-width:991.98px)").matches){e.preventDefault();form.requestSubmit();}});}if(sort){const tbody=document.querySelector("#group-table-wrapper tbody");if(!tbody)return;const original=Array.from(tbody.rows);sort.addEventListener("change",()=>{const rows=original.filter(r=>r.parentNode===tbody);if(sort.value==="az"||sort.value==="za")rows.sort((a,b)=>a.dataset.nom.localeCompare(b.dataset.nom,"fr")*(sort.value==="az"?1:-1));if(sort.value==="qty")rows.sort((a,b)=>Number(b.dataset.quantite)-Number(a.dataset.quantite));rows.forEach(r=>tbody.appendChild(r));});}})();
 </script>
 <script>
 (function () {
