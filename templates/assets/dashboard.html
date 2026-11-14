@@ -1,28 +1,29 @@
 {% extends 'base.html' %}
 
 {% block title %}Tableau de bord - RadGestMat{% endblock %}
-{% block body_class %}dashboard-page{% endblock %}
+{% block body_class %}dashboard-page {% if not request.GET and show_overview %}compact-home-active{% else %}compact-detail-active{% endif %}{% endblock %}
 
 {% block content %}
 <div class="dashboard-v2">
-    <section class="android-dashboard-intro" aria-label="Pilotage mobile">
-        <div class="android-title"><div><small>GESTION DU PARC</small><h1>Tableau de bord</h1><span>{{ period_label }}</span></div><a href="{% url 'assets:alerte_list' %}" aria-label="Alertes"><i class="bi bi-bell"></i> {{ unresolved_alerts }}</a></div>
-        {% if show_overview %}
-        <a class="android-total" href="{% url 'assets:materiel_list' %}"><span>Total du parc</span><strong>{{ total_materiel }}</strong><span>Équipements · Voir l’inventaire <i class="bi bi-arrow-right"></i></span></a>
-        <div class="android-metrics">
+    <section class="android-dashboard-intro compact-home-v3" aria-label="Tableau de bord compact">
+        <div class="compact-heading"><h1>Vue d’ensemble</h1><a href="{% url 'assets:dashboard' %}" aria-label="Actualiser"><i class="bi bi-arrow-clockwise"></i></a></div>
+        <a class="compact-total" href="{% url 'assets:materiel_list' %}"><div><span>Parc informatique</span><strong>{{ total_materiel }}</strong><small>Équipements au total</small></div><div class="compact-rate"><strong>{{ availability_ratio }}%</strong><small>Disponibles</small><progress max="100" value="{{ availability_ratio|floatformat:'u' }}" aria-label="Disponibilité"></progress></div></a>
+        <div class="compact-metrics">
             <a href="{% url 'assets:materiel_list' %}"><i class="bi bi-check-circle text-success"></i><strong>{{ materiel_disponible }}</strong><span>Disponibles</span></a>
             <a href="{% url 'assets:attribution_list' %}"><i class="bi bi-arrow-left-right text-primary"></i><strong>{{ materiel_attribue }}</strong><span>Attribués</span></a>
             <a href="{% url 'assets:materiel_list' %}"><i class="bi bi-tools text-warning"></i><strong>{{ materiel_defectueux }}</strong><span>Défectueux</span></a>
-            <a href="{% url 'assets:alerte_list' %}"><i class="bi bi-bell text-danger"></i><strong>{{ unresolved_alerts }}</strong><span>Alertes ouvertes</span></a>
+            <a href="{% url 'assets:client_list' %}"><i class="bi bi-people text-primary"></i><strong>{{ total_clients }}</strong><span>Clients</span></a>
+            <a href="{% url 'assets:alerte_list' %}"><i class="bi bi-bell text-danger"></i><strong>{{ unresolved_alerts }}</strong><span>Alertes</span></a>
+            <a href="{% url 'assets:attribution_list' %}"><i class="bi bi-clock-history text-warning"></i><strong>{{ overdue_attributions }}</strong><span>Retards</span></a>
         </div>
-        <div class="android-panel"><h2>Disponibilité du parc</h2><div class="android-ratio"><strong>{{ availability_ratio }} %</strong><span>Disponibles</span></div><progress max="100" value="{{ availability_ratio|floatformat:'u' }}" aria-label="Pourcentage disponible"></progress><div class="android-ratio"><strong>{{ allocation_ratio }} %</strong><span>Attribués</span></div><progress max="100" value="{{ allocation_ratio|floatformat:'u' }}" aria-label="Pourcentage attribué"></progress></div>
-        <div class="android-panel"><h2>À surveiller</h2><div class="android-attention"><a href="{% url 'assets:alerte_list' %}"><strong>{{ critical_alerts }}</strong> Alertes critiques</a><a href="{% url 'assets:attribution_list' %}"><strong>{{ overdue_attributions }}</strong> Retours en retard</a></div></div>
-        {% endif %}
-        <div class="android-panel"><h2>Actions rapides</h2><div class="android-actions">
+        <div class="compact-risk"><a href="{% url 'assets:alerte_list' %}"><i class="bi bi-exclamation-triangle text-danger"></i> <strong>{{ critical_alerts }}</strong> critiques</a><a href="?mobile_detail=1"><i class="bi bi-bar-chart"></i> Analyses <i class="bi bi-chevron-right"></i></a></div>
+        <div class="compact-actions">
         {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'DEPT_USER' %}<a href="{% url 'assets:materiel_create' %}"><i class="bi bi-plus-circle"></i>Ajouter</a>{% endif %}
-        <a href="{% url 'assets:materiel_list' %}"><i class="bi bi-box-seam"></i>Stock</a><a href="{% url 'assets:attribution_list' %}"><i class="bi bi-arrow-left-right"></i>Attributions</a><a href="{% url 'assets:client_list' %}"><i class="bi bi-people"></i>Clients</a>
-        </div></div>
+        <a href="?mobile_detail=1#dashboard-search-form"><i class="bi bi-search"></i>Recherche</a><a href="?mobile_detail=1"><i class="bi bi-sliders"></i>Filtres</a><a href="{% url 'assets:categorie_list' %}"><i class="bi bi-tags"></i>Catégories</a>
+        </div>
+        <small class="compact-version">Vue compacte V3</small>
     </section>
+    <a class="compact-back" href="{% url 'assets:dashboard' %}"><i class="bi bi-arrow-left"></i> Retour à l’accueil</a>
 
     <section class="dashboard-hero card">
         <div class="dashboard-hero__copy">
@@ -1145,6 +1146,38 @@
 .dashboard-v2 .dashboard-list-item,.dashboard-v2 .dashboard-result-item,.dashboard-v2 .dashboard-stacked-item {background:var(--bs-body-bg)}
 }
 
+
+.compact-back {display:none}
+@media(max-width:991.98px){
+.dashboard-page:not(.compact-home-active) .compact-home-v3 {display:none}
+.compact-detail-active .compact-back {display:block;padding:8px;text-decoration:none}
+.compact-detail-active .dashboard-v2 .dashboard-kpis {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.compact-home-active .dashboard-v2 > :not(.compact-home-v3) {display:none!important}
+.compact-home-active .app-main .app-content {padding:8px 12px!important}
+.compact-home-active .dashboard-v2 {display:block}
+.compact-home-v3 {gap:clamp(5px,1.2dvh,12px);font-size:13px}
+.compact-heading {display:flex;align-items:center;justify-content:space-between}
+.compact-heading h1 {font-size:18px;margin:0;font-weight:700}
+.compact-heading a {padding:6px 10px;font-size:18px}
+.compact-total {display:flex;align-items:center;justify-content:space-between;gap:8px;background:#1555bf;color:white!important;border-radius:16px;padding:clamp(8px,1.7dvh,16px);text-decoration:none}
+.compact-total div {display:grid;gap:2px}
+.compact-total strong {font-size:clamp(24px,4.5dvh,36px);line-height:1.05}
+.compact-total small {font-size:11px}
+.compact-rate {text-align:right;max-width:40%}
+.compact-rate strong {font-size:clamp(19px,3.6dvh,28px)}
+.compact-rate progress {width:100%;height:8px;accent-color:#65e4b0}
+.compact-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.compact-metrics a {display:grid;justify-items:center;gap:2px;padding:clamp(5px,1.1dvh,11px) 2px;border:1px solid var(--bs-border-color);border-radius:12px;background:var(--bs-body-bg);color:var(--bs-body-color);text-decoration:none;min-width:0}
+.compact-metrics i {font-size:16px;line-height:1}
+.compact-metrics strong {font-size:clamp(19px,3.5dvh,27px);line-height:1.1}
+.compact-metrics span {font-size:11px;color:var(--bs-secondary-color)}
+.compact-risk,.compact-actions {display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
+.compact-risk a,.compact-actions a {display:flex;align-items:center;justify-content:center;gap:4px;min-height:44px;border-radius:10px;background:var(--bs-tertiary-bg);color:var(--bs-body-color);text-decoration:none;font-size:11px;text-align:center}
+.compact-actions a {flex-direction:column;gap:2px}
+.compact-actions i {font-size:17px;color:var(--bs-primary)}
+.compact-version {text-align:center;color:var(--bs-secondary-color);font-size:10px}
+@media(max-height:650px){.compact-home-v3 {gap:5px}.compact-version {display:none}.compact-heading a {padding:2px 8px}.compact-metrics a {padding:4px 2px}.compact-total {padding:8px 12px}}
+}
 </style>
 <script>
 (function () {
