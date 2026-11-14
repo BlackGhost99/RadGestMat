@@ -605,3 +605,17 @@ class WhatsAppConfig(models.Model):
 
 
 
+
+
+class MobileOperationReceipt(models.Model):
+    """Durable idempotency receipt, committed with the business mutation."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    operation_id = models.UUIDField()
+    request_hash = models.CharField(max_length=64)
+    result = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "operation_id"], name="mobile_unique_user_operation"),
+        ]
