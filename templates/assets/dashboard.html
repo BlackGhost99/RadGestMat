@@ -5,6 +5,25 @@
 
 {% block content %}
 <div class="dashboard-v2">
+    <section class="android-dashboard-intro" aria-label="Pilotage mobile">
+        <div class="android-title"><div><small>GESTION DU PARC</small><h1>Tableau de bord</h1><span>{{ period_label }}</span></div><a href="{% url 'assets:alerte_list' %}" aria-label="Alertes"><i class="bi bi-bell"></i> {{ unresolved_alerts }}</a></div>
+        {% if show_overview %}
+        <a class="android-total" href="{% url 'assets:materiel_list' %}"><span>Total du parc</span><strong>{{ total_materiel }}</strong><span>Équipements · Voir l’inventaire <i class="bi bi-arrow-right"></i></span></a>
+        <div class="android-metrics">
+            <a href="{% url 'assets:materiel_list' %}"><i class="bi bi-check-circle text-success"></i><strong>{{ materiel_disponible }}</strong><span>Disponibles</span></a>
+            <a href="{% url 'assets:attribution_list' %}"><i class="bi bi-arrow-left-right text-primary"></i><strong>{{ materiel_attribue }}</strong><span>Attribués</span></a>
+            <a href="{% url 'assets:materiel_list' %}"><i class="bi bi-tools text-warning"></i><strong>{{ materiel_defectueux }}</strong><span>Défectueux</span></a>
+            <a href="{% url 'assets:alerte_list' %}"><i class="bi bi-bell text-danger"></i><strong>{{ unresolved_alerts }}</strong><span>Alertes ouvertes</span></a>
+        </div>
+        <div class="android-panel"><h2>Disponibilité du parc</h2><div class="android-ratio"><strong>{{ availability_ratio }} %</strong><span>Disponibles</span></div><progress max="100" value="{{ availability_ratio|floatformat:'u' }}" aria-label="Pourcentage disponible"></progress><div class="android-ratio"><strong>{{ allocation_ratio }} %</strong><span>Attribués</span></div><progress max="100" value="{{ allocation_ratio|floatformat:'u' }}" aria-label="Pourcentage attribué"></progress></div>
+        <div class="android-panel"><h2>À surveiller</h2><div class="android-attention"><a href="{% url 'assets:alerte_list' %}"><strong>{{ critical_alerts }}</strong> Alertes critiques</a><a href="{% url 'assets:attribution_list' %}"><strong>{{ overdue_attributions }}</strong> Retours en retard</a></div></div>
+        {% endif %}
+        <div class="android-panel"><h2>Actions rapides</h2><div class="android-actions">
+        {% if request.profil_utilisateur.role == 'SUPER_ADMIN' or request.profil_utilisateur.role == 'DEPT_MANAGER' or request.profil_utilisateur.role == 'DEPT_USER' %}<a href="{% url 'assets:materiel_create' %}"><i class="bi bi-plus-circle"></i>Ajouter</a>{% endif %}
+        <a href="{% url 'assets:materiel_list' %}"><i class="bi bi-box-seam"></i>Stock</a><a href="{% url 'assets:attribution_list' %}"><i class="bi bi-arrow-left-right"></i>Attributions</a><a href="{% url 'assets:client_list' %}"><i class="bi bi-people"></i>Clients</a>
+        </div></div>
+    </section>
+
     <section class="dashboard-hero card">
         <div class="dashboard-hero__copy">
             <span class="dashboard-chip">
@@ -64,6 +83,7 @@
                     </small>
                 </div>
 
+                <details class="android-filter-details" {% if focus_mode or query %}open{% endif %}><summary>Filtres avancés</summary>
                 <div class="dashboard-form__grid">
                     {% if show_all %}
                     <div>
@@ -168,6 +188,7 @@
                     {% endfor %}
                 </div>
 
+                </details>
                 <div class="dashboard-form__actions">
                     <button type="submit" class="btn btn-gradient">
                         <i class="bi bi-funnel me-2"></i>Appliquer
@@ -1084,9 +1105,51 @@
     flex-direction: column;
   }
 }
+
+.android-dashboard-intro {display:none}
+.android-filter-details > summary {display:none}
+.android-filter-details:not([open]) > :not(summary) {display:revert}
+.android-filter-details .dashboard-form__grid {display:grid}
+.android-filter-details .dashboard-presets {display:flex;margin-top:.75rem}
+@media(max-width:991.98px){
+.dashboard-v2 {gap:12px;min-width:0}
+.dashboard-v2 .dashboard-hero,.dashboard-v2 .dashboard-kpis {display:none}
+.android-dashboard-intro {display:grid;gap:12px;min-width:0}
+.android-title {display:flex;align-items:center;justify-content:space-between;gap:8px}
+.android-title h1 {font-size:1.5rem;font-weight:750;margin:.15rem 0}
+.android-title small,.android-title span {color:var(--bs-secondary-color);font-size:.75rem}
+.android-title a {padding:12px;border-radius:14px;background:var(--bs-tertiary-bg);text-decoration:none}
+.android-total {display:grid;gap:5px;background:#1555bf;color:white!important;text-decoration:none;border-radius:20px;padding:20px}
+.android-total strong {font-size:2.8rem;line-height:1.1}
+.android-total span {font-size:.85rem}
+.android-metrics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.android-metrics a,.android-panel {background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:16px;padding:14px;color:var(--bs-body-color);text-decoration:none;min-width:0}
+.android-metrics a {display:grid;gap:4px}
+.android-metrics i {font-size:1.3rem}
+.android-metrics strong {font-size:1.9rem;line-height:1.2}
+.android-metrics span {font-size:.85rem;color:var(--bs-secondary-color)}
+.android-panel h2 {font-size:1rem;font-weight:700;margin:0 0 12px}
+.android-ratio {display:flex;align-items:center;justify-content:space-between;font-size:.85rem;margin:8px 0 3px}
+.android-panel progress {width:100%;height:12px;accent-color:#16875d}
+.android-panel progress:last-child {accent-color:#2563eb}
+.android-attention,.android-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.android-attention a,.android-actions a {display:grid;gap:4px;padding:10px;border-radius:12px;background:var(--bs-tertiary-bg);color:var(--bs-body-color);text-decoration:none;font-size:.8rem;min-height:48px}
+.android-attention strong {font-size:1.3rem;color:var(--bs-danger)}
+.android-actions i {font-size:1.3rem;color:var(--bs-primary)}
+.android-filter-details > summary {display:list-item;padding:12px 0;font-weight:600;cursor:pointer}
+.android-filter-details:not([open]) > :not(summary) {display:none}
+.dashboard-v2 .dashboard-activity {grid-template-columns:repeat(2,minmax(0,1fr))}
+.dashboard-v2 .dashboard-grid {grid-template-columns:minmax(0,1fr)}
+.dashboard-v2 .card {box-shadow:none}
+.dashboard-v2 .dashboard-list-item,.dashboard-v2 .dashboard-stacked-item {overflow-wrap:anywhere}
+.dashboard-v2 .dashboard-list-item,.dashboard-v2 .dashboard-result-item,.dashboard-v2 .dashboard-stacked-item {background:var(--bs-body-bg)}
+}
+
 </style>
 <script>
 (function () {
+  const filters = document.querySelector('.android-filter-details');
+  if (filters && window.matchMedia('(min-width: 992px)').matches) filters.open = true;
   const form = document.getElementById('dashboard-search-form');
   const input = document.getElementById('dashboard-search');
   const list = document.getElementById('dashboard-suggestions');
