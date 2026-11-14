@@ -23,6 +23,15 @@ from datetime import timedelta
 
 from django.utils.text import capfirst
 from django.utils.formats import date_format
+from django.utils.dateparse import parse_date
+
+
+def valid_date(value):
+    """Return a parsed date, or None for an empty or invalid filter."""
+    try:
+        return parse_date(value) if value else None
+    except ValueError:
+        return None
 
 
 @require_http_methods(["GET"])
@@ -1761,7 +1770,6 @@ def _build_dashboard_search_groups(scope, materiels_qs, clients_qs, attributions
 @login_required
 def dashboard(request):
     """Tableau de bord enrichi avec filtres intelligents et recherche globale."""
-    from django.utils.dateparse import parse_date
 
     profil = getattr(request, 'profil_utilisateur', None)
     current_department = getattr(request, 'departement', None)
@@ -2177,9 +2185,8 @@ def materiel_list(request):
     date_achat_from_raw = (request.GET.get('date_achat_from') or '').strip()
     date_achat_to_raw = (request.GET.get('date_achat_to') or '').strip()
 
-    from django.utils.dateparse import parse_date
-    date_achat_from = parse_date(date_achat_from_raw) if date_achat_from_raw else None
-    date_achat_to = parse_date(date_achat_to_raw) if date_achat_to_raw else None
+    date_achat_from = valid_date(date_achat_from_raw)
+    date_achat_to = valid_date(date_achat_to_raw)
     if date_achat_from and date_achat_to and date_achat_from > date_achat_to:
         date_achat_from, date_achat_to = date_achat_to, date_achat_from
 
@@ -3059,14 +3066,7 @@ def _require_audit_admin(request):
 def report_list(request):
     """Liste des rapports d'audit avec filtres sur les attributions de materiel."""
     _require_audit_admin(request)
-    from django.utils.dateparse import parse_date
     from django.core.paginator import Paginator
-
-    def valid_date(value):
-        try:
-            return parse_date(value) if value else None
-        except ValueError:
-            return None
 
     qs = AuditLog.objects.select_related('user', 'content_type').all()
     action = (request.GET.get('action') or '').strip()
@@ -3076,8 +3076,8 @@ def report_list(request):
     date_to_raw = (request.GET.get('date_to') or '').strip()
     attribution_only = (request.GET.get('attribution_only') or '').strip().lower() in {'1', 'true', 'on', 'yes'}
 
-    date_from = parse_date(date_from_raw) if date_from_raw else None
-    date_to = parse_date(date_to_raw) if date_to_raw else None
+    date_from = valid_date(date_from_raw)
+    date_to = valid_date(date_to_raw)
     if date_from and date_to and date_from > date_to:
         date_from, date_to = date_to, date_from
 
