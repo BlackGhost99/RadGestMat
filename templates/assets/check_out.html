@@ -402,6 +402,33 @@
   }
   updateReturnDateBlock();
 </script>
+
+<script>
+(function () {
+  const form = document.querySelector('#attribution_form');
+  if (!form) return;
+  const buttons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
+  let pending = false;
+  form.addEventListener('submit', function (event) {
+    if (pending) { event.preventDefault(); return; }
+    if (event.defaultPrevented) return;
+    pending = true;
+    form.setAttribute('aria-busy', 'true');
+    buttons.forEach(button => { button.disabled = true; });
+    const notice = document.createElement('p');
+    notice.id = 'movement-pending';
+    notice.setAttribute('role', 'status');
+    notice.textContent = 'Enregistrement en cours… Ne validez pas de nouveau.';
+    form.appendChild(notice);
+  });
+  window.addEventListener('pageshow', function () {
+    pending = false;
+    form.removeAttribute('aria-busy');
+    buttons.forEach(button => { button.disabled = false; });
+    document.getElementById('movement-pending')?.remove();
+  });
+})();
+</script>
 {% endblock %}
 
 
