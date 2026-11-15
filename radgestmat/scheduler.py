@@ -91,16 +91,16 @@ def _register_jobs():
     )
     logger.info("Registered job: check_court_terme_reminders (every 30 min)")
     
-    # Moyen terme (Medium term): Check twice daily
+    # Moyen terme (Medium term): Check every 15 minutes
     # For loans 4-24 hours, remind at 2 hours before return
     scheduler.add_job(
         func=check_moyen_terme_reminders,
-        trigger=CronTrigger(hour='*/12'),
+        trigger=CronTrigger(minute='*/15'),
         id='check_moyen_terme_reminders',
         name='Check moyen terme (medium-term) loan reminders',
         replace_existing=True,
     )
-    logger.info("Registered job: check_moyen_terme_reminders (every 12 hours)")
+    logger.info("Registered job: check_moyen_terme_reminders (every 15 minutes)")
     
     # Long terme (Long term): Check daily at 8 AM
     # For loans > 24 hours, remind at J-2 and J-1
