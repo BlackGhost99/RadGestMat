@@ -1,3 +1,4 @@
+from django.db import transaction
 # assets/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -2772,11 +2773,12 @@ def scan_result(request, asset_id):
 
 
 @login_required
+@transaction.atomic
 def checkout(request, asset_id):
     """Check-out (attribution) pour le matériel identifié par `asset_id`."""
     from .forms import QuickClientForm
     
-    materiel = get_object_or_404(Materiel, asset_id=asset_id)
+    materiel = get_object_or_404(Materiel.objects.select_for_update() if request.method == 'POST' else Materiel.objects.all(), asset_id=asset_id)
     profil = getattr(request, 'profil_utilisateur', None)
     
     # Vérifier les permissions: l'utilisateur doit avoir accès au département
@@ -2786,7 +2788,8 @@ def checkout(request, asset_id):
     if profil and profil.role != 'SUPER_ADMIN' and profil.departement_id != materiel.departement_id:
         raise PermissionDenied("Vous n'avez accès qu'à votre département.")
 
-    if materiel.statut_disponibilite != Materiel.STATUT_DISPONIBLE:
+    if (materiel.statut_disponibilite != Materiel.STATUT_DISPONIBLE or
+            Attribution.objects.filter(materiel=materiel, date_retour_effective__isnull=True).exists()):
         messages.error(request, 'Ce matériel n\'est pas disponible pour attribution.')
         return redirect('assets:materiel_detail', pk=materiel.pk)
 
@@ -2892,9 +2895,10 @@ def checkout(request, asset_id):
 
 
 @login_required
+@transaction.atomic
 def checkin(request, asset_id):
     """Check-in (retour) pour le matériel identifié par `asset_id`."""
-    materiel = get_object_or_404(Materiel, asset_id=asset_id)
+    materiel = get_object_or_404(Materiel.objects.select_for_update() if request.method == 'POST' else Materiel.objects.all(), asset_id=asset_id)
     attribution = Attribution.objects.filter(materiel=materiel, date_retour_effective__isnull=True).select_related('client', 'salle').first()
 
     profil = getattr(request, 'profil_utilisateur', None)
