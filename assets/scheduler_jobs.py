@@ -25,21 +25,17 @@ def check_court_terme_reminders():
         attributions = Attribution.objects.filter(
             type_attribution=Attribution.TYPE_TEMPORAIRE,
             duree_emprunt=Attribution.DUREE_COURT_TERME,
-            heure_retour_effective__isnull=True,  # Not returned yet
+            date_retour_effective__isnull=True,  # Not returned yet
         ).select_related('client', 'materiel')
         
         reminder_sent_count = 0
         
         for attribution in attributions:
-            if attribution.heure_retour_prevue is None:
+            if attribution.retour_echeance() is None:
                 continue
             
             # Calculate time until return
-            return_datetime = datetime.combine(
-                attribution.date_retour_prevue,
-                attribution.heure_retour_prevue
-            )
-            return_datetime = timezone.make_aware(return_datetime)
+            return_datetime = attribution.retour_echeance()
             
             time_until_return = return_datetime - now
             
@@ -77,20 +73,16 @@ def check_moyen_terme_reminders():
         attributions = Attribution.objects.filter(
             type_attribution=Attribution.TYPE_TEMPORAIRE,
             duree_emprunt=Attribution.DUREE_MOYEN_TERME,
-            heure_retour_effective__isnull=True,
+            date_retour_effective__isnull=True,
         ).select_related('client', 'materiel')
         
         reminder_sent_count = 0
         
         for attribution in attributions:
-            if attribution.heure_retour_prevue is None:
+            if attribution.retour_echeance() is None:
                 continue
             
-            return_datetime = datetime.combine(
-                attribution.date_retour_prevue,
-                attribution.heure_retour_prevue
-            )
-            return_datetime = timezone.make_aware(return_datetime)
+            return_datetime = attribution.retour_echeance()
             
             time_until_return = return_datetime - now
             
@@ -124,12 +116,12 @@ def check_long_terme_reminders():
     """
     try:
         now = timezone.now()
-        today = now.date()
+        today = timezone.localdate(now)
         
         attributions = Attribution.objects.filter(
             type_attribution=Attribution.TYPE_TEMPORAIRE,
             duree_emprunt=Attribution.DUREE_LONG_TERME,
-            heure_retour_effective__isnull=True,
+            date_retour_effective__isnull=True,
         ).select_related('client', 'materiel')
         
         reminder_counts = {
@@ -206,15 +198,15 @@ def check_overdue_materials():
         # Find attributions that are overdue
         attributions = Attribution.objects.filter(
             type_attribution=Attribution.TYPE_TEMPORAIRE,
-            heure_retour_effective__isnull=True,  # Not returned yet
-            date_retour_prevue__lt=now.date(),  # Return date has passed
+            date_retour_effective__isnull=True,  # Not returned yet
+            date_retour_prevue__lt=timezone.localdate(now),  # Return date has passed
         ).select_related('client', 'materiel')
         
         # Also check current day but past return time
         attributions_today = Attribution.objects.filter(
             type_attribution=Attribution.TYPE_TEMPORAIRE,
-            heure_retour_effective__isnull=True,
-            date_retour_prevue=now.date(),
+            date_retour_effective__isnull=True,
+            date_retour_prevue=timezone.localdate(now),
         ).select_related('client', 'materiel')
         
         for attribution in list(attributions) + list(attributions_today):
@@ -226,8 +218,8 @@ def check_overdue_materials():
             
             if latest_alert is None or (now - latest_alert.date_envoi).days >= 1:
                 # Send overdue alert if no alert sent yet or last one was > 1 day ago
-                days_late = (now.date() - attribution.date_retour_prevue).days
-                if days_late > 0:  # Only if actually late
+                days_late = (timezone.localdate(now) - attribution.date_retour_prevue).days
+                if attribution.is_overdue():  # Includes same-day overdue loans
                     _send_overdue_notification(attribution, days_late)
         
         logger.info("Overdue materials check completed")
