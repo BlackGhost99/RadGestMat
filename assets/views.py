@@ -3895,6 +3895,23 @@ def notifications_dashboard(request):
         type_name = dict(NotificationLog.TYPE_CHOICES).get(item['type_notification'], item['type_notification'])
         stats['par_type'][type_name] = item['count']
     
+    # Rappels web calculés directement, indépendamment du canal email.
+    now = timezone.now()
+    personal_loans = Attribution.objects.filter(
+        employe_responsable=request.user,
+        type_attribution=Attribution.TYPE_TEMPORAIRE,
+        date_retour_effective__isnull=True,
+        date_retour_prevue__isnull=False,
+    ).select_related('materiel')
+    if profil.role != 'SUPER_ADMIN':
+        personal_loans = personal_loans.filter(departement_id=profil.departement_id)
+    web_reminders = []
+    for loan in personal_loans:
+        deadline = loan.retour_echeance()
+        if deadline and deadline <= now + timedelta(days=2):
+            web_reminders.append({'loan': loan, 'deadline': deadline, 'overdue': deadline < now})
+    web_reminders.sort(key=lambda item: item['deadline'])
+
     # Dernières notifications (limité à 50)
     notifications = all_notifications[:50]
     has_pagination = all_notifications.count() > 50
@@ -3903,6 +3920,7 @@ def notifications_dashboard(request):
         'stats': stats,
         'notifications': notifications,
         'has_pagination': has_pagination,
+        'web_reminders': web_reminders,
     }
     
     return render(request, 'assets/notifications_dashboard.html', context)
