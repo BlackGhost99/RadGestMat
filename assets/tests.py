@@ -193,6 +193,7 @@ class MaterielViewsTest(TestCase):
 
     def test_checkout_and_checkin_workflow(self):
         """Test basique du workflow check-out puis check-in"""
+        ProfilUtilisateur.objects.update_or_create(user=self.user, defaults={'departement': self.dept, 'role': 'DEPT_USER'})
         self.client.login(username='test', password='testpass123')
 
         # Créer un client
@@ -205,14 +206,16 @@ class MaterielViewsTest(TestCase):
 
         # POST pour créer l'attribution
         retour_prevu = date.today() + timedelta(days=3)
-        resp = self.client.post(url_checkout, data={
+        checkout_data = {
+            'movement_token': resp.context['movement_token'],
             'materiel': self.materiel.pk,
             'client': client.pk,
             'destination_type': 'client',
             'type_attribution': 'TEMPORAIRE',
             'date_retour_prevue': retour_prevu,
             'notes': 'Prêt test'
-        })
+        }
+        resp = self.client.post(url_checkout, data=checkout_data)
         # Doit rediriger (302) vers materiel_detail
         self.assertEqual(resp.status_code, 302)
 
@@ -227,13 +230,15 @@ class MaterielViewsTest(TestCase):
         self.assertEqual(resp.status_code, 200)
 
         # Poster le retour
-        resp = self.client.post(url_checkin, data={
+        checkin_data = {
+            'attribution_id': attribution.pk,
             'date_retour_effective': '',
             'raison_non_retour': 'NORMAL',
             'description_damage': '',
             'notes': 'Retour OK',
             'mettre_en_maintenance': False
-        })
+        }
+        resp = self.client.post(url_checkin, data=checkin_data)
         self.assertEqual(resp.status_code, 302)
 
         attribution.refresh_from_db()
@@ -241,6 +246,18 @@ class MaterielViewsTest(TestCase):
         # Materiel redevenu disponible
         self.materiel.refresh_from_db()
         self.assertEqual(self.materiel.statut_disponibilite, 'DISPONIBLE')
+
+        # Retransmission d'un ancien prêt après son retour.
+        self.client.post(url_checkout, data=checkout_data)
+        self.assertEqual(Attribution.objects.filter(materiel=self.materiel).count(), 1)
+        fresh = self.client.get(url_checkout)
+        checkout_data['movement_token'] = fresh.context['movement_token']
+        self.client.post(url_checkout, data=checkout_data)
+        new_loan = Attribution.objects.get(materiel=self.materiel, date_retour_effective__isnull=True)
+        self.assertNotEqual(new_loan.pk, attribution.pk)
+        self.client.post(url_checkin, data=checkin_data)
+        new_loan.refresh_from_db()
+        self.assertIsNone(new_loan.date_retour_effective)
 
     def test_bulk_delete_materiels(self):
         """Supprime plusieurs matériels en une seule requête (AJAX)."""
