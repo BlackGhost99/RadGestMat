@@ -43,6 +43,7 @@
     <div class="card-body">
       <form method="post" id="attribution_form">
         {% csrf_token %}
+              <input type="hidden" name="movement_token" value="{{ movement_token }}">
         <input type="hidden" name="action" value="attribution">
         {{ form.materiel }}
 

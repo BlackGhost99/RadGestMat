@@ -25,6 +25,7 @@
             <!-- Form -->
             <form method="post" class="needs-validation">
                 {% csrf_token %}
+                <input type="hidden" name="attribution_id" value="{{ attribution.pk }}">
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">

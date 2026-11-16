@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.core import signing
 # assets/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -2793,6 +2794,19 @@ def checkout(request, asset_id):
         messages.error(request, 'Ce matériel n\'est pas disponible pour attribution.')
         return redirect('assets:materiel_detail', pk=materiel.pk)
 
+    # Bind the form to the current movement generation under the material lock.
+    latest_id = Attribution.objects.filter(materiel=materiel).order_by('-pk').values_list('pk', flat=True).first()
+    movement_state = [request.user.pk, materiel.pk, latest_id]
+    movement_token = signing.dumps(movement_state, salt='radgestmat.checkout')
+    if request.method == 'POST' and request.POST.get('action') != 'create_client':
+        try:
+            submitted_state = signing.loads(request.POST.get('movement_token', ''), salt='radgestmat.checkout')
+        except signing.BadSignature:
+            submitted_state = None
+        if submitted_state != movement_state:
+            messages.error(request, "Cette demande d'attribution est périmée. Rechargez le formulaire.")
+            return redirect('assets:materiel_detail', pk=materiel.pk)
+
     # Initialiser les formulaires
     form = None
     quick_form = QuickClientForm()
@@ -2890,6 +2904,7 @@ def checkout(request, asset_id):
     return render(request, 'assets/check_out.html', {
         'form': form, 
         'quick_form': quick_form,
+        'movement_token': movement_token,
         'materiel': materiel
     })
 
@@ -2912,6 +2927,9 @@ def checkin(request, asset_id):
         return redirect('assets:materiel_detail', pk=materiel.pk)
 
     if request.method == 'POST':
+        if request.POST.get('attribution_id') != str(attribution.pk):
+            messages.error(request, "Cette demande de retour est périmée. Rechargez le formulaire.")
+            return redirect('assets:materiel_detail', pk=materiel.pk)
         form = CheckInForm(request.POST, attribution=attribution)
         if form.is_valid():
             date_retour = form.cleaned_data.get('date_retour_effective') or timezone.now().date()
@@ -2959,7 +2977,7 @@ def checkin(request, asset_id):
                         materiel=materiel,
                         attribution=attribution,
                         departement=materiel.departement,
-                        description=f"Matériel retourné par {attribution.client.nom} le {date_retour}."
+                        description=f"Matériel retourné par {attribution.client or attribution.salle or 'Destination inconnue'} le {date_retour}."
                     )
             except Exception:
                 # Ne pas bloquer le flux en cas d'erreur d'alerte
