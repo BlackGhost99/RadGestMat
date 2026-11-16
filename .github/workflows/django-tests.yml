@@ -1,0 +1,32 @@
+name: Django regression tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  django:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DJANGO_SETTINGS_MODULE: radgestmat.settings.development
+      EMAIL_DELIVERY_METHOD: smtp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: |
+          mkdir -p logs
+          python -m pip install -r requirements.txt
+      - name: Django checks
+        run: python manage.py check --settings=radgestmat.settings.development
+      - name: Movement regression
+        run: python manage.py test assets.tests.MaterielViewsTest.test_checkout_and_checkin_workflow --settings=radgestmat.settings.development --noinput
+      - name: Application tests
+        if: always()
+        run: python manage.py test assets users --settings=radgestmat.settings.development --noinput
