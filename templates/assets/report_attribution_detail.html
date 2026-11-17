@@ -9,7 +9,7 @@
     </div>
     <div>
       {% if attribution.date_retour_effective %}
-        <span class="badge bg-info">Retourne le {{ attribution.date_retour_effective|date:"d/m/Y" }}</span>
+        <span class="badge bg-info">Retourne le {{ attribution.date_retour_effective|date:"d/m/Y" }}{% if attribution.heure_retour_effective %} à {{ attribution.heure_retour_effective|time:"H:i" }}{% endif %}</span>
       {% else %}
         <span class="badge bg-success">Actif</span>
       {% endif %}
@@ -56,7 +56,7 @@
           </div>
           <div><strong>Retour prevu:</strong>
             {% if attribution.date_retour_prevue %}
-              {{ attribution.date_retour_prevue|date:"d/m/Y" }}
+              {{ attribution.date_retour_prevue|date:"d/m/Y" }}{% if attribution.heure_retour_prevue %} à {{ attribution.heure_retour_prevue|time:"H:i" }}{% endif %}
             {% else %}
               -
             {% endif %}

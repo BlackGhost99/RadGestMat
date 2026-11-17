@@ -100,6 +100,14 @@
           {% if form.date_retour_prevue.errors %}
             <div class="invalid-feedback d-block">{{ form.date_retour_prevue.errors.0 }}</div>
           {% endif %}
+          <label for="{{ form.heure_retour_prevue.id_for_label }}" class="form-label mt-3">
+            <strong>Heure de retour prévue *</strong>
+          </label>
+          {{ form.heure_retour_prevue }}
+          {% if form.heure_retour_prevue.errors %}
+            <div class="invalid-feedback d-block">{{ form.heure_retour_prevue.errors.0 }}</div>
+          {% endif %}
+          <small class="form-text text-muted">Heure locale de retour, même pour un prêt de quelques heures.</small>
         </div>
 
         <!-- Notes -->
@@ -395,6 +403,10 @@
     if (!typeSelect || !dateBlock) return;
     const needsDate = typeSelect.value === 'TEMPORAIRE';
     dateBlock.style.display = needsDate ? 'block' : 'none';
+    dateBlock.querySelectorAll('input').forEach(input => {
+      input.required = needsDate;
+      input.disabled = !needsDate;
+    });
   }
 
   const typeSelect = document.getElementById('{{ form.type_attribution.id_for_label }}');

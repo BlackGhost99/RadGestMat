@@ -103,11 +103,14 @@ class AlerteService:
     @staticmethod
     def detecter_retards_retour():
         """Détecte les attributions avec retard de retour"""
-        aujourdhui = timezone.now().date()
+        now = timezone.localtime()
+        aujourdhui = now.date()
         attributions_en_retard = Attribution.objects.filter(
             type_attribution=Attribution.TYPE_TEMPORAIRE,
-            date_retour_prevue__lt=aujourdhui,
-            date_retour_effective__isnull=True
+            date_retour_effective__isnull=True,
+        ).filter(
+            Q(date_retour_prevue__lt=aujourdhui) |
+            Q(date_retour_prevue=aujourdhui, heure_retour_prevue__lt=now.time())
         ).select_related('materiel', 'client', 'departement', 'salle')
         
         alertes_creees = []
@@ -117,10 +120,12 @@ class AlerteService:
                 type_alerte=Alerte.TYPE_RETARD,
                 attribution=attribution,
                 reglementee=False
-            ).first()
+            ).exclude(severite=Alerte.SEVERITE_INFO).first()
             
             if not alerte_existante:
-                jours_retard = (aujourdhui - attribution.date_retour_prevue).days
+                minutes_retard = attribution.get_retard_minutes()
+                jours_retard = minutes_retard // 1440
+                heures, minutes = divmod(minutes_retard % 1440, 60)
                 severite = Alerte.SEVERITE_CRITICAL if jours_retard > 7 else Alerte.SEVERITE_WARNING
                 
                 dest_label = attribution.client.nom if attribution.client else (f"Salle: {attribution.salle}" if attribution.salle else 'Inconnu')
@@ -131,8 +136,8 @@ class AlerteService:
                     materiel=attribution.materiel,
                     attribution=attribution,
                     departement=attribution.departement,
-                    description=f"Retard de retour: {jours_retard} jour(s) de retard. "
-                               f"Date retour prévue: {attribution.date_retour_prevue}. "
+                    description=f"Retard de retour: {jours_retard} j {heures} h {minutes} min de retard. "
+                               f"Retour prévu: {attribution.retour_echeance():%d/%m/%Y %H:%M}. "
                                f"Destinataire: {dest_label}"
                 )
                 alertes_creees.append(alerte)

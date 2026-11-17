@@ -213,6 +213,7 @@ class MaterielViewsTest(TestCase):
             'destination_type': 'client',
             'type_attribution': 'TEMPORAIRE',
             'date_retour_prevue': retour_prevu,
+            'heure_retour_prevue': '12:00',
             'notes': 'Prêt test'
         }
         resp = self.client.post(url_checkout, data=checkout_data)
@@ -223,6 +224,7 @@ class MaterielViewsTest(TestCase):
         attribution = Attribution.objects.filter(materiel=self.materiel, date_retour_effective__isnull=True).first()
         self.assertIsNotNone(attribution)
         self.assertEqual(attribution.client, client)
+        self.assertEqual(attribution.heure_retour_prevue.strftime('%H:%M'), '12:00')
 
         # Maintenant check-in
         url_checkin = reverse('assets:materiel_checkin', args=[self.materiel.asset_id])
@@ -243,6 +245,7 @@ class MaterielViewsTest(TestCase):
 
         attribution.refresh_from_db()
         self.assertIsNotNone(attribution.date_retour_effective)
+        self.assertIsNotNone(attribution.heure_retour_effective)
         # Materiel redevenu disponible
         self.materiel.refresh_from_db()
         self.assertEqual(self.materiel.statut_disponibilite, 'DISPONIBLE')
@@ -377,6 +380,7 @@ class MaterielViewsTest(TestCase):
                 'salle': room.pk,
                 'type_attribution': Attribution.TYPE_TEMPORAIRE,
                 'date_retour_prevue': date.today() + timedelta(days=1),
+                'heure_retour_prevue': '12:00',
             },
         )
         self.assertEqual(response.status_code, 302)
@@ -490,3 +494,51 @@ class MailTransportTest(SimpleTestCase):
                 message='Message',
                 recipient_list=['dest@example.com'],
             )
+
+
+@override_settings(TIME_ZONE='Africa/Libreville', USE_TZ=True)
+class HourlyLoanTest(SimpleTestCase):
+    def test_same_day_deadline_and_duration(self):
+        from datetime import datetime, time
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo('Africa/Libreville')
+        start = datetime(2026, 11, 17, 9, tzinfo=tz)
+        loan = Attribution(type_attribution=Attribution.TYPE_TEMPORAIRE,
+                           date_attribution=start, date_retour_prevue=start.date(),
+                           heure_retour_prevue=time(12))
+        self.assertEqual(loan.calculate_duree_emprunt(), Attribution.DUREE_COURT_TERME)
+        with patch('django.utils.timezone.now', return_value=start.replace(hour=12)):
+            self.assertFalse(loan.is_overdue())
+        with patch('django.utils.timezone.now', return_value=start.replace(hour=12, minute=1)):
+            self.assertTrue(loan.is_overdue())
+            self.assertEqual(loan.get_retard_minutes(), 1)
+        loan.date_retour_effective = start.date()
+        loan.heure_retour_effective = time(12, 1)
+        self.assertFalse(loan.is_overdue())
+        self.assertEqual(loan.retour_statut(), 'RETARD')
+        loan.heure_retour_effective = time(12)
+        self.assertEqual(loan.retour_statut(), 'A_HEURE')
+        loan.heure_retour_effective = time(11, 59)
+        self.assertEqual(loan.retour_statut(), 'AVANCE')
+
+    def test_legacy_date_only_keeps_end_of_day(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo('Africa/Libreville')
+        start = datetime(2026, 11, 17, 9, tzinfo=tz)
+        loan = Attribution(date_attribution=start, date_retour_prevue=start.date())
+        self.assertEqual(loan.calculate_duree_emprunt(), Attribution.DUREE_MOYEN_TERME)
+        with patch('django.utils.timezone.now', return_value=start.replace(hour=23)):
+            self.assertFalse(loan.is_overdue())
+
+    def test_checkin_rejects_time_before_start(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from .forms import CheckInForm
+        start = datetime(2026, 11, 17, 9, tzinfo=ZoneInfo('Africa/Libreville'))
+        loan = Attribution(date_attribution=start)
+        with patch('django.utils.timezone.now', return_value=start.replace(hour=12)):
+            form = CheckInForm({'date_retour_effective': '2026-11-17', 'heure_retour_effective': '08:59',
+                                'raison_non_retour': 'NORMAL'}, attribution=loan)
+            self.assertFalse(form.is_valid())
+            self.assertIn('heure_retour_effective', form.errors)

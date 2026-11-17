@@ -306,13 +306,9 @@ class Attribution(models.Model):
             start_naive = datetime.combine(self.date_attribution.date() if hasattr(self.date_attribution, 'date') else self.date_attribution, time.min)
             start = timezone.make_aware(start_naive) if timezone.is_naive(start_naive) else start_naive
         
-        if self.heure_retour_prevue:
-            end_naive = datetime.combine(self.date_retour_prevue, self.heure_retour_prevue)
-        else:
-            end_naive = datetime.combine(self.date_retour_prevue, time.min)
-        
-        end = timezone.make_aware(end_naive) if timezone.is_naive(end_naive) else end_naive
-        
+        # Même échéance pour la durée et les alertes, y compris les anciens prêts sans heure.
+        end = self.retour_echeance()
+
         delta = end - start
         hours = delta.total_seconds() / 3600
         
@@ -335,6 +331,29 @@ class Attribution(models.Model):
         from django.utils import timezone
         echeance = self.retour_echeance()
         return bool(not self.date_retour_effective and echeance and timezone.now() > echeance)
+
+    def retour_statut(self):
+        """Statut historique, sans inventer une heure pour les anciens retours."""
+        from datetime import datetime
+        from django.utils import timezone
+        deadline = self.retour_echeance()
+        if not self.date_retour_effective or not deadline:
+            return 'SANS_ECHEANCE'
+        if self.date_retour_effective > self.date_retour_prevue:
+            return 'RETARD'
+        if self.date_retour_effective < self.date_retour_prevue:
+            return 'AVANCE'
+        if self.heure_retour_effective is None and self.heure_retour_prevue is not None:
+            return 'INCONNU'
+        if self.heure_retour_effective is None:
+            return 'A_HEURE'
+        actual = timezone.make_aware(
+            datetime.combine(self.date_retour_effective, self.heure_retour_effective),
+            timezone.get_default_timezone(),
+        )
+        if actual > deadline:
+            return 'RETARD'
+        return 'AVANCE' if actual < deadline else 'A_HEURE'
 
     def get_retard_minutes(self):
         from django.utils import timezone

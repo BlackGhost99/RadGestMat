@@ -180,7 +180,7 @@
                                     <strong>Date attribution:</strong> {{ attribution_active.date_attribution|date:"d/m/Y H:i" }}<br>
                                     <strong>Attribution:</strong> {{ attribution_active.get_type_attribution_display }}<br>
                                     {% if attribution_active.type_attribution == "TEMPORAIRE" and attribution_active.date_retour_prevue %}
-                                    <strong>Retour prévu:</strong> {{ attribution_active.date_retour_prevue|date:"d/m/Y" }}<br>
+                                    <strong>Retour prévu:</strong> {{ attribution_active.date_retour_prevue|date:"d/m/Y" }}{% if attribution_active.heure_retour_prevue %} à {{ attribution_active.heure_retour_prevue|time:"H:i" }}{% endif %}<br>
                                     {% elif attribution_active.type_attribution == "INDEFINIE" %}
                                     <strong>Retour:</strong> Indéfinie<br>
                                     {% endif %}

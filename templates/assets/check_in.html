@@ -39,6 +39,16 @@
                     </div>
 
                     <div class="col-md-6 mb-3">
+                        <label for="{{ form.heure_retour_effective.id_for_label }}" class="form-label">
+                            {{ form.heure_retour_effective.label }}
+                        </label>
+                        {{ form.heure_retour_effective }}
+                        {% if form.heure_retour_effective.errors %}
+                            <div class="invalid-feedback d-block">{{ form.heure_retour_effective.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6 mb-3">
                         <label for="{{ form.raison_non_retour.id_for_label }}" class="form-label">
                             {{ form.raison_non_retour.label }}
                         </label>

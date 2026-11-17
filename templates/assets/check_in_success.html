@@ -57,9 +57,9 @@
                         <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Client:</dt>
                         <dd class="col-sm-7" style="color: #333;">{{ client_nom }}</dd>
                         <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Check-out:</dt>
-                        <dd class="col-sm-7" style="color: #333;">{{ date_attribution|date:"d/m/Y" }}</dd>
+                        <dd class="col-sm-7" style="color: #333;">{{ date_attribution }}</dd>
                         <dt class="col-sm-5" style="color: #666; font-weight: 500; font-size: 0.9rem;">Check-in:</dt>
-                        <dd class="col-sm-7" style="color: #333;">{{ date_retour|date:"d/m/Y" }}</dd>
+                        <dd class="col-sm-7" style="color: #333;">{{ date_retour }}{% if heure_retour %} à {{ heure_retour }}{% endif %}</dd>
                     </dl>
                 </div>
             </div>
