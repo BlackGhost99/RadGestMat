@@ -49,17 +49,16 @@
             <span>Paramètres</span>
         </a>
         
-        {% if user.is_staff or user.profilutilisateur.est_super_admin %}
+        {% if can_administer_accounts %}
         <div class="divider"></div>
         <h3>Administration</h3>
         <a href="{% url 'users:user_list' %}">
             <i class="bi bi-people-fill"></i>
             <span>Utilisateurs</span>
         </a>
-        <a href="/admin/">
-            <i class="bi bi-gear"></i>
-            <span>Admin Django</span>
-        </a>
+        {% if user.is_superuser and user.is_staff %}
+        <a href="/admin/"><i class="bi bi-gear"></i><span>Admin Django (avancé)</span></a>
+        {% endif %}
         {% endif %}
     </nav>
 

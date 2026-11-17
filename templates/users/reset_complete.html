@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Mot de passe modifié — RadGestMat{% endblock %}
+{% block header %}{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:650px"><div class="card card-body">
+<h1 class="h4">Mot de passe réinitialisé</h1>
+<p>Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.</p>
+<a class="btn btn-primary" href="{% url 'login' %}">Se connecter</a>
+</div></div>
+{% endblock %}

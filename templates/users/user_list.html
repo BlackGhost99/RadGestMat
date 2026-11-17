@@ -52,7 +52,10 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <select name="statut" class="form-select"><option value="">Tous les statuts</option><option value="actif" {% if status == 'actif' %}selected{% endif %}>Actifs</option><option value="inactif" {% if status == 'inactif' %}selected{% endif %}>Inactifs</option></select>
+                </div>
+                <div class="col-md-1">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search me-1"></i>Filtrer
                     </button>
@@ -66,11 +69,11 @@
         <div class="col-12">
             <div class="btn-group flex-wrap" role="group" aria-label="Filtre rapide par département">
                 {% with q=request.GET.search|default:'' r=request.GET.role|default:'' %}
-                <a href="?search={{ q|urlencode }}&role={{ r|urlencode }}" class="btn {% if not dept_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                <a href="?search={{ q|urlencode }}&role={{ r|urlencode }}&statut={{ status|urlencode }}" class="btn {% if not dept_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">
                     <i class="bi bi-funnel me-1"></i>Tous les départements
                 </a>
                 {% for dept in departements %}
-                <a href="?departement={{ dept.id }}&search={{ q|urlencode }}&role={{ r|urlencode }}" class="btn {% if dept_filter|stringformat:"s" == dept.id|stringformat:"s" %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                <a href="?departement={{ dept.id }}&search={{ q|urlencode }}&role={{ r|urlencode }}&statut={{ status|urlencode }}" class="btn {% if dept_filter|stringformat:"s" == dept.id|stringformat:"s" %}btn-primary{% else %}btn-outline-primary{% endif %}">
                     {{ dept.nom }}
                 </a>
                 {% endfor %}
@@ -96,14 +99,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for user in users %}
+                        {% for account in users %}
                         <tr>
-                            <td><strong>{{ user.username }}</strong></td>
-                            <td>{{ user.get_full_name|default:"—" }}</td>
-                            <td>{{ user.email|default:"—" }}</td>
+                            <td><strong>{{ account.username }}</strong></td>
+                            <td>{{ account.get_full_name|default:"—" }}</td>
+                            <td>{{ account.email|default:"—" }}</td>
                             <td>
-                                {% if user.profilutilisateur %}
-                                    {% with role=user.profilutilisateur.role %}
+                                {% if account.profilutilisateur %}
+                                    {% with role=account.profilutilisateur.role %}
                                         {% if role == 'SUPER_ADMIN' %}
                                             <span class="badge bg-danger">👑 Super Admin</span>
                                         {% elif role == 'DEPT_MANAGER' %}
@@ -117,14 +120,14 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if user.profilutilisateur %}
-                                    {{ user.profilutilisateur.departement.nom|default:"—" }}
+                                {% if account.profilutilisateur %}
+                                    {{ account.profilutilisateur.departement.nom|default:"—" }}
                                 {% else %}
                                     <span class="text-muted">—</span>
                                 {% endif %}
                             </td>
                             <td>
-                                {% if user.is_active %}
+                                {% if account.is_active and account.profilutilisateur.actif != False %}
                                     <span class="badge bg-success">
                                         <i class="bi bi-check-circle me-1"></i>Actif
                                     </span>
@@ -136,15 +139,10 @@
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{% url 'users:user_detail' user.pk %}" class="btn btn-info" title="Voir">
+                                    <a href="{% url 'users:user_detail' account.pk %}" class="btn btn-info" title="Voir">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <a href="{% url 'users:user_update' user.pk %}" class="btn btn-warning" title="Modifier">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <a href="{% url 'users:user_delete' user.pk %}" class="btn btn-danger" title="Supprimer">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
+                                    <a href="{% url 'users:user_detail' account.pk %}" class="btn btn-outline-primary" title="Gérer le compte et son mot de passe">Gérer</a>
                                 </div>
                             </td>
                         </tr>

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Réinitialisation du mot de passe — RadGestMat{% endblock %}
+{% block header %}{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:650px"><div class="card card-body">
+<h1 class="h4">Choisissez votre nouveau mot de passe</h1>
+{% if validlink %}
+<form method="post" autocomplete="off">{% csrf_token %}{{ form.as_p }}
+<button class="btn btn-primary" type="submit">Enregistrer le nouveau mot de passe</button></form>
+{% else %}
+<p>Ce lien est invalide, expiré ou déjà utilisé. Contactez votre administrateur pour en obtenir un nouveau.</p>
+<a class="btn btn-outline-primary" href="{% url 'login' %}">Retour à la connexion</a>
+{% endif %}
+</div></div>
+{% endblock %}

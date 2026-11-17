@@ -76,6 +76,8 @@ def _diff_instance(old, new):
     new_dict = model_to_dict(new)
     # Compare keys present in new
     for k, new_val in new_dict.items():
+        if k in {'password', 'session_data'}:
+            continue
         old_val = old_dict.get(k)
         if old is None:
             # creation: record initial values
@@ -92,7 +94,7 @@ def audit_post_save(sender, instance, created, **kwargs):
     if SIGNALS_DISABLED:
         return
     # Skip AuditLog itself to avoid recursion
-    if sender.__name__ == 'AuditLog':
+    if sender.__name__ in {'AuditLog', 'Session'}:
         return
     if not _audit_log_table_exists():
         return
@@ -114,7 +116,7 @@ def audit_post_save(sender, instance, created, **kwargs):
                 object_repr=object_repr,
                 changes=changes or None,
                 ip_address=getattr(request, 'META', {}).get('REMOTE_ADDR') if request else None,
-                metadata=_safe_jsonify({'path': getattr(request, 'path', None)}) if request else None,
+                metadata=_safe_jsonify({'path': ('/users/reinitialisation/[masque]/' if '/users/reinitialisation/' in request.path else request.path)}) if request else None,
             )
         else:
             # For update, we try to get previous state by fetching fresh from DB
@@ -133,7 +135,7 @@ def audit_post_save(sender, instance, created, **kwargs):
                     object_repr=object_repr,
                     changes=changes,
                     ip_address=getattr(request, 'META', {}).get('REMOTE_ADDR') if request else None,
-                    metadata=_safe_jsonify({'path': getattr(request, 'path', None)}) if request else None,
+                    metadata=_safe_jsonify({'path': ('/users/reinitialisation/[masque]/' if '/users/reinitialisation/' in request.path else request.path)}) if request else None,
                 )
     except Exception:
         # Silently ignore audit errors during migrations or other critical operations
@@ -144,7 +146,7 @@ def audit_post_save(sender, instance, created, **kwargs):
 def audit_post_delete(sender, instance, **kwargs):
     if SIGNALS_DISABLED:
         return
-    if sender.__name__ == 'AuditLog':
+    if sender.__name__ in {'AuditLog', 'Session'}:
         return
     if not _audit_log_table_exists():
         return
@@ -155,7 +157,7 @@ def audit_post_delete(sender, instance, **kwargs):
     obj_id = getattr(instance, 'pk', None)
     # Capture a snapshot of the instance fields
     try:
-        snapshot = {k: _safe_jsonify(v) for k, v in model_to_dict(instance).items()}
+        snapshot = {k: _safe_jsonify(v) for k, v in model_to_dict(instance).items() if k not in {'password', 'session_data'}}
     except Exception:
         snapshot = None
     AuditLog.objects.create(
@@ -166,5 +168,5 @@ def audit_post_delete(sender, instance, **kwargs):
         object_repr=object_repr,
         changes={'snapshot': snapshot} if snapshot else None,
         ip_address=getattr(request, 'META', {}).get('REMOTE_ADDR') if request else None,
-        metadata=_safe_jsonify({'path': getattr(request, 'path', None)}) if request else None,
+        metadata=_safe_jsonify({'path': ('/users/reinitialisation/[masque]/' if '/users/reinitialisation/' in request.path else request.path)}) if request else None,
     )
