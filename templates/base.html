@@ -224,6 +224,17 @@
     </div>
     {% endif %}
 
+    {% if user.is_authenticated %}
+    <section class="app-content py-2" id="web-reminders" data-url="{% url 'assets:web_reminders' %}" hidden aria-live="polite">
+        <div class="alert alert-warning mb-0">
+            <strong><i class="bi bi-clock-history me-2"></i>Mes retours à surveiller</strong>
+            <ul id="web-reminder-items" class="mb-0"></ul>
+            <a href="{% url 'assets:notifications_dashboard' %}">Centre de notifications</a>
+            <small id="web-reminders-stale" class="d-block" hidden>Connexion interrompue : informations non actualisées.</small>
+        </div>
+    </section>
+    <script src="{% static 'js/web-reminders.js' %}" defer></script>
+    {% endif %}
     <!-- Contenu principal -->
     <main class="app-main flex-grow-1">
         {% block content_wrapper %}

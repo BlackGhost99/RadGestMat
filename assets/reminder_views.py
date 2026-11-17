@@ -149,3 +149,39 @@ def device_session(request):
     if not profile or not profile.actif:
         return JsonResponse({"error": "forbidden"}, status=403)
     return JsonResponse({"user_id": request.user.pk, "csrf": get_token(request)})
+
+
+@require_GET
+@never_cache
+def web_reminders(request):
+    """Session-only reminders; never grants access to device credentials."""
+    from datetime import timedelta
+    from django.urls import reverse
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "authentication_required"}, status=401)
+    profile = getattr(request, "profil_utilisateur", None)
+    if not profile or not profile.actif:
+        return JsonResponse({"error": "profile_required"}, status=403)
+    now = timezone.now()
+    qs = Attribution.objects.filter(
+        employe_responsable=request.user,
+        type_attribution=Attribution.TYPE_TEMPORAIRE,
+        date_retour_effective__isnull=True,
+        date_retour_prevue__isnull=False,
+        date_retour_prevue__lte=timezone.localdate(now + timedelta(hours=2)),
+    ).select_related("materiel")
+    if profile.role != "SUPER_ADMIN":
+        if not profile.departement_id:
+            return JsonResponse({"error": "department_required"}, status=403)
+        qs = qs.filter(departement_id=profile.departement_id)
+    items = []
+    for loan in qs:
+        deadline = loan.retour_echeance()
+        if deadline and deadline <= now + timedelta(hours=2):
+            items.append({
+                "id": loan.pk, "asset": loan.materiel.asset_id,
+                "deadline": timezone.localtime(deadline).strftime("%d/%m/%Y %H:%M"),
+                "overdue": deadline < now,
+                "url": reverse("assets:materiel_detail", args=[loan.materiel_id]),
+            })
+    return JsonResponse({"reminders": items})

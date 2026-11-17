@@ -68,6 +68,8 @@ urlpatterns = [
 
     path('api/reminders/device/session/', reminder_views.device_session, name='reminder_device_session'),
 
+    path('api/reminders/web/', reminder_views.web_reminders, name='web_reminders'),
+
     # Notifications (Phase 6)
     path('notifications/dashboard/', views.notifications_dashboard, name='notifications_dashboard'),
     path('notifications/preferences/', views.notification_preferences, name='notification_preferences'),
