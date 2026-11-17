@@ -652,11 +652,12 @@ class AttributionForm(forms.ModelForm):
 
     class Meta:
         model = Attribution
-        fields = ['materiel', 'client', 'salle', 'type_attribution', 'date_retour_prevue', 'notes']
+        fields = ['materiel', 'client', 'salle', 'type_attribution', 'date_retour_prevue', 'heure_retour_prevue', 'notes']
         widgets = {
             'materiel': forms.HiddenInput(),
             'client': forms.Select(attrs={'class': 'form-select', 'id': 'client_select'}),
-            'date_retour_prevue': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'date_retour_prevue': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'heure_retour_prevue': forms.TimeInput(format='%H:%M', attrs={'class': 'form-control', 'type': 'time', 'step': '60'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
@@ -695,40 +696,27 @@ class AttributionForm(forms.ModelForm):
             if client and client.type_client != Client.TYPE_INTERNE:
                 raise forms.ValidationError({'client': "L'attribution indéfinie est réservée aux clients internes."})
 
-        # Validate that the planned return date is not before the attribution date
-        date_retour_prevue = cleaned.get('date_retour_prevue')
-        if type_attribution == Attribution.TYPE_TEMPORAIRE and not date_retour_prevue:
-            raise forms.ValidationError({'date_retour_prevue': "La date de retour prévue est requise pour une attribution temporaire."})
+        from datetime import datetime
+        from django.utils import timezone
+
+        planned_date = cleaned.get('date_retour_prevue')
+        planned_time = cleaned.get('heure_retour_prevue')
         if type_attribution != Attribution.TYPE_TEMPORAIRE:
             cleaned['date_retour_prevue'] = None
+            cleaned['heure_retour_prevue'] = None
+            return cleaned
 
-        if date_retour_prevue:
-            from django.utils import timezone
-            # If editing an existing attribution, use its date_attribution; otherwise use today
-            if self.instance and self.instance.pk and getattr(self.instance, 'date_attribution', None):
-                base_date = self.instance.date_attribution
-
-                try:
-
-                    if hasattr(base_date, 'date'):
-
-                        base_date = base_date.date()
-
-                except Exception:
-
-                    pass
-
-            else:
-
-                base_date = timezone.now().date()
-
-
-
-            if date_retour_prevue < base_date:
-
-                raise forms.ValidationError({'date_retour_prevue': "La date de retour prévue ne peut pas être antérieure à la date d'attribution."})
-
-
+        if not planned_date:
+            self.add_error('date_retour_prevue', "La date de retour prévue est obligatoire.")
+        if not planned_time:
+            self.add_error('heure_retour_prevue', "L'heure de retour prévue est obligatoire.")
+        if planned_date and planned_time:
+            start = self.instance.date_attribution if self.instance.pk else timezone.now()
+            deadline = timezone.make_aware(
+                datetime.combine(planned_date, planned_time), timezone.get_default_timezone()
+            )
+            if deadline <= start:
+                self.add_error('heure_retour_prevue', "Le retour prévu doit être postérieur à la date et à l'heure d'attribution.")
 
         return cleaned
 
@@ -764,12 +752,18 @@ class CheckInForm(forms.Form):
 
     date_retour_effective = forms.DateField(
 
-        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}), 
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}), 
 
         required=False,
 
         label='Date de retour'
 
+    )
+
+    heure_retour_effective = forms.TimeField(
+        widget=forms.TimeInput(format='%H:%M', attrs={'class': 'form-control', 'type': 'time', 'step': '60'}),
+        required=False,
+        label='Heure de retour',
     )
 
     raison_non_retour = forms.ChoiceField(
@@ -832,42 +826,26 @@ class CheckInForm(forms.Form):
 
         cleaned = super().clean()
 
-        date_retour_effective = cleaned.get('date_retour_effective')
-
+        from datetime import datetime
         from django.utils import timezone
 
-
-
-        # Default to today if not provided
-
-        if not date_retour_effective:
-
-            date_retour_effective = timezone.now().date()
-
-            cleaned['date_retour_effective'] = date_retour_effective
-
-
-
-        # If an attribution was provided, ensure return date is not before attribution date
-
-        if self.attribution and getattr(self.attribution, 'date_attribution', None):
-
-            base_date = self.attribution.date_attribution
-
-            try:
-
-                if hasattr(base_date, 'date'):
-
-                    base_date = base_date.date()
-
-            except Exception:
-
-                pass
-
-            if date_retour_effective < base_date:
-
-                raise forms.ValidationError({'date_retour_effective': "La date de retour ne peut pas être antérieure à la date d'attribution."})
-
-
+        now = timezone.localtime(timezone.now(), timezone.get_default_timezone())
+        if 'date_retour_effective' in self.errors or 'heure_retour_effective' in self.errors:
+            return cleaned
+        returned_date = cleaned.get('date_retour_effective') or now.date()
+        returned_time = cleaned.get('heure_retour_effective')
+        if returned_time is None:
+            if returned_date != now.date():
+                self.add_error('heure_retour_effective', "Indiquez l'heure du retour pour cette date.")
+                return cleaned
+            returned_time = now.time().replace(microsecond=0)
+        returned_at = timezone.make_aware(datetime.combine(returned_date, returned_time), timezone.get_default_timezone())
+        if returned_at > now:
+            self.add_error('heure_retour_effective', "Le retour effectif ne peut pas être dans le futur.")
+        start = getattr(self.attribution, 'date_attribution', None)
+        if start and returned_at < start.replace(second=0, microsecond=0):
+            self.add_error('heure_retour_effective', "Le retour ne peut pas être antérieur à l'attribution.")
+        cleaned['date_retour_effective'] = returned_date
+        cleaned['heure_retour_effective'] = returned_time
 
         return cleaned

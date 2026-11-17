@@ -167,7 +167,7 @@
                 <div class="alert-box">
                     <div class="info-row">
                         <span class="info-label">Date retour prévue:</span>
-                        <span class="info-value">{{ attribution.date_retour_prevue|date:"d/m/Y" }}</span>
+                        <span class="info-value">{{ attribution.date_retour_prevue|date:"d/m/Y" }}{% if attribution.heure_retour_prevue %} à {{ attribution.heure_retour_prevue|time:"H:i" }}{% endif %}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Statut:</span>

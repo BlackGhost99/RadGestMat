@@ -213,6 +213,7 @@ class MaterielViewsTest(TestCase):
             'destination_type': 'client',
             'type_attribution': 'TEMPORAIRE',
             'date_retour_prevue': retour_prevu,
+            'heure_retour_prevue': '12:00',
             'notes': 'Prêt test'
         }
         resp = self.client.post(url_checkout, data=checkout_data)
@@ -223,6 +224,7 @@ class MaterielViewsTest(TestCase):
         attribution = Attribution.objects.filter(materiel=self.materiel, date_retour_effective__isnull=True).first()
         self.assertIsNotNone(attribution)
         self.assertEqual(attribution.client, client)
+        self.assertEqual(attribution.heure_retour_prevue.strftime('%H:%M'), '12:00')
 
         # Maintenant check-in
         url_checkin = reverse('assets:materiel_checkin', args=[self.materiel.asset_id])
@@ -243,6 +245,7 @@ class MaterielViewsTest(TestCase):
 
         attribution.refresh_from_db()
         self.assertIsNotNone(attribution.date_retour_effective)
+        self.assertIsNotNone(attribution.heure_retour_effective)
         # Materiel redevenu disponible
         self.materiel.refresh_from_db()
         self.assertEqual(self.materiel.statut_disponibilite, 'DISPONIBLE')
@@ -258,6 +261,43 @@ class MaterielViewsTest(TestCase):
         self.client.post(url_checkin, data=checkin_data)
         new_loan.refresh_from_db()
         self.assertIsNone(new_loan.date_retour_effective)
+
+    def test_same_day_checkout_requires_valid_hour(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from .forms import AttributionForm
+        start = datetime(2026, 11, 17, 9, tzinfo=ZoneInfo('Africa/Libreville'))
+        client = Client.objects.create(nom='Client prêt horaire', departement=self.dept)
+        data = {'materiel': self.materiel.pk, 'client': client.pk, 'destination_type': 'client',
+                'type_attribution': Attribution.TYPE_TEMPORAIRE, 'date_retour_prevue': '2026-11-17'}
+        with override_settings(TIME_ZONE='Africa/Libreville', USE_TZ=True):
+            with patch('django.utils.timezone.now', return_value=start):
+                missing = AttributionForm(data)
+                self.assertFalse(missing.is_valid())
+                self.assertIn('heure_retour_prevue', missing.errors)
+                early = AttributionForm({**data, 'heure_retour_prevue': '08:59'})
+                self.assertFalse(early.is_valid())
+                self.assertIn('heure_retour_prevue', early.errors)
+                valid = AttributionForm({**data, 'heure_retour_prevue': '12:00'})
+                self.assertTrue(valid.is_valid(), valid.errors)
+
+    def test_alert_detects_same_day_overdue_despite_info_alert(self):
+        from datetime import datetime, time
+        from zoneinfo import ZoneInfo
+        from .models import Alerte
+        from .services import AlerteService
+        now = datetime(2026, 11, 17, 12, 1, tzinfo=ZoneInfo('Africa/Libreville'))
+        with override_settings(TIME_ZONE='Africa/Libreville', USE_TZ=True):
+            with patch('django.utils.timezone.now', return_value=now.replace(hour=9)):
+                loan = Attribution.objects.create(materiel=self.materiel, departement=self.dept,
+                    date_retour_prevue=now.date(), heure_retour_prevue=time(12))
+            Alerte.objects.create(type_alerte=Alerte.TYPE_RETARD, severite=Alerte.SEVERITE_INFO,
+                materiel=self.materiel, departement=self.dept, attribution=loan, description='Attribution')
+            with patch('django.utils.timezone.now', return_value=now):
+                alerts = AlerteService.detecter_retards_retour()
+                self.assertEqual(len(alerts), 1)
+                self.assertIn('1 min', alerts[0].description)
+                self.assertEqual(AlerteService.detecter_retards_retour(), [])
 
     def test_bulk_delete_materiels(self):
         """Supprime plusieurs matériels en une seule requête (AJAX)."""
@@ -291,6 +331,7 @@ class MaterielViewsTest(TestCase):
 
     def test_report_list_filters_attributions_by_date(self):
         """Le rapport d'audit filtre les attributions sur une periode."""
+        ProfilUtilisateur.objects.update_or_create(user=self.user, defaults={'departement': self.dept, 'role': 'SUPER_ADMIN'})
         self.client.login(username='test', password='testpass123')
 
         now = timezone.now()
@@ -367,16 +408,22 @@ class MaterielViewsTest(TestCase):
         self.assertEqual(len(response.context['attributions_period']), 1)
 
     def test_checkout_persists_conference_room_destination(self):
+        ProfilUtilisateur.objects.update_or_create(user=self.user, defaults={'departement': self.dept, 'role': 'DEPT_USER'})
         self.client.login(username='test', password='testpass123')
         room = Salle.objects.create(nom='Salle Test', departement=self.dept)
+        url = reverse('assets:materiel_checkout', args=[self.materiel.asset_id])
+        page = self.client.get(url)
+        self.assertEqual(page.status_code, 200)
         response = self.client.post(
-            reverse('assets:materiel_checkout', args=[self.materiel.asset_id]),
+            url,
             data={
+                'movement_token': page.context['movement_token'],
                 'materiel': self.materiel.pk,
                 'destination_type': 'salle',
                 'salle': room.pk,
                 'type_attribution': Attribution.TYPE_TEMPORAIRE,
                 'date_retour_prevue': date.today() + timedelta(days=1),
+                'heure_retour_prevue': '12:00',
             },
         )
         self.assertEqual(response.status_code, 302)
@@ -385,15 +432,20 @@ class MaterielViewsTest(TestCase):
         self.assertEqual(attribution.salle, room)
 
     def test_checkout_persists_indefinite_internal_attribution(self):
+        ProfilUtilisateur.objects.update_or_create(user=self.user, defaults={'departement': self.dept, 'role': 'DEPT_USER'})
         self.client.login(username='test', password='testpass123')
         internal = Client.objects.create(
             nom='Service interne',
             type_client=Client.TYPE_INTERNE,
             departement=self.dept,
         )
+        url = reverse('assets:materiel_checkout', args=[self.materiel.asset_id])
+        page = self.client.get(url)
+        self.assertEqual(page.status_code, 200)
         response = self.client.post(
-            reverse('assets:materiel_checkout', args=[self.materiel.asset_id]),
+            url,
             data={
+                'movement_token': page.context['movement_token'],
                 'materiel': self.materiel.pk,
                 'destination_type': 'client',
                 'client': internal.pk,
@@ -490,3 +542,51 @@ class MailTransportTest(SimpleTestCase):
                 message='Message',
                 recipient_list=['dest@example.com'],
             )
+
+
+@override_settings(TIME_ZONE='Africa/Libreville', USE_TZ=True)
+class HourlyLoanTest(SimpleTestCase):
+    def test_same_day_deadline_and_duration(self):
+        from datetime import datetime, time
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo('Africa/Libreville')
+        start = datetime(2026, 11, 17, 9, tzinfo=tz)
+        loan = Attribution(type_attribution=Attribution.TYPE_TEMPORAIRE,
+                           date_attribution=start, date_retour_prevue=start.date(),
+                           heure_retour_prevue=time(12))
+        self.assertEqual(loan.calculate_duree_emprunt(), Attribution.DUREE_COURT_TERME)
+        with patch('django.utils.timezone.now', return_value=start.replace(hour=12)):
+            self.assertFalse(loan.is_overdue())
+        with patch('django.utils.timezone.now', return_value=start.replace(hour=12, minute=1)):
+            self.assertTrue(loan.is_overdue())
+            self.assertEqual(loan.get_retard_minutes(), 1)
+        loan.date_retour_effective = start.date()
+        loan.heure_retour_effective = time(12, 1)
+        self.assertFalse(loan.is_overdue())
+        self.assertEqual(loan.retour_statut(), 'RETARD')
+        loan.heure_retour_effective = time(12)
+        self.assertEqual(loan.retour_statut(), 'A_HEURE')
+        loan.heure_retour_effective = time(11, 59)
+        self.assertEqual(loan.retour_statut(), 'AVANCE')
+
+    def test_legacy_date_only_keeps_end_of_day(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo('Africa/Libreville')
+        start = datetime(2026, 11, 17, 9, tzinfo=tz)
+        loan = Attribution(date_attribution=start, date_retour_prevue=start.date())
+        self.assertEqual(loan.calculate_duree_emprunt(), Attribution.DUREE_MOYEN_TERME)
+        with patch('django.utils.timezone.now', return_value=start.replace(hour=23)):
+            self.assertFalse(loan.is_overdue())
+
+    def test_checkin_rejects_time_before_start(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from .forms import CheckInForm
+        start = datetime(2026, 11, 17, 9, tzinfo=ZoneInfo('Africa/Libreville'))
+        loan = Attribution(date_attribution=start)
+        with patch('django.utils.timezone.now', return_value=start.replace(hour=12)):
+            form = CheckInForm({'date_retour_effective': '2026-11-17', 'heure_retour_effective': '08:59',
+                                'raison_non_retour': 'NORMAL'}, attribution=loan)
+            self.assertFalse(form.is_valid())
+            self.assertIn('heure_retour_effective', form.errors)

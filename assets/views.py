@@ -736,7 +736,7 @@ def _build_human_readable_sentence(report, formatted_changes=None):
             parts.append(f"le {_fmt_dt(when)}")
             # retour prévue
             if attribution.date_retour_prevue:
-                parts.append(f"(retour prévu: {attribution.date_retour_prevue.isoformat()})")
+                parts.append(f"(retour prévu: {timezone.localtime(attribution.retour_echeance()).strftime('%d/%m/%Y %H:%M')})" if attribution.retour_echeance() else f"(retour prévu: {attribution.date_retour_prevue.isoformat()})")
             # notes
             if attribution.notes:
                 parts.append(f"Notes: {attribution.notes}")
@@ -2932,13 +2932,15 @@ def checkin(request, asset_id):
             return redirect('assets:materiel_detail', pk=materiel.pk)
         form = CheckInForm(request.POST, attribution=attribution)
         if form.is_valid():
-            date_retour = form.cleaned_data.get('date_retour_effective') or timezone.now().date()
+            date_retour = form.cleaned_data['date_retour_effective']
+            heure_retour = form.cleaned_data['heure_retour_effective']
             raison_non_retour = form.cleaned_data.get('raison_non_retour')
             description_damage = form.cleaned_data.get('description_damage')
             notes = form.cleaned_data.get('notes')
             maintenance = form.cleaned_data.get('mettre_en_maintenance')
 
             attribution.date_retour_effective = date_retour
+            attribution.heure_retour_effective = heure_retour
             if notes:
                 attribution.notes = (attribution.notes or '') + '\n' + notes
             attribution.save()
@@ -2977,7 +2979,7 @@ def checkin(request, asset_id):
                         materiel=materiel,
                         attribution=attribution,
                         departement=materiel.departement,
-                        description=f"Matériel retourné par {attribution.client or attribution.salle or 'Destination inconnue'} le {date_retour}."
+                        description=f"Matériel retourné par {attribution.client or attribution.salle or 'Destination inconnue'} le {date_retour} à {heure_retour:%H:%M}."
                     )
             except Exception:
                 # Ne pas bloquer le flux en cas d'erreur d'alerte
@@ -3013,8 +3015,9 @@ def checkin(request, asset_id):
                 'materiel_pk': materiel.pk,
                 'materiel_statut': materiel.get_statut_disponibilite_display(),
                 'client_nom': (attribution.client.nom if attribution.client else (str(attribution.salle) if attribution.salle else '')),
-                'date_attribution': attribution.date_attribution.isoformat(),
-                'date_retour': date_retour.isoformat(),
+                'date_attribution': timezone.localtime(attribution.date_attribution).strftime('%d/%m/%Y à %H:%M'),
+                'date_retour': date_retour.strftime('%d/%m/%Y'),
+                'heure_retour': heure_retour.strftime('%H:%M'),
                 'raison': raison_non_retour,
                 'description_damage': description_damage,
                 'notes': notes,
@@ -3025,7 +3028,8 @@ def checkin(request, asset_id):
 
             return redirect('assets:checkin_success')
     else:
-        form = CheckInForm(initial={'date_retour_effective': timezone.now().date()}, attribution=attribution)
+        now = timezone.localtime()
+        form = CheckInForm(initial={'date_retour_effective': now.date(), 'heure_retour_effective': now.time()}, attribution=attribution)
 
     return render(request, 'assets/check_in.html', {'form': form, 'materiel': materiel, 'attribution': attribution})
 

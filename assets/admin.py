@@ -186,7 +186,7 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Attribution)
 class AttributionAdmin(admin.ModelAdmin):
-    list_display = ('materiel', 'client', 'departement', 'type_attribution', 'date_attribution', 'date_retour_prevue', 'date_retour_effective')
+    list_display = ('materiel', 'client', 'departement', 'type_attribution', 'date_attribution', 'date_retour_prevue', 'heure_retour_prevue', 'date_retour_effective', 'heure_retour_effective')
     list_filter = ('departement', 'type_attribution', 'date_attribution', 'date_retour_effective')
     search_fields = ('materiel__asset_id', 'client__nom', 'motif')
     readonly_fields = ('date_attribution',)
@@ -278,7 +278,7 @@ class AttributionAdmin(admin.ModelAdmin):
             'fields': ('employe_responsable', 'departement')
         }),
         ('Dates', {
-            'fields': ('date_attribution', 'date_retour_prevue', 'date_retour_effective')
+            'fields': ('date_attribution', 'date_retour_prevue', 'heure_retour_prevue', 'date_retour_effective', 'heure_retour_effective')
         }),
         ('Informations', {
             'fields': ('motif', 'notes')

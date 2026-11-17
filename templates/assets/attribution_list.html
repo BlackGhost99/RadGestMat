@@ -86,7 +86,7 @@
                                 {% if attr.is_synthetic %}
                                     -
                                 {% elif attr.type_attribution == "TEMPORAIRE" %}
-                                    {{ attr.date_retour_prevue|date:"d/m/Y" }}
+                                    {{ attr.date_retour_prevue|date:"d/m/Y" }}{% if attr.heure_retour_prevue %} à {{ attr.heure_retour_prevue|time:"H:i" }}{% endif %}
                                     {% if attr.is_overdue %}
                                         <span class="badge bg-danger">Retard!</span>
                                     {% endif %}
@@ -98,7 +98,7 @@
                             </td>
                             <td>
                                 {% if attr.date_retour_effective %}
-                                    <span class="badge bg-info">📥 Retourné le {{ attr.date_retour_effective|date:"d/m/Y" }}</span>
+                                    <span class="badge bg-info">📥 Retourné le {{ attr.date_retour_effective|date:"d/m/Y" }}{% if attr.heure_retour_effective %} à {{ attr.heure_retour_effective|time:"H:i" }}{% endif %}</span>
                                 {% else %}
                                     <span class="badge bg-success">📤 Attribué</span>
                                     {% if attr.is_overdue %}

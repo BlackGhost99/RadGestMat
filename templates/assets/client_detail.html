@@ -111,7 +111,7 @@
             <small class="text-muted">{{ attr.materiel.asset_id }}</small>
           </td>
           <td>{{ attr.date_attribution|date:"d/m/Y" }}</td>
-          <td>{{ attr.date_retour_prevue|date:"d/m/Y" }}</td>
+          <td>{{ attr.date_retour_prevue|date:"d/m/Y" }}{% if attr.heure_retour_prevue %} à {{ attr.heure_retour_prevue|time:"H:i" }}{% endif %}</td>
           <td>
             {% if attr.date_retour_effective %}
             <span class="badge bg-info">Retourné</span>
