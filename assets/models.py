@@ -288,6 +288,23 @@ class Attribution(models.Model):
             dest = "Inconnu"
         return f"{materiel_id}  {dest}"
 
+    def clean(self):
+        """Valider aussi les échéances saisies via l'administration Django."""
+        from django.utils import timezone
+
+        super().clean()
+        if self.type_attribution != self.TYPE_TEMPORAIRE:
+            return
+        if not self.date_retour_prevue:
+            return  # Le formulaire d'attribution contrôle la date obligatoire.
+        if self.heure_retour_prevue is None:
+            if self._state.adding:
+                raise ValidationError({'heure_retour_prevue': "L'heure de retour prévue est obligatoire."})
+            return  # Ne pas rendre les anciennes attributions invalides.
+        start = self.date_attribution or timezone.now()
+        if self.retour_echeance() <= start:
+            raise ValidationError({'heure_retour_prevue': "Le retour prévu doit être postérieur à l'attribution."})
+
     def calculate_duree_emprunt(self):
         """Calcul automatique de la catégorie de durée d'emprunt"""
         from django.utils import timezone

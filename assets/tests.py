@@ -262,6 +262,43 @@ class MaterielViewsTest(TestCase):
         new_loan.refresh_from_db()
         self.assertIsNone(new_loan.date_retour_effective)
 
+    def test_same_day_checkout_requires_valid_hour(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from .forms import AttributionForm
+        start = datetime(2026, 11, 17, 9, tzinfo=ZoneInfo('Africa/Libreville'))
+        client = Client.objects.create(nom='Client prêt horaire', departement=self.dept)
+        data = {'materiel': self.materiel.pk, 'client': client.pk, 'destination_type': 'client',
+                'type_attribution': Attribution.TYPE_TEMPORAIRE, 'date_retour_prevue': '2026-11-17'}
+        with override_settings(TIME_ZONE='Africa/Libreville', USE_TZ=True):
+            with patch('django.utils.timezone.now', return_value=start):
+                missing = AttributionForm(data)
+                self.assertFalse(missing.is_valid())
+                self.assertIn('heure_retour_prevue', missing.errors)
+                early = AttributionForm({**data, 'heure_retour_prevue': '08:59'})
+                self.assertFalse(early.is_valid())
+                self.assertIn('heure_retour_prevue', early.errors)
+                valid = AttributionForm({**data, 'heure_retour_prevue': '12:00'})
+                self.assertTrue(valid.is_valid(), valid.errors)
+
+    def test_alert_detects_same_day_overdue_despite_info_alert(self):
+        from datetime import datetime, time
+        from zoneinfo import ZoneInfo
+        from .models import Alerte
+        from .services import AlerteService
+        now = datetime(2026, 11, 17, 12, 1, tzinfo=ZoneInfo('Africa/Libreville'))
+        with override_settings(TIME_ZONE='Africa/Libreville', USE_TZ=True):
+            with patch('django.utils.timezone.now', return_value=now.replace(hour=9)):
+                loan = Attribution.objects.create(materiel=self.materiel, departement=self.dept,
+                    date_retour_prevue=now.date(), heure_retour_prevue=time(12))
+            Alerte.objects.create(type_alerte=Alerte.TYPE_RETARD, severite=Alerte.SEVERITE_INFO,
+                materiel=self.materiel, departement=self.dept, attribution=loan, description='Attribution')
+            with patch('django.utils.timezone.now', return_value=now):
+                alerts = AlerteService.detecter_retards_retour()
+                self.assertEqual(len(alerts), 1)
+                self.assertIn('1 min', alerts[0].description)
+                self.assertEqual(AlerteService.detecter_retards_retour(), [])
+
     def test_bulk_delete_materiels(self):
         """Supprime plusieurs matériels en une seule requête (AJAX)."""
         # Promouvoir en superuser pour autoriser la suppression

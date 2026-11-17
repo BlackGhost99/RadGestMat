@@ -128,7 +128,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = get_config('LANGUAGE_CODE', default='fr-fr')
-TIME_ZONE = get_config('TIME_ZONE', default='Europe/Paris')
+TIME_ZONE = get_config('TIME_ZONE', default='Africa/Libreville')
 USE_I18N = True
 USE_TZ = True
 
