@@ -331,6 +331,7 @@ class MaterielViewsTest(TestCase):
 
     def test_report_list_filters_attributions_by_date(self):
         """Le rapport d'audit filtre les attributions sur une periode."""
+        ProfilUtilisateur.objects.update_or_create(user=self.user, defaults={'departement': self.dept, 'role': 'SUPER_ADMIN'})
         self.client.login(username='test', password='testpass123')
 
         now = timezone.now()
@@ -407,11 +408,16 @@ class MaterielViewsTest(TestCase):
         self.assertEqual(len(response.context['attributions_period']), 1)
 
     def test_checkout_persists_conference_room_destination(self):
+        ProfilUtilisateur.objects.update_or_create(user=self.user, defaults={'departement': self.dept, 'role': 'DEPT_USER'})
         self.client.login(username='test', password='testpass123')
         room = Salle.objects.create(nom='Salle Test', departement=self.dept)
+        url = reverse('assets:materiel_checkout', args=[self.materiel.asset_id])
+        page = self.client.get(url)
+        self.assertEqual(page.status_code, 200)
         response = self.client.post(
-            reverse('assets:materiel_checkout', args=[self.materiel.asset_id]),
+            url,
             data={
+                'movement_token': page.context['movement_token'],
                 'materiel': self.materiel.pk,
                 'destination_type': 'salle',
                 'salle': room.pk,
@@ -426,15 +432,20 @@ class MaterielViewsTest(TestCase):
         self.assertEqual(attribution.salle, room)
 
     def test_checkout_persists_indefinite_internal_attribution(self):
+        ProfilUtilisateur.objects.update_or_create(user=self.user, defaults={'departement': self.dept, 'role': 'DEPT_USER'})
         self.client.login(username='test', password='testpass123')
         internal = Client.objects.create(
             nom='Service interne',
             type_client=Client.TYPE_INTERNE,
             departement=self.dept,
         )
+        url = reverse('assets:materiel_checkout', args=[self.materiel.asset_id])
+        page = self.client.get(url)
+        self.assertEqual(page.status_code, 200)
         response = self.client.post(
-            reverse('assets:materiel_checkout', args=[self.materiel.asset_id]),
+            url,
             data={
+                'movement_token': page.context['movement_token'],
                 'materiel': self.materiel.pk,
                 'destination_type': 'client',
                 'client': internal.pk,
