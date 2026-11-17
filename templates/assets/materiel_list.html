@@ -37,10 +37,6 @@
 
 .inventory-mobile-tools {display:none}
 @media(max-width:991.98px){
-body.inventory-page {height:auto!important;min-height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important}
-body.inventory-page .app-main {height:auto!important;max-height:none!important;overflow:visible!important;padding:0 10px 12px!important;flex:1 0 auto!important}
-body.inventory-page .inventory-container,body.inventory-page .inventory-container > div {height:auto!important;max-height:none!important;overflow:visible!important;min-height:0!important}
-body.inventory-page .inventory-container > div {padding-top:8px!important}
 .inventory-heading {align-items:center;margin-bottom:6px!important;flex-wrap:nowrap}
 .inventory-heading h1 {font-size:20px;margin:0}
 .inventory-heading h1 small,.inventory-heading p {display:none}
@@ -74,10 +70,19 @@ body.inventory-page .inventory-container > div {padding-top:8px!important}
 
 .inventory-mobile-dept,.inventory-mobile-status {display:none}
 @media(max-width:991.98px){
-body.app-body.inventory-page {height:100dvh!important;min-height:0!important;max-height:100dvh!important;overflow:hidden!important;padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))!important;box-sizing:border-box}
-body.inventory-page .app-header {flex:0 0 auto!important;position:relative!important;top:auto!important}
-body.inventory-page .app-main {flex:1 1 0!important;height:0!important;min-height:0!important;max-height:none!important;overflow:hidden!important;padding:0 8px 4px!important;display:flex!important;flex-direction:column;margin:0!important}
-body.inventory-page .inventory-container,body.inventory-page .inventory-container > div {flex:1 1 0!important;height:0!important;min-height:0!important;overflow:hidden!important;padding-bottom:0!important}
+/* Mobile: header occupies its own row, without the fixed-header body offset.
+   Only the equipment list scrolls normally; the main area can scroll when
+   expanded filters or a small viewport leave too little room for the list. */
+body.app-body.inventory-page {height:100vh!important;height:100dvh!important;min-height:0!important;max-height:100dvh!important;overflow:hidden!important;padding:0 0 calc(66px + env(safe-area-inset-bottom,0px))!important;box-sizing:border-box;justify-content:flex-start!important}
+body.inventory-page .app-header {flex:0 0 auto!important;position:relative!important;top:auto!important;left:0!important;right:0!important;width:100%!important;margin:0!important}
+body.inventory-page .alert-container {padding:0 8px!important;flex:0 0 auto;max-height:20vh;overflow:auto;width:100%}
+body.inventory-page #web-reminders {padding:4px 8px!important}
+body.inventory-page .app-main {flex:1 1 0!important;height:0!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important;padding:8px 8px 4px!important;display:flex!important;flex-direction:column;justify-content:flex-start!important;margin:0!important}
+body.inventory-page .inventory-container,body.inventory-page .inventory-container > div {flex:1 0 auto!important;height:auto!important;min-height:100%!important;max-height:none!important;overflow:visible!important;padding:0!important;margin:0!important;justify-content:flex-start!important}
+body.inventory-page .inventory-container {min-height:min-content!important;flex:1 0 100%!important}
+body.inventory-page .inventory-container > div {min-height:min-content!important;flex:1 0 100%!important}
+body.inventory-page .inventory-heading > *,body.inventory-page .inventory-stats > * {margin-bottom:0!important}
+body.inventory-page .inventory-stats .card,body.inventory-page .inventory-list {margin-bottom:0!important}
 .inventory-heading,.inventory-stats,.inventory-filters {flex-shrink:0!important}
 .inventory-heading {margin-bottom:4px!important}
 .inventory-stats .stat-card {min-height:0!important;height:auto!important;border-radius:9px!important;box-shadow:none!important}
@@ -97,14 +102,14 @@ body.inventory-page .inventory-container,body.inventory-page .inventory-containe
 .inventory-filter-form.show-advanced .inventory-collapsible,.inventory-filter-form.show-advanced .inventory-advanced,.inventory-filter-form.show-advanced .inventory-submit {display:block!important}
 .inventory-filter-form.show-advanced .inventory-search,.inventory-filter-form.show-advanced .inventory-mobile-tools {grid-column:1/-1!important}
 .inventory-filter-form.show-advanced .inventory-mobile-tools #inventory-sort {width:auto;max-width:none}
-.inventory-list {flex:1 1 0!important;height:0!important;min-height:0!important;overflow:hidden!important}
+.inventory-list {flex:1 1 0!important;height:auto!important;min-height:160px!important;overflow:hidden!important}
 .inventory-list .card-header {padding:5px 7px!important;flex-shrink:0!important}
 .inventory-list .card-header h5 {font-size:13px!important}
 .inventory-list .card-header #selection-count {display:none}
 .inventory-list .card-header #bulk-delete-button:disabled {display:none!important}
 .inventory-list .card-header #group-count {font-size:10px}
 .inventory-list .card-body {flex:1 1 0!important;min-height:0!important;overflow:hidden!important}
-.inventory-list #group-table-wrapper {flex:1 1 0!important;height:0!important;min-height:0!important;overflow:auto!important;overscroll-behavior:contain;touch-action:pan-y;max-height:none!important}
+.inventory-list #group-table-wrapper {flex:1 1 0!important;height:0!important;min-height:120px!important;overflow:auto!important;overscroll-behavior:contain;touch-action:pan-y;max-height:none!important}
 .inventory-list table {width:100%!important;min-width:0!important;table-layout:auto!important}
 .inventory-list thead {position:sticky!important;top:0;z-index:2}
 .inventory-list th:not(.inventory-name):not(.inventory-quantity):not(:has(#select-all)),.inventory-list td:not(.inventory-name):not(.inventory-quantity):not(:has(.group-select)) {display:none!important}
@@ -123,7 +128,7 @@ body.inventory-page .inventory-container,body.inventory-page .inventory-containe
     <div class="row mb-3 mb-lg-2 inventory-heading">
       <div class="col">
         <h1 class="h2">
-          <i class="bi bi-box-seam me-2"></i>Inventaire<small class="ms-2 fw-normal text-muted" style="font-size:.65rem;vertical-align:middle" title="Version de disposition">Vue compacte V5</small>
+          <i class="bi bi-box-seam me-2"></i>Inventaire<small class="ms-2 fw-normal text-muted" style="font-size:.65rem;vertical-align:middle" title="Version de disposition">Vue compacte V6</small>
         </h1>
         <p class="text-muted">Materiel groupe par equipement avec filtres avances</p>
       </div>
