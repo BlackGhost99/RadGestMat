@@ -41,19 +41,12 @@ def check_court_terme_reminders():
             
             # Send reminder if within 2.5 hour window and not yet sent
             if timedelta(minutes=0) <= time_until_return <= timedelta(hours=2, minutes=30):
-                if not NotificationLog.objects.filter(
-                    attribution=attribution,
-                    type_notification=NotificationLog.TYPE_RAPPEL_2H,
-                    canal=NotificationLog.CANAL_EMAIL,
-                    statut__in=[NotificationLog.STATUT_ENVOYEE, NotificationLog.STATUT_ECHEC],
-                ).exists():
-                    
-                    _send_reminder_notification(
-                        attribution,
-                        NotificationLog.TYPE_RAPPEL_2H,
-                        reason="Court terme 2h before return"
-                    )
-                    reminder_sent_count += 1
+                _send_reminder_notification(
+                    attribution,
+                    NotificationLog.TYPE_RAPPEL_2H,
+                    reason="Court terme 2h before return"
+                )
+                reminder_sent_count += 1
         
         logger.info(f"Court terme reminders: {reminder_sent_count} sent")
         
@@ -88,19 +81,12 @@ def check_moyen_terme_reminders():
             
             # Send reminder if within 2.5 hour window
             if timedelta(minutes=0) <= time_until_return <= timedelta(hours=2, minutes=30):
-                if not NotificationLog.objects.filter(
-                    attribution=attribution,
-                    type_notification=NotificationLog.TYPE_RAPPEL_2H,
-                    canal=NotificationLog.CANAL_EMAIL,
-                    statut__in=[NotificationLog.STATUT_ENVOYEE, NotificationLog.STATUT_ECHEC],
-                ).exists():
-                    
-                    _send_reminder_notification(
-                        attribution,
-                        NotificationLog.TYPE_RAPPEL_2H,
-                        reason="Moyen terme 2h before return"
-                    )
-                    reminder_sent_count += 1
+                _send_reminder_notification(
+                    attribution,
+                    NotificationLog.TYPE_RAPPEL_2H,
+                    reason="Moyen terme 2h before return"
+                )
+                reminder_sent_count += 1
         
         logger.info(f"Moyen terme reminders: {reminder_sent_count} sent")
         
@@ -138,45 +124,30 @@ def check_long_terme_reminders():
             
             # J-2 reminder (2 days before)
             if days_until_return == 2:
-                if not NotificationLog.objects.filter(
-                    attribution=attribution,
-                    type_notification=NotificationLog.TYPE_RAPPEL_J_MOINS_2,
-                ).exists():
-                    
-                    _send_reminder_notification(
-                        attribution,
-                        NotificationLog.TYPE_RAPPEL_J_MOINS_2,
-                        reason="Long terme J-2"
-                    )
-                    reminder_counts['j_moins_2'] += 1
+                _send_reminder_notification(
+                    attribution,
+                    NotificationLog.TYPE_RAPPEL_J_MOINS_2,
+                    reason="Long terme J-2"
+                )
+                reminder_counts['j_moins_2'] += 1
             
             # J-1 reminder (1 day before)
             elif days_until_return == 1:
-                if not NotificationLog.objects.filter(
-                    attribution=attribution,
-                    type_notification=NotificationLog.TYPE_RAPPEL_J_MOINS_1,
-                ).exists():
-                    
-                    _send_reminder_notification(
-                        attribution,
-                        NotificationLog.TYPE_RAPPEL_J_MOINS_1,
-                        reason="Long terme J-1"
-                    )
-                    reminder_counts['j_moins_1'] += 1
+                _send_reminder_notification(
+                    attribution,
+                    NotificationLog.TYPE_RAPPEL_J_MOINS_1,
+                    reason="Long terme J-1"
+                )
+                reminder_counts['j_moins_1'] += 1
             
             # Final reminder (morning of return day)
             elif days_until_return == 0:
-                if not NotificationLog.objects.filter(
-                    attribution=attribution,
-                    type_notification=NotificationLog.TYPE_RAPPEL_FINAL,
-                ).exists():
-                    
-                    _send_reminder_notification(
-                        attribution,
-                        NotificationLog.TYPE_RAPPEL_FINAL,
-                        reason="Long terme final"
-                    )
-                    reminder_counts['final'] += 1
+                _send_reminder_notification(
+                    attribution,
+                    NotificationLog.TYPE_RAPPEL_FINAL,
+                    reason="Long terme final"
+                )
+                reminder_counts['final'] += 1
         
         logger.info(f"Long terme reminders - J-2: {reminder_counts['j_moins_2']}, "
                    f"J-1: {reminder_counts['j_moins_1']}, "
@@ -210,18 +181,9 @@ def check_overdue_materials():
         ).select_related('client', 'materiel')
         
         for attribution in list(attributions) + list(attributions_today):
-            # Check if we've already sent an overdue alert
-            latest_alert = NotificationLog.objects.filter(
-                attribution=attribution,
-                type_notification=NotificationLog.TYPE_RETARD,
-            ).order_by('-date_envoi').first()
-            
-            if latest_alert is None or (now - latest_alert.date_envoi).days >= 1:
-                # Send overdue alert if no alert sent yet or last one was > 1 day ago
-                days_late = (timezone.localdate(now) - attribution.date_retour_prevue).days
-                if attribution.is_overdue():  # Includes same-day overdue loans
-                    _send_overdue_notification(attribution, days_late)
-        
+            if attribution.is_overdue():
+                _send_overdue_notification(attribution, (timezone.localdate(now) - attribution.date_retour_prevue).days)
+
         logger.info("Overdue materials check completed")
         
     except Exception as e:
@@ -252,68 +214,45 @@ def cleanup_old_notifications(days=90):
 
 
 def _send_reminder_notification(attribution, reminder_type, reason=""):
-    """
-    Helper function to send reminder notifications
-    """
-    try:
-        # Get client email
-        client_email = attribution.client.email if attribution.client else None
-        if not client_email:
-            logger.warning(f"No email for client in attribution {attribution.id}")
+    """Deliver independently to the borrower and the responsible employee."""
+    from django.db import transaction
+    with transaction.atomic():
+        loan = Attribution.objects.select_for_update().get(pk=attribution.pk)
+        if loan.date_retour_effective is not None:
             return
-        
-        # Check user preferences
-        try:
-            preferences = NotificationPreferences.objects.get(client=attribution.client)
-            if not preferences.notifications_email:
-                logger.info(f"Email notifications disabled for client {attribution.client.id}")
-                return
-        except NotificationPreferences.DoesNotExist:
-            pass  # Continue if no preferences set
-        
-        # Create notification log
-        notification = NotificationLog.objects.create(
-            attribution=attribution,
-            type_notification=reminder_type,
-            canal=NotificationLog.CANAL_EMAIL,
-            duree_emprunt=attribution.duree_emprunt,
-            destinataire=client_email,
-            statut=NotificationLog.STATUT_EN_ATTENTE,
-        )
-        
-        # Send email
-        NotificationEmailService.send_notification(notification)
-        
-        logger.info(f"Reminder sent for attribution {attribution.id}: {reason}")
-        
-    except Exception as e:
-        logger.error(f"Error sending reminder notification: {e}", exc_info=True)
+        recipients = {}
+        client = loan.client
+        if client and client.email:
+            prefs = NotificationPreferences.objects.filter(client=client).first()
+            if not prefs or prefs.notifications_email:
+                recipients[client.email.strip().lower()] = NotificationEmailService.ROLE_RECEVEUR
+        lender = loan.employe_responsable
+        if lender and lender.is_active and lender.email:
+            recipients[lender.email.strip().lower()] = NotificationEmailService.ROLE_PRETEUR
+        now = timezone.now()
+        for email, role in recipients.items():
+            if not email:
+                continue
+            logs = NotificationLog.objects.filter(
+                attribution=loan, type_notification=reminder_type,
+                canal=NotificationLog.CANAL_EMAIL, destinataire__iexact=email,
+            ).order_by('-date_envoi')
+            if reminder_type == NotificationLog.TYPE_RETARD:
+                logs = logs.filter(date_envoi__gte=now - timedelta(days=1))
+            if logs.filter(statut=NotificationLog.STATUT_ENVOYEE).exists():
+                continue
+            if logs.count() >= 3:
+                continue
+            latest = logs.first()
+            if latest and now - latest.date_envoi < timedelta(minutes=15):
+                continue
+            notification = NotificationLog.objects.create(
+                attribution=loan, type_notification=reminder_type,
+                canal=NotificationLog.CANAL_EMAIL, duree_emprunt=loan.duree_emprunt,
+                destinataire=email, statut=NotificationLog.STATUT_EN_ATTENTE,
+            )
+            NotificationEmailService.send_notification(notification, recipient_role=role)
 
 
 def _send_overdue_notification(attribution, days_late):
-    """
-    Helper function to send overdue alert notifications
-    """
-    try:
-        client_email = attribution.client.email if attribution.client else None
-        if not client_email:
-            logger.warning(f"No email for client in attribution {attribution.id}")
-            return
-        
-        # Create notification log
-        notification = NotificationLog.objects.create(
-            attribution=attribution,
-            type_notification=NotificationLog.TYPE_RETARD,
-            canal=NotificationLog.CANAL_EMAIL,
-            duree_emprunt=attribution.duree_emprunt,
-            destinataire=client_email,
-            statut=NotificationLog.STATUT_EN_ATTENTE,
-        )
-        
-        # Send email
-        NotificationEmailService.send_notification(notification)
-        
-        logger.info(f"Overdue alert sent for attribution {attribution.id} ({days_late} days late)")
-        
-    except Exception as e:
-        logger.error(f"Error sending overdue notification: {e}", exc_info=True)
+    _send_reminder_notification(attribution, NotificationLog.TYPE_RETARD)
