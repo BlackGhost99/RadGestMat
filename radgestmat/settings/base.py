@@ -307,3 +307,6 @@ CACHES = {
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
+
+# Durée de validité des liens de réinitialisation (24 heures).
+PASSWORD_RESET_TIMEOUT = 24 * 60 * 60

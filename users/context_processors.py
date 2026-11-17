@@ -7,6 +7,7 @@ Provides user profile and department information to templates.
 
 # users/context_processors.py
 from .models import UserPreferences
+from .account_admin import can_administer_accounts
 
 def user_profile(request):
     if request.user.is_authenticated:
@@ -20,11 +21,11 @@ def user_profile(request):
     return {}
 
 def theme_context(request):
-    # Priorité 1: Session (changement temporaire)
+    # La préférence persistante doit rester prioritaire, y compris après une modification administrative.
     theme = request.session.get('theme', None)
     
     # Priorité 2: Préférences utilisateur (persistant)
-    if not theme and request.user.is_authenticated:
+    if request.user.is_authenticated:
         try:
             prefs = request.user.preferences
             theme = 'dark' if prefs.dark_mode else 'light'
@@ -37,4 +38,4 @@ def theme_context(request):
         except:
             theme = 'light'
     
-    return {'theme': theme or 'light'}
+    return {'theme': theme or 'light', 'can_administer_accounts': can_administer_accounts(request.user)}
