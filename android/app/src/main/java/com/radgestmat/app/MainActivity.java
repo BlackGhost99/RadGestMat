@@ -13,6 +13,7 @@ import android.widget.*;
 
 public class MainActivity extends Activity {
     private WebView web;
+    private AppUpdater updater;
     private boolean enrollmentRunning;
     private boolean enrollmentConflictShown;
     private boolean loggedInPage;
@@ -48,6 +49,7 @@ public class MainActivity extends Activity {
     }
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        updater = new AppUpdater(this);
         FrameLayout layout = new FrameLayout(this);
         if (Build.VERSION.SDK_INT >= 30) {
             getWindow().setDecorFitsSystemWindows(false);
@@ -148,6 +150,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onResume() {
         super.onResume();
+        if (updater != null) updater.resume();
         OfflineSyncWorker.refresh(this);
         ensureReminders();
         ReminderSyncWorker.refresh(this);
