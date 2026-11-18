@@ -1,10 +1,11 @@
 # assets/urls.py
 from django.urls import path
-from . import views, reminder_views
+from . import views, reminder_views, offline_views
 
 app_name = 'assets'
 
 urlpatterns = [
+    path('api/offline/v1/snapshot/', offline_views.offline_snapshot, name='offline_snapshot'),
     # Dashboard
     path('', views.dashboard, name='dashboard'),
 

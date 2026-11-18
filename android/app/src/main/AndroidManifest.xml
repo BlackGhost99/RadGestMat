@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <application android:label="RadGestMat" android:allowBackup="false" android:usesCleartextTraffic="false">
+    <application android:icon="@drawable/ic_radgestmat" android:roundIcon="@drawable/ic_radgestmat" android:label="RadGestMat" android:allowBackup="false" android:usesCleartextTraffic="false">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:theme="@android:style/Theme.Material.Light.NoActionBar">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
             <intent-filter android:autoVerify="true">

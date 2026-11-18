@@ -85,7 +85,7 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link position-relative" href="{% url 'assets:alerte_list' %}">
-                                <i class="bi bi-bell me-1"></i>Alertes
+                                <i class="bi bi-exclamation-triangle me-1"></i>Alertes
                                 {% if nombre_alertes > 0 %}
                                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill {% if nombre_alertes_critiques > 0 %}bg-danger{% else %}bg-warning{% endif %}">
                                     {{ nombre_alertes }}
@@ -200,7 +200,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link position-relative" href="{% url 'assets:alerte_list' %}">
-                            <i class="bi bi-bell me-2"></i>Alertes
+                            <i class="bi bi-exclamation-triangle me-2"></i>Alertes
                             {% if nombre_alertes > 0 %}
                             <span class="badge rounded-pill {% if nombre_alertes_critiques > 0 %}bg-danger{% else %}bg-warning{% endif %} ms-2">
                                 {{ nombre_alertes }}
