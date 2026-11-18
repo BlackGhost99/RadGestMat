@@ -68,8 +68,23 @@ public class MainActivity extends Activity {
                 if (i == 2) permissions();
                 if (i == 3) new Thread(()->ReminderSync.clear(this)).start();
             }).show());
-        web.loadUrl(ReminderSync.BASE + "/");
+        openIntent(getIntent());
         ReminderSyncWorker.schedule(this);
+    }
+    private void openIntent(Intent intent) {
+        Uri uri = intent == null ? null : intent.getData();
+        String path = uri == null ? null : uri.getPath();
+        if (uri != null && trusted(uri) && path != null &&
+                (path.startsWith("/scan/") || path.startsWith("/materiel/"))) {
+            web.loadUrl(uri.toString());
+        } else {
+            web.loadUrl(ReminderSync.BASE + "/");
+        }
+    }
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        openIntent(intent);
     }
     private void enroll() {
         new Thread(() -> {

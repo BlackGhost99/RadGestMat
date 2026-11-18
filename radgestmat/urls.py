@@ -12,7 +12,11 @@ from radgestmat.admin_debug_views import custom_app_index
 # Override app_index for assets app to add debugging
 admin.site.app_index = custom_app_index
 
+from radgestmat.integration_views import android_assetlinks, reminder_tick
+
 urlpatterns = [
+    path(".well-known/assetlinks.json", android_assetlinks),
+    path("api/internal/reminder-tick/", reminder_tick),
     path('admin/', admin.site.urls),
     
     # API routes (uncomment when rest_framework is installed)

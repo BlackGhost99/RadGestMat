@@ -1,0 +1,26 @@
+name: Production reminder tick
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: production-reminder-tick
+  cancel-in-progress: false
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      REMINDER_JOB_TOKEN: ${{ secrets.REMINDER_JOB_TOKEN }}
+    steps:
+      - name: Invoke authenticated reminder jobs
+        shell: bash
+        run: |
+          if [ -z "$REMINDER_JOB_TOKEN" ]; then
+            echo "::warning::REMINDER_JOB_TOKEN is not configured; no reminder jobs invoked"
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 240 --request POST \
+            --header "Authorization: Bearer $REMINDER_JOB_TOKEN" \
+            https://radgestmat.onrender.com/api/internal/reminder-tick/
