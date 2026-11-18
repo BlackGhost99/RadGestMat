@@ -70,11 +70,18 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
         web.setWebViewClient(new WebViewClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (request.isForMainFrame() && "GET".equals(request.getMethod()) && trusted(request.getUrl())) {
+                    WebResourceResponse local = OfflinePages.serve(MainActivity.this, request.getUrl());
+                    if (local != null) return local;
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 if (!trusted(uri)) return true;
                 if ("/logout/".equals(uri.getPath()) || "/login/".equals(uri.getPath())) {
-                    new Thread(() -> ReminderSync.clear(MainActivity.this)).start();
+                    new Thread(() -> { ReminderSync.clear(MainActivity.this); OfflineSyncWorker.clear(MainActivity.this); }).start();
                 }
                 return false;
             }
@@ -84,11 +91,12 @@ public class MainActivity extends Activity {
                 if (trusted(uri) && ("/logout/".equals(uri.getPath()) || "/login/".equals(uri.getPath()))) {
                     loggedInPage = false;
                     enrollmentConflictShown = false;
-                    new Thread(() -> ReminderSync.clear(MainActivity.this)).start();
+                    new Thread(() -> { ReminderSync.clear(MainActivity.this); OfflineSyncWorker.clear(MainActivity.this); }).start();
                 } else if (trusted(uri)) {
                     loggedInPage = true;
                     ensureReminders();
                     ReminderSyncWorker.refresh(MainActivity.this);
+                    OfflineSyncWorker.refresh(MainActivity.this);
                 }
             }
         });
@@ -98,6 +106,8 @@ public class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
         }
         ReminderSyncWorker.schedule(this);
+        OfflineSyncWorker.schedule(this);
+        OfflineSyncWorker.refresh(this);
     }
     private void openIntent(Intent intent) {
         Uri uri = intent == null ? null : intent.getData();
@@ -138,6 +148,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onResume() {
         super.onResume();
+        OfflineSyncWorker.refresh(this);
         ensureReminders();
         ReminderSyncWorker.refresh(this);
     }
