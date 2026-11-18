@@ -29,9 +29,6 @@ public class MainActivity extends Activity {
                 return insets;
             });
         }
-        Button settings = new Button(this);
-        settings.setText("Gestion des rappels");
-        layout.addView(settings);
         web = new WebView(this);
         layout.addView(web, new LinearLayout.LayoutParams(-1,0,1));
         setContentView(layout);
@@ -59,16 +56,11 @@ public class MainActivity extends Activity {
                 } else if (trusted(uri)) ReminderSyncWorker.refresh(MainActivity.this);
             }
         });
-        settings.setOnClickListener(v -> new AlertDialog.Builder(this)
-            .setTitle("Rappels personnels")
-            .setItems(new String[]{"Activer ce téléphone principal","Synchroniser","Autorisations Android","Désactiver les rappels locaux"},(d,i) -> {
-                if (i == 0) new AlertDialog.Builder(this).setMessage("Activer ce téléphone remplacera votre ancien appareil principal.")
-                    .setNegativeButton("Annuler",null).setPositiveButton("Activer",(a,b)->enroll()).show();
-                if (i == 1) ReminderSyncWorker.refresh(this);
-                if (i == 2) permissions();
-                if (i == 3) new Thread(()->ReminderSync.clear(this)).start();
-            }).show());
         openIntent(getIntent());
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !getPreferences(MODE_PRIVATE).getBoolean("notification_permission_requested", false)) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("notification_permission_requested", true).apply();
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
         ReminderSyncWorker.schedule(this);
     }
     private void openIntent(Intent intent) {
@@ -85,6 +77,23 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         openIntent(intent);
+    }
+    @Override public boolean onCreateOptionsMenu(android.view.Menu menu) {
+        menu.add("Activer les rappels sur ce téléphone");
+        menu.add("Désactiver les rappels sur ce téléphone");
+        return true;
+    }
+    @Override public boolean onOptionsItemSelected(android.view.MenuItem item) {
+        if ("Activer les rappels sur ce téléphone".contentEquals(item.getTitle())) {
+            new AlertDialog.Builder(this).setMessage("Activer ce téléphone remplacera votre ancien appareil principal.")
+                .setNegativeButton("Annuler", null).setPositiveButton("Activer", (a,b) -> enroll()).show();
+            return true;
+        }
+        if ("Désactiver les rappels sur ce téléphone".contentEquals(item.getTitle())) {
+            new Thread(() -> ReminderSync.clear(this)).start();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
     private void enroll() {
         new Thread(() -> {
@@ -110,7 +119,7 @@ public class MainActivity extends Activity {
     }
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode,permissions,results);
-        if (requestCode == 1 && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) permissions();
+        if (requestCode == 1 && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) ReminderSyncWorker.refresh(this);
     }
     @Override protected void onResume() {
         super.onResume();
