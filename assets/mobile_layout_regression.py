@@ -37,8 +37,10 @@ class MobileInventoryLayoutTest(StaticLiveServerTestCase):
                                    else route.abort())
                         page.goto(self.live_server_url + reverse('assets:materiel_list'))
                         page.locator('.inventory-heading').wait_for()
-                        self.assertEqual(page.locator('#web-reminders').evaluate(
-                            "e => getComputedStyle(e).display"), 'none')
+                        self.assertEqual(page.locator('#web-reminders').count(), 0)
+                        self.assertTrue(page.locator('#notification-bell').is_visible())
+                        self.assertIn('/notifications/dashboard/', page.locator('#notification-bell').get_attribute('href'))
+                        self.assertLessEqual(page.locator('#notification-bell').bounding_box()['x'] + page.locator('#notification-bell').bounding_box()['width'], width)
                         header = page.locator('.app-header').bounding_box()
                         heading = page.locator('.inventory-heading').bounding_box()
                         table = page.locator('#group-table-wrapper').bounding_box()
