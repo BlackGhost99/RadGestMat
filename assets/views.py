@@ -3927,12 +3927,10 @@ def notifications_dashboard(request):
     ).select_related('materiel')
     if profil.role != 'SUPER_ADMIN':
         personal_loans = personal_loans.filter(departement_id=profil.departement_id)
-    web_reminders = []
-    for loan in personal_loans:
-        deadline = loan.retour_echeance()
-        if deadline and deadline <= now + timedelta(days=2):
-            web_reminders.append({'loan': loan, 'deadline': deadline, 'overdue': deadline < now})
-    web_reminders.sort(key=lambda item: item['deadline'])
+    from .reminder_views import display_reminder_loans
+    web_reminders = display_reminder_loans(personal_loans, now + timedelta(days=2))
+    for item in web_reminders:
+        item['overdue'] = item['deadline'] < now
 
     # Dernières notifications (limité à 50)
     notifications = all_notifications[:50]

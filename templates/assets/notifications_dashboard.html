@@ -59,7 +59,26 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="mb-4">📊 Dashboard Notifications</h1>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h1 class="h3 mb-0"><i class="bi bi-bell me-2"></i>Notifications</h1>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'assets:notification_preferences' %}"><i class="bi bi-sliders me-1"></i>Paramètres</a>
+    </div>
+    <section class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h2 class="h5">Mes rappels de restitution</h2>
+            <p class="text-muted">Échéances dans les 48 heures et retards non clôturés.</p>
+            {% for reminder in web_reminders %}
+                <div class="border-bottom py-2 {% if reminder.overdue %}text-danger{% endif %}">
+                    <strong>{% if reminder.overdue %}En retard{% else %}Retour à prévoir{% endif %}</strong> :
+                    <a href="{% url 'assets:materiel_detail' reminder.loan.materiel_id %}">{{ reminder.loan.materiel.nom }}</a>
+                    — {{ reminder.deadline|date:"d/m/Y H:i" }}
+                    {% if reminder.count > 1 %}<small class="d-block text-body-secondary">{{ reminder.count }} attributions correspondantes à vérifier</small>{% endif %}
+                </div>
+            {% empty %}
+                <p>Aucun rappel de restitution en cours.</p>
+            {% endfor %}
+        </div>
+    </section>
     
     <!-- Statistiques Globales -->
     <div class="row mb-4">
@@ -112,21 +131,7 @@
         </div>
     </div>
 
-    <section class="card mb-4 shadow-sm">
-        <div class="card-body">
-            <h3>Mes rappels de restitution</h3>
-            <p class="text-muted">Échéances dans les 48 heures et retards non clôturés.</p>
-            {% for reminder in web_reminders %}
-                <div class="alert {% if reminder.overdue %}alert-danger{% else %}alert-warning{% endif %}">
-                    <strong>{% if reminder.overdue %}En retard{% else %}Retour à prévoir{% endif %}</strong> :
-                    <a href="{% url 'assets:materiel_detail' reminder.loan.materiel_id %}">{{ reminder.loan.materiel.nom }}</a>
-                    — {{ reminder.deadline|date:"d/m/Y H:i" }}
-                </div>
-            {% empty %}
-                <p>Aucun rappel de restitution en cours.</p>
-            {% endfor %}
-        </div>
-    </section>
+
 
     <!-- Dernières Notifications -->
     <div class="row">

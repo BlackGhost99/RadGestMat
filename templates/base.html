@@ -20,9 +20,11 @@
     <link href="{% static 'css/responsive.css' %}" rel="stylesheet">
     <link href="{% static 'css/android-shell.css' %}" rel="stylesheet">
     <style>
-        /* app-content is a flex item; hidden reminders must never take layout space. */
-        #web-reminders[hidden], #web-reminders [hidden] { display: none !important; }
-        #web-reminders { flex: 0 0 auto; max-height: 25vh; overflow-y: auto; }
+        #notification-count[hidden] { display: none !important; }
+        .notification-header-actions { flex-shrink: 0; }
+        .notification-bell { min-width: 40px; min-height: 40px; color: #fff; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+        .notification-bell:hover, .notification-bell:focus-visible { color: #fff; background: rgba(255,255,255,.15); }
+        .notification-bell .badge { font-size: .65rem; }
     </style>
 </head>
 <body class="app-body d-flex flex-column min-vh-100 {% block body_class %}{% endblock %}">
@@ -41,9 +43,17 @@
                     </span>
                 </a>
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#navbarOffcanvas">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+                <div class="notification-header-actions d-flex align-items-center gap-2">
+                    {% if user.is_authenticated %}
+                    <a id="notification-bell" class="notification-bell position-relative rounded-3" href="{% url 'assets:notifications_dashboard' %}" data-url="{% url 'assets:web_reminders' %}" aria-label="Notifications" title="Notifications">
+                        <i class="bi bi-bell fs-5" aria-hidden="true"></i>
+                        <span id="notification-count" class="position-absolute top-0 end-0 badge rounded-pill bg-warning text-dark" hidden></span>
+                    </a>
+                    {% endif %}
+                    <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#navbarOffcanvas" aria-label="Ouvrir le menu">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
 
                 <div class="collapse navbar-collapse justify-content-end d-none d-lg-flex">
                     <ul class="navbar-nav align-items-center me-4 gap-lg-2">
@@ -126,6 +136,7 @@
                                 {% if can_administer_accounts %}
                                 <li><a class="dropdown-item" href="{% url 'users:user_list' %}"><i class="bi bi-people-fill me-2"></i>Gestion des utilisateurs</a></li>
                                 {% endif %}
+                                <li><a class="dropdown-item" href="{% url 'assets:notification_preferences' %}"><i class="bi bi-sliders me-2"></i>Paramètres de notifications</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item" href="{% url 'logout' %}">
@@ -198,6 +209,8 @@
                         </a>
                     </li>
                 </ul>
+                <a class="nav-link px-2" href="{% url 'assets:notifications_dashboard' %}"><i class="bi bi-bell-fill me-2"></i>Notifications</a>
+                <a class="nav-link px-2" href="{% url 'assets:notification_preferences' %}"><i class="bi bi-sliders me-2"></i>Paramètres de notifications</a>
                 {% if can_administer_accounts %}
                 <a class="btn btn-outline-primary text-start" href="{% url 'users:user_list' %}"><i class="bi bi-people-fill me-2"></i>Gestion des utilisateurs</a>
                 {% endif %}
@@ -236,14 +249,6 @@
     {% endif %}
 
     {% if user.is_authenticated %}
-    <section class="app-content py-2" id="web-reminders" data-url="{% url 'assets:web_reminders' %}" hidden aria-live="polite">
-        <div class="alert alert-warning mb-0">
-            <strong><i class="bi bi-clock-history me-2"></i>Mes retours à surveiller</strong>
-            <ul id="web-reminder-items" class="mb-0"></ul>
-            <a href="{% url 'assets:notifications_dashboard' %}">Centre de notifications</a>
-            <small id="web-reminders-stale" class="d-block" hidden>Connexion interrompue : informations non actualisées.</small>
-        </div>
-    </section>
     <script src="{% static 'js/web-reminders.js' %}" defer></script>
     {% endif %}
     <!-- Contenu principal -->

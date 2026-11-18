@@ -154,6 +154,19 @@ def device_session(request):
                          "device_registered": ReminderDevice.objects.filter(user=request.user).exists()})
 
 
+def display_reminder_loans(loans, until):
+    """Group only identical material/deadline entries for display; never change loans."""
+    grouped = {}
+    for loan in loans:
+        deadline = loan.retour_echeance()
+        if deadline and deadline <= until:
+            key = (loan.materiel_id, deadline)
+            if key not in grouped:
+                grouped[key] = {"loan": loan, "deadline": deadline, "count": 0}
+            grouped[key]["count"] += 1
+    return sorted(grouped.values(), key=lambda item: item["deadline"])
+
+
 @require_GET
 @never_cache
 def web_reminders(request):
@@ -178,13 +191,13 @@ def web_reminders(request):
             return JsonResponse({"error": "department_required"}, status=403)
         qs = qs.filter(departement_id=profile.departement_id)
     items = []
-    for loan in qs:
-        deadline = loan.retour_echeance()
-        if deadline and deadline <= now + timedelta(hours=2):
-            items.append({
-                "id": loan.pk, "asset": loan.materiel.asset_id,
-                "deadline": timezone.localtime(deadline).strftime("%d/%m/%Y %H:%M"),
-                "overdue": deadline < now,
-                "url": reverse("assets:materiel_detail", args=[loan.materiel_id]),
-            })
+    for group in display_reminder_loans(qs, now + timedelta(hours=2)):
+        loan, deadline = group["loan"], group["deadline"]
+        items.append({
+            "id": loan.pk, "asset": loan.materiel.asset_id,
+            "deadline": timezone.localtime(deadline).strftime("%d/%m/%Y %H:%M"),
+            "overdue": deadline < now,
+            "count": group["count"],
+            "url": reverse("assets:materiel_detail", args=[loan.materiel_id]),
+        })
     return JsonResponse({"reminders": items})

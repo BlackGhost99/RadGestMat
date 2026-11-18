@@ -7,7 +7,7 @@
   .app-content { width:100%; max-width:100%; min-width:0; }
   .app-header .navbar { min-height:58px; }
   .app-header .container-fluid { padding-left:14px !important; padding-right:14px !important; }
-  .app-header .navbar-brand { max-width:calc(100% - 64px); }
+  .app-header .navbar-brand { max-width:calc(100% - 112px); min-width:0; margin-right:0; }
   .app-header .navbar-brand small { display:none !important; }
   .mobile-bottom-nav {
     display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr));
@@ -29,4 +29,10 @@
   .offcanvas#navbarOffcanvas .offcanvas-body { background:var(--bs-body-bg,#fff); }
   .app-footer { display:none; }
   .table-responsive { max-width:100%; }
+}
+
+@media (max-width: 991.98px) {
+  .app-header .navbar > .container-fluid { flex-wrap: nowrap; }
+  .app-header .navbar-brand > span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .notification-header-actions .navbar-toggler { padding:4px 6px; }
 }
