@@ -19,15 +19,31 @@ public final class ReminderSync {
     public static synchronized void run(Context c) throws Exception {
         new ReminderSync(c).sync();
     }
+    public static synchronized boolean ensureEnrolled(Context c) throws Exception {
+        ReminderSync client = new ReminderSync(c);
+        if (client.credentials.contains("token")) return true;
+        JSONObject session = client.request("device/session/", "GET", "", "");
+        // Older servers do not advertise safe enrollment: do not replace an unknown device.
+        if (!session.has("device_registered")) throw new IOException("Server upgrade required");
+        if (session.getBoolean("device_registered")) return false;
+        try {
+            client.register(session, false);
+            return true;
+        } catch (DeviceConflict e) { return false; }
+    }
+    private static class DeviceConflict extends IOException {}
     public static synchronized void enroll(Context c) throws Exception {
         ReminderSync client = new ReminderSync(c);
         JSONObject session = client.request("device/session/", "GET", "", "");
-        JSONObject response = client.request("device/register/", "POST", session.getString("csrf"), "");
+        client.register(session, true);
+    }
+    private void register(JSONObject session, boolean replace) throws Exception {
+        JSONObject response = request("device/register/" + (replace ? "" : "?replace=0"), "POST", session.getString("csrf"), "");
         String token = response.getString("device_token");
         long user = response.getLong("user_id");
-        new ReminderEngine(c).clear();
-        client.credentials.edit().putString("token", token).putLong("user", user).commit();
-        client.sync();
+        new ReminderEngine(context).clear();
+        credentials.edit().putString("token", token).putLong("user", user).commit();
+        sync();
     }
     public static synchronized void clear(Context c) {
         new ReminderSync(c).credentials.edit().clear().commit();
@@ -62,6 +78,7 @@ public final class ReminderSync {
                 connection.getOutputStream().close();
             }
             int status = connection.getResponseCode();
+            if (status == 409) throw new DeviceConflict();
             if (status == 401 || status == 403) {
                 if ("GET".equals(method)) clear(context);
                 throw new IOException("Authentication or device authorization required");

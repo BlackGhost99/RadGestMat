@@ -13,25 +13,55 @@ import android.widget.*;
 
 public class MainActivity extends Activity {
     private WebView web;
+    private boolean enrollmentRunning;
+    private boolean enrollmentConflictShown;
+    private boolean loggedInPage;
+    private boolean notificationAllowed() {
+        return Build.VERSION.SDK_INT < 33 ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+    }
+    private void ensureReminders() {
+        if (!loggedInPage || !notificationAllowed() || enrollmentRunning) return;
+        enrollmentRunning = true;
+        new Thread(() -> {
+            try {
+                boolean active = ReminderSync.ensureEnrolled(this);
+                runOnUiThread(() -> {
+                    enrollmentRunning = false;
+                    if (active && loggedInPage && !isFinishing()) requestExactAlarmOnce();
+                    if (!active && !enrollmentConflictShown && loggedInPage && !isFinishing()) {
+                        enrollmentConflictShown = true;
+                        new AlertDialog.Builder(this)
+                            .setMessage("Un autre téléphone reçoit déjà vos rappels. Les transférer vers celui-ci ?")
+                            .setNegativeButton("Non", null)
+                            .setPositiveButton("Transférer", (d,w) -> enroll()).show();
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> enrollmentRunning = false);
+            }
+        }).start();
+    }
     private boolean trusted(Uri uri) {
         return "https".equals(uri.getScheme()) && "radgestmat.onrender.com".equals(uri.getHost())
             && (uri.getPort() == -1 || uri.getPort() == 443);
     }
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(0,0,0,0);
-        if (android.os.Build.VERSION.SDK_INT >= 35) {
-            layout.setOnApplyWindowInsetsListener((v, insets) -> {
-                android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
-                v.setPadding(bars.left,bars.top,bars.right,bars.bottom);
+        FrameLayout layout = new FrameLayout(this);
+        if (Build.VERSION.SDK_INT >= 30) {
+            getWindow().setDecorFitsSystemWindows(false);
+            layout.setOnApplyWindowInsetsListener((view, insets) -> {
+                android.graphics.Insets bars = insets.getInsets(
+                    WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
                 return insets;
             });
         }
         web = new WebView(this);
-        layout.addView(web, new LinearLayout.LayoutParams(-1,0,1));
+        layout.addView(web, new FrameLayout.LayoutParams(-1, -1));
         setContentView(layout);
+        layout.requestApplyInsets();
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setDomStorageEnabled(true);
         web.getSettings().setAllowFileAccess(false);
@@ -52,8 +82,14 @@ public class MainActivity extends Activity {
                 CookieManager.getInstance().flush();
                 Uri uri = Uri.parse(url);
                 if (trusted(uri) && ("/logout/".equals(uri.getPath()) || "/login/".equals(uri.getPath()))) {
+                    loggedInPage = false;
+                    enrollmentConflictShown = false;
                     new Thread(() -> ReminderSync.clear(MainActivity.this)).start();
-                } else if (trusted(uri)) ReminderSyncWorker.refresh(MainActivity.this);
+                } else if (trusted(uri)) {
+                    loggedInPage = true;
+                    ensureReminders();
+                    ReminderSyncWorker.refresh(MainActivity.this);
+                }
             }
         });
         openIntent(getIntent());
@@ -78,51 +114,31 @@ public class MainActivity extends Activity {
         setIntent(intent);
         openIntent(intent);
     }
-    @Override public boolean onCreateOptionsMenu(android.view.Menu menu) {
-        menu.add("Activer les rappels sur ce téléphone");
-        menu.add("Désactiver les rappels sur ce téléphone");
-        return true;
-    }
-    @Override public boolean onOptionsItemSelected(android.view.MenuItem item) {
-        if ("Activer les rappels sur ce téléphone".contentEquals(item.getTitle())) {
-            new AlertDialog.Builder(this).setMessage("Activer ce téléphone remplacera votre ancien appareil principal.")
-                .setNegativeButton("Annuler", null).setPositiveButton("Activer", (a,b) -> enroll()).show();
-            return true;
-        }
-        if ("Désactiver les rappels sur ce téléphone".contentEquals(item.getTitle())) {
-            new Thread(() -> ReminderSync.clear(this)).start();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
     private void enroll() {
         new Thread(() -> {
             try {
                 ReminderSync.enroll(this);
-                runOnUiThread(() -> { Toast.makeText(this,"Téléphone activé",Toast.LENGTH_LONG).show(); permissions(); });
+                runOnUiThread(() -> { Toast.makeText(this,"Téléphone activé",Toast.LENGTH_LONG).show(); requestExactAlarmOnce(); });
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(this,"Activation impossible. Vérifiez votre connexion et votre compte.",Toast.LENGTH_LONG).show());
             }
         }).start();
     }
-    private void permissions() {
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
-            return;
-        }
-        if (Build.VERSION.SDK_INT >= 31 && !getSystemService(AlarmManager.class).canScheduleExactAlarms()) {
-            try { startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,Uri.parse("package:"+getPackageName()))); }
+    private void requestExactAlarmOnce() {
+        if (Build.VERSION.SDK_INT >= 31 && !getSystemService(AlarmManager.class).canScheduleExactAlarms()
+                && !getPreferences(MODE_PRIVATE).getBoolean("exact_alarm_requested", false)) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("exact_alarm_requested", true).apply();
+            try { startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:"+getPackageName()))); }
             catch (ActivityNotFoundException ignored) {}
-        } else {
-            startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,getPackageName()));
         }
     }
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode,permissions,results);
-        if (requestCode == 1 && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) ReminderSyncWorker.refresh(this);
+        if (requestCode == 1 && results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) { ensureReminders(); ReminderSyncWorker.refresh(this); }
     }
     @Override protected void onResume() {
         super.onResume();
+        ensureReminders();
         ReminderSyncWorker.refresh(this);
     }
     @Override public void onBackPressed() {

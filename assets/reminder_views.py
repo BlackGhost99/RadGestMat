@@ -121,6 +121,8 @@ def register_device(request):
     if not profile or not profile.actif:
         return JsonResponse({"error": "forbidden"}, status=403)
     ProfilUtilisateur.objects.select_for_update().get(pk=profile.pk)
+    if request.GET.get("replace") == "0" and ReminderDevice.objects.filter(user=request.user).exists():
+        return JsonResponse({"error": "device_already_registered"}, status=409)
     token = secrets.token_urlsafe(48)
     ReminderDevice.objects.update_or_create(user=request.user, defaults={"token_hash": _digest(token)})
     return JsonResponse({"device_token": token, "user_id": request.user.pk})
@@ -148,7 +150,8 @@ def device_session(request):
     profile = getattr(request, "profil_utilisateur", None)
     if not profile or not profile.actif:
         return JsonResponse({"error": "forbidden"}, status=403)
-    return JsonResponse({"user_id": request.user.pk, "csrf": get_token(request)})
+    return JsonResponse({"user_id": request.user.pk, "csrf": get_token(request),
+                         "device_registered": ReminderDevice.objects.filter(user=request.user).exists()})
 
 
 @require_GET
