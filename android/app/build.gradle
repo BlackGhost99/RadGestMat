@@ -12,7 +12,7 @@ android {
                 keyPassword System.getenv('RADGESTMAT_KEY_PASSWORD')
             }
         }
-        buildTypes { debug { signingConfig signingConfigs.persistent } }
+        buildTypes { release { signingConfig signingConfigs.persistent; debuggable false } }
     }
     defaultConfig {
         applicationId 'com.radgestmat.app'
