@@ -53,6 +53,9 @@ public class MainActivity extends Activity {
         FrameLayout layout = new FrameLayout(this);
         if (Build.VERSION.SDK_INT >= 30) {
             getWindow().setDecorFitsSystemWindows(false);
+            getWindow().setStatusBarColor(android.graphics.Color.rgb(16,43,77));
+            layout.setBackgroundColor(android.graphics.Color.rgb(16,43,77));
+            getWindow().getInsetsController().setSystemBarsAppearance(0, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
             layout.setOnApplyWindowInsetsListener((view, insets) -> {
                 android.graphics.Insets bars = insets.getInsets(
                     WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
