@@ -35,13 +35,43 @@ jobs:
         run: |
           if [ -n "$SIGNING_STORE" ]; then
             printf '%s' "$SIGNING_STORE" | base64 --decode > "$RUNNER_TEMP/radgestmat.jks"
+            # Normalize a Windows PFX (PKCS12) or a JKS with a single signing key.
+            # Java reads the actual key alias, since Windows may assign its own.
+            cat > "$RUNNER_TEMP/SigningInfo.java" <<'JAVA'
+            import java.io.File;
+            import java.security.KeyStore;
+            import java.util.ArrayList;
+            public class SigningInfo {
+                public static void main(String[] args) throws Exception {
+                    char[] password = System.getenv("SIGNING_PASSWORD").toCharArray();
+                    KeyStore store = KeyStore.getInstance(new File(args[0]), password);
+                    var entries = new ArrayList<String>();
+                    var aliases = store.aliases();
+                    while (aliases.hasMoreElements()) {
+                        String alias = aliases.nextElement();
+                        if (store.isKeyEntry(alias)) entries.add(alias);
+                    }
+                    String configured = System.getenv("SIGNING_ALIAS");
+                    String alias = configured;
+                    if (configured == null || configured.isBlank() || configured.equalsIgnoreCase("AUTO")) {
+                        if (entries.size() != 1) throw new IllegalStateException("Expected exactly one private key");
+                        alias = entries.get(0);
+                    }
+                    if (!store.isKeyEntry(alias) || alias.contains("\n") || alias.contains("\r"))
+                        throw new IllegalStateException("Invalid signing key alias");
+                    System.out.println("RADGESTMAT_STORE_TYPE=" + store.getType());
+                    System.out.println("RADGESTMAT_RESOLVED_ALIAS=" + alias);
+                }
+            }
+            JAVA
+            java "$RUNNER_TEMP/SigningInfo.java" "$RUNNER_TEMP/radgestmat.jks" >> "$GITHUB_ENV"
             echo "RADGESTMAT_KEYSTORE=$RUNNER_TEMP/radgestmat.jks" >> "$GITHUB_ENV"
           fi
       - name: Build APK
         working-directory: android
         env:
           RADGESTMAT_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          RADGESTMAT_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          RADGESTMAT_KEY_ALIAS: ${{ env.RADGESTMAT_RESOLVED_ALIAS }}
           RADGESTMAT_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle --no-daemon :app:assembleDebug
       - name: Publish APK signing fingerprint

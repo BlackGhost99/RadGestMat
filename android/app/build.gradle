@@ -6,6 +6,7 @@ android {
         signingConfigs {
             persistent {
                 storeFile file(System.getenv('RADGESTMAT_KEYSTORE'))
+                storeType System.getenv('RADGESTMAT_STORE_TYPE') ?: 'JKS'
                 storePassword System.getenv('RADGESTMAT_STORE_PASSWORD')
                 keyAlias System.getenv('RADGESTMAT_KEY_ALIAS')
                 keyPassword System.getenv('RADGESTMAT_KEY_PASSWORD')
