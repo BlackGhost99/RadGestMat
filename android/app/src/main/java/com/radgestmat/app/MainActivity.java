@@ -53,9 +53,6 @@ public class MainActivity extends Activity {
         FrameLayout layout = new FrameLayout(this);
         if (Build.VERSION.SDK_INT >= 30) {
             getWindow().setDecorFitsSystemWindows(false);
-            getWindow().setStatusBarColor(android.graphics.Color.rgb(16,43,77));
-            layout.setBackgroundColor(android.graphics.Color.rgb(16,43,77));
-            getWindow().getInsetsController().setSystemBarsAppearance(0, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
             layout.setOnApplyWindowInsetsListener((view, insets) -> {
                 android.graphics.Insets bars = insets.getInsets(
                     WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -66,6 +63,18 @@ public class MainActivity extends Activity {
         web = new WebView(this);
         layout.addView(web, new FrameLayout.LayoutParams(-1, -1));
         setContentView(layout);
+        // The decor insets controller is not guaranteed to exist before attachment.
+        if (Build.VERSION.SDK_INT >= 30) {
+            layout.post(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                layout.setBackgroundColor(android.graphics.Color.rgb(16,43,77));
+                android.view.WindowInsetsController controller = getWindow().getInsetsController();
+                if (controller != null) {
+                    controller.setSystemBarsAppearance(0, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
+                }
+                layout.requestApplyInsets();
+            });
+        }
         layout.requestApplyInsets();
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setDomStorageEnabled(true);
