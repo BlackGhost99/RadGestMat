@@ -113,3 +113,28 @@ class AccountAdminTests(TestCase):
         self.assertRedirects(response, self.route('user_detail', target))
         self.assertFalse(target.has_usable_password())
         self.assertEqual(ProfilUtilisateur.objects.get(user=target).role, 'DEPT_USER')
+
+    def test_login_member_redirects_away_from_admin_page(self):
+        self.client.logout()
+        target = self.route('user_detail', self.admin)
+        response = self.client.post(reverse('login') + '?next=' + target,
+                                    {'username': 'member', 'password': 'Old-secure-123!'})
+        self.assertRedirects(response, reverse('assets:dashboard'), fetch_redirect_response=False)
+        self.assertEqual(int(self.client.session['_auth_user_id']), self.member.pk)
+        self.assertEqual(self.client.get(target).status_code, 403)
+
+    def test_login_admin_preserves_authorized_destination(self):
+        self.client.logout()
+        target = self.route('user_detail', self.member)
+        response = self.client.post(reverse('login') + '?next=' + target,
+                                    {'username': 'admin_app', 'password': 'Old-secure-123!'})
+        self.assertRedirects(response, target)
+
+    def test_login_password_toggle_and_invalid_credentials(self):
+        self.client.logout()
+        response = self.client.get(reverse('login'))
+        self.assertContains(response, 'id="password-toggle"')
+        self.assertContains(response, 'autocomplete="current-password"')
+        response = self.client.post(reverse('login'), {'username': 'member', 'password': 'wrong'})
+        self.assertContains(response, "Nom d'utilisateur ou mot de passe incorrect.")
+        self.assertNotIn('_auth_user_id', self.client.session)

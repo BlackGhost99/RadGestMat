@@ -7,6 +7,7 @@ from django.conf.urls.static import static
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.contrib.auth import views as auth_views
 from users.views import logout_view
+from users.login_views import RadGestMatLoginView
 from radgestmat.admin_debug_views import custom_app_index
 
 # Override app_index for assets app to add debugging
@@ -30,7 +31,7 @@ urlpatterns = [
     path('users/', include('users.urls')),
     
     # Authentification
-    path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
+    path('login/', RadGestMatLoginView.as_view(), name='login'),
     path('logout/', logout_view, name='logout'),
 ]
 
